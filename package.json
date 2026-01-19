@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@quasar/extras": "^1.16.12",
     "gsap": "^3.12.5",
     "pinia": "^2.1.7",
     "quasar": "^2.17.7",
