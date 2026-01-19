@@ -11,6 +11,13 @@ export default defineConfig({
       sassVariables: 'src/quasar-variables.sass'
     })
   ],
+  css: {
+    preprocessorOptions: {
+      sass: {
+        includePaths: ['src']
+      }
+    }
+  },
   server: {
     port: 5173
   }

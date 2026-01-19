@@ -12,7 +12,7 @@
     </div>
 
     <div class="hud-banner">
-      {{ phase === PHASES.PLAYER_TURN ? 'Votre tour' : phase === PHASES.ENEMY_TURN ? \"Tour de l'ennemi\" : 'En attente' }}
+      {{ phase === PHASES.PLAYER_TURN ? 'Votre tour' : phase === PHASES.ENEMY_TURN ? "Tour de l'ennemi" : 'En attente' }}
     </div>
 
     <div class="flex items-center justify-between">
