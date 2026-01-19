@@ -1,11 +1,23 @@
 <template>
   <div class="actions">
-    <button class="button-primary" :disabled="disabled" @click="$emit('shoot-enemy')">
-      Tirer sur l'ennemi
-    </button>
-    <button class="button-primary" :disabled="disabled" @click="$emit('shoot-self')">
-      Tirer sur soi
-    </button>
+    <q-btn
+      unelevated
+      color="primary"
+      class="text-sm font-bold"
+      :disable="disabled"
+      icon="gps_fixed"
+      label="Tirer sur l'ennemi"
+      @click="$emit('shoot-enemy')"
+    />
+    <q-btn
+      unelevated
+      color="primary"
+      class="text-sm font-bold"
+      :disable="disabled"
+      icon="person"
+      label="Tirer sur soi"
+      @click="$emit('shoot-self')"
+    />
   </div>
 </template>
 
@@ -18,12 +30,7 @@ defineProps({
 <style scoped>
 .actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
 }
 </style>
