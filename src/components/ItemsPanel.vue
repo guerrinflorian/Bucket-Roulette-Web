@@ -1,6 +1,9 @@
 <template>
-  <div class="items">
-    <h3>Objets</h3>
+  <div class="items glass-panel space-y-3 p-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200/80">Objets</h3>
+      <span v-if="peekedNext" class="text-xs text-amber-100/70">Prochaine balle: {{ peekedNext }}</span>
+    </div>
     <div class="items__row">
       <button
         v-for="(itemId, index) in items"
@@ -13,7 +16,6 @@
         <span>{{ getItem(itemId).name }}</span>
       </button>
     </div>
-    <p v-if="peekedNext" class="items__peek">Prochaine balle: {{ peekedNext }}</p>
   </div>
 </template>
 
@@ -31,16 +33,13 @@ const getItem = (id) => getItemById(id) || { name: id, icon: '' };
 
 <style scoped>
 .items {
-  background: rgba(0, 0, 0, 0.55);
-  padding: 16px 20px;
-  border-radius: 16px;
+  min-height: 0;
 }
 
 .items__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
 }
 
 .items__button {
@@ -54,21 +53,18 @@ const getItem = (id) => getItemById(id) || { name: id, icon: '' };
   padding: 10px 12px;
   cursor: pointer;
   min-width: 110px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .items__button img {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
 }
 
 .items__button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.items__peek {
-  margin-top: 12px;
-  font-size: 14px;
-  opacity: 0.8;
 }
 </style>

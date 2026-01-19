@@ -1,26 +1,45 @@
 <template>
-  <div class="container menu">
-    <header class="menu__header">
-      <h1>Bucket Roulette</h1>
-      <p>Affrontez le capitaine dans une taverne pirate embrumée.</p>
-    </header>
+  <q-page class="flex h-screen items-center justify-center px-4">
+    <div class="glass-panel w-full max-w-3xl space-y-10 p-8 text-center shadow-2xl">
+      <header class="space-y-3">
+        <p class="text-xs uppercase tracking-[0.4em] text-amber-200/80">Expérience Quasar + Tailwind</p>
+        <h1 class="text-4xl font-bold text-amber-50 md:text-6xl">Bucket Roulette</h1>
+        <p class="text-sm text-amber-100/80 md:text-base">
+          Affrontez le capitaine dans une taverne pirate embrumée, sans scroll et pensée pour mobile/PC.
+        </p>
+      </header>
 
-    <div class="menu__actions">
-      <button class="button-primary" @click="startBot">Jouer vs Bot</button>
-      <div class="menu__card">
-        <h2>Multijoueur (prototype)</h2>
-        <div class="menu__row">
-          <button class="button-secondary" @click="createRoom">Créer une room</button>
-          <span v-if="netStore.roomId" class="menu__room">Room: {{ netStore.roomId }}</span>
+      <div class="space-y-6">
+        <q-btn
+          unelevated
+          color="primary"
+          class="w-full text-base font-bold"
+          label="Jouer vs Bot"
+          @click="startBot"
+        />
+        <div class="glass-panel space-y-4 p-6 text-left">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-amber-100">Multijoueur (prototype)</h2>
+            <q-badge v-if="netStore.roomId" color="amber" class="text-xs">Room: {{ netStore.roomId }}</q-badge>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <q-btn outline color="secondary" label="Créer une room" @click="createRoom" />
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <q-input
+              v-model="roomInput"
+              dense
+              standout="bg-white/10 text-white"
+              placeholder="ID de room"
+              class="flex-1 min-w-[180px]"
+            />
+            <q-btn outline color="secondary" label="Rejoindre" @click="joinRoom" />
+          </div>
+          <p class="text-xs text-amber-100/70">L'hôte garde l'autorité et envoie l'état.</p>
         </div>
-        <div class="menu__row">
-          <input v-model="roomInput" placeholder="ID de room" />
-          <button class="button-secondary" @click="joinRoom">Rejoindre</button>
-        </div>
-        <p class="menu__hint">L'hôte garde l'autorité et envoie l'état.</p>
       </div>
     </div>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
@@ -53,56 +72,4 @@ const joinRoom = () => {
 };
 </script>
 
-<style scoped>
-.menu {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  align-items: center;
-  text-align: center;
-}
-
-.menu__header h1 {
-  font-size: 56px;
-  margin-bottom: 8px;
-}
-
-.menu__actions {
-  display: grid;
-  gap: 24px;
-}
-
-.menu__card {
-  background: rgba(0, 0, 0, 0.6);
-  padding: 24px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.menu__row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.menu__room {
-  font-weight: 700;
-  color: #f4e9d9;
-}
-
-.menu__hint {
-  margin-top: 8px;
-  font-size: 14px;
-  opacity: 0.7;
-}
-
-input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: inherit;
-}
-</style>
+<style scoped></style>
