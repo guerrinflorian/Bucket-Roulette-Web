@@ -108,6 +108,11 @@ export const useGameStore = defineStore('game', {
         actor.items.splice(index, 1);
       }
       this.lastResult = { text: result.message };
+      this.lastAction = {
+        type: 'item',
+        actor: actorKey,
+        itemId
+      };
       audioManager.play('click');
 
       if (this.mode === 'bot' && actorKey === 'enemy') {
@@ -154,6 +159,7 @@ export const useGameStore = defineStore('game', {
       }
 
       this.lastAction = {
+        type: 'shot',
         actor: actorKey,
         target: targetKey,
         shot,

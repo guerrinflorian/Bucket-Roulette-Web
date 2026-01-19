@@ -1,7 +1,7 @@
 <template>
-  <div class="app-shell">
-    <div class="overlay">
+  <q-layout view="lHh Lpr lFf" class="app-shell">
+    <q-page-container class="app-overlay">
       <router-view />
-    </div>
-  </div>
+    </q-page-container>
+  </q-layout>
 </template>
