@@ -13,7 +13,12 @@
     </div>
 
     <div class="battle-stage__table">
-      <TableCenter :barrel="barrel" :counts="counts" :last-action="lastAction" />
+      <TableCenter 
+        :barrel="barrel" 
+        :counts="counts" 
+        :last-action="lastAction" 
+        @register-refs="onTableRefs"
+      />
       <div class="shot-effect" :class="shotClass"></div>
     </div>
 
@@ -44,6 +49,12 @@ const props = defineProps({
   enemyAvatar: String,
   playerAvatar: String
 });
+
+const emit = defineEmits(['register-refs']);
+
+const onTableRefs = (refs) => {
+  emit('register-refs', refs);
+};
 
 const enemyHpPercent = computed(() => (props.enemy.hp / props.enemy.maxHp) * 100);
 const playerHpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
@@ -83,74 +94,48 @@ watch(
 
 <style scoped>
 .battle-stage {
-  @apply flex h-full flex-col justify-between gap-4 rounded-3xl bg-black/40 p-4 md:p-6;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  @apply flex h-full flex-col justify-center gap-2 rounded-3xl p-3 md:gap-4 md:p-6;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(20, 10, 5, 0.5));
+  border: 1px solid rgba(255, 180, 100, 0.15);
   position: relative;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden; /* Prevent spillover */
 }
 
-.battle-stage__row {
-  display: flex;
-  justify-content: center;
-}
-
-.battle-stage__row--bottom {
-  justify-content: center;
-}
-
-.battle-stage__table {
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
+/* ... existing styles ... */
 
 .avatar-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 16px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  min-width: 220px;
+  min-width: 160px; /* Reduced from 220 */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.avatar-card--player {
-  flex-direction: row-reverse;
-}
-
-.avatar-card--hit {
-  transform: translateY(-4px);
-  box-shadow: 0 0 20px rgba(255, 96, 96, 0.45);
-}
+/* ... */
 
 .avatar-card img {
-  width: 76px;
-  height: 76px;
+  width: 56px; /* Reduced from 76 */
+  height: 56px;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(0, 0, 0, 0.4);
 }
 
-.avatar-card__info {
-  flex: 1;
-}
-
-.avatar-card__name {
-  font-weight: 700;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.avatar-card__hp {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  margin-top: 6px;
+/* On very small vertical screens, hide avatars or scale even more? 
+   For now, just tighter spacing above */
+.battle-stage__table {
+  flex: 1; /* Allow table to take available space */
+  display: flex;
+  align-items: center; /* Center vertically */
+  justify-content: center;
+  min-height: 0; /* Important for flex scaling */
 }
 
 .avatar-card__hp-fill {

@@ -11,10 +11,16 @@ export default defineConfig({
       sassVariables: 'src/quasar-variables.sass'
     })
   ],
+  resolve: {
+    alias: {
+      'src': '/src'
+    }
+  },
   css: {
     preprocessorOptions: {
       sass: {
-        includePaths: ['src']
+        api: 'modern-compiler',
+        loadPaths: ['src']
       }
     }
   },

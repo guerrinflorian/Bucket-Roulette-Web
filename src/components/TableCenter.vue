@@ -1,23 +1,15 @@
 <template>
   <div class="table">
-    <div class="table__pistol">
-      <div class="table__ammo-rack">
-        <div
-          v-for="(round, index) in remainingChambers"
-          :key="`${round}-${index}`"
-          class="table__round"
-          :class="round === 'real' ? 'table__round--real' : 'table__round--blank'"
-        ></div>
-      </div>
-      <img ref="pistolRef" src="/src/assets/ui/pistol.svg" alt="Pistol" />
+    <div class="table__pistol" ref="pistolRef">
+      <Gun3D 
+        ref="gunComponent" 
+        :rotation="gunRotation"
+      />
       <img ref="flashRef" class="table__flash" src="/src/assets/ui/flash.svg" alt="Flash" />
-      <div class="table__magazines">
-        <div class="table__mag"></div>
-        <div class="table__mag"></div>
-        <div class="table__mag"></div>
-      </div>
     </div>
-    <BarrelWidget :barrel="barrel" />
+    <div ref="barrelRef">
+      <BarrelWidget :barrel="barrel" />
+    </div>
     <div class="table__stats">
       <div>Réelles: {{ counts.real }}</div>
       <div>Blanches: {{ counts.blank }}</div>
@@ -27,9 +19,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { gsap } from 'gsap';
 import BarrelWidget from './BarrelWidget.vue';
+import Gun3D from './Gun3D.vue';
 
 const props = defineProps({
   barrel: Object,
@@ -37,16 +30,39 @@ const props = defineProps({
   lastAction: Object
 });
 
+const emit = defineEmits(['register-refs']);
+
 const pistolRef = ref(null);
+const barrelRef = ref(null);
 const flashRef = ref(null);
+const gunRotation = ref(0);
 const remainingChambers = computed(() => props.barrel.chambers.slice(props.barrel.index));
+
+onMounted(() => {
+  emit('register-refs', {
+    pistol: pistolRef.value,
+    barrel: barrelRef.value
+  });
+});
 
 watch(
   () => props.lastAction,
   (action) => {
     if (!action || action.type !== 'shot') return;
-    const rotation = action.target === 'enemy' ? -16 : 16;
-    gsap.to(pistolRef.value, { rotate: rotation, duration: 0.2, yoyo: true, repeat: 1 });
+    const targetRotation = action.target === 'enemy' ? -25 : 25;
+    
+    // 360 Spin + Recoil
+    gsap.to(gunRotation, { 
+      value: targetRotation + 360, 
+      duration: 0.6, 
+      ease: 'back.out(1.5)'
+    });
+    
+    // Reset rotation after spin (optional, but keeps numbers sane)
+    gsap.delayedCall(0.7, () => {
+      gunRotation.value = 0;
+    });
+
     gsap.fromTo(
       flashRef.value,
       { opacity: 0, scale: 0.4 },
@@ -58,16 +74,29 @@ watch(
 
 <style scoped>
 .table {
-  @apply grid place-items-center gap-4 rounded-3xl bg-black/60 px-6 py-5 shadow-2xl;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  @apply grid place-items-center gap-6 rounded-3xl px-8 py-6;
+  background: linear-gradient(135deg, rgba(10, 5, 2, 0.9), rgba(30, 15, 8, 0.8));
+  border: 2px solid rgba(242, 179, 109, 0.2);
+  backdrop-filter: blur(12px);
+  box-shadow: 
+    0 0 30px rgba(242, 179, 109, 0.1),
+    inset 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .table__pistol {
   position: relative;
-  width: 260px;
-  height: 150px;
+  width: 100%;
+  max-width: 380px;
+  height: 220px; /* Keep height fixed for aspect ratio or make flexible? */
   display: grid;
   place-items: center;
+  perspective: 1000px;
+}
+
+@media (max-height: 700px) {
+  .table__pistol {
+    height: 180px;
+  }
 }
 
 .table__pistol img {

@@ -38,7 +38,12 @@ export const useGameStore = defineStore('game', {
     lastResult: null,
     lastAction: null,
     winner: null,
-    roomId: null
+    roomId: null,
+    isAnimating: false,
+    // Pending bot action for UI to handle
+    pendingBotAction: null,
+    // Pending bot item use for UI to display
+    pendingBotItem: null
   }),
   getters: {
     isPlayerTurn: (state) => state.phase === PHASES.PLAYER_TURN,
@@ -197,16 +202,59 @@ export const useGameStore = defineStore('game', {
     },
     async queueBotAction() {
       if (this.mode !== 'bot') return;
+      
+      // Safety check: if phase is ANIMATING, wait and check again
+      if (this.phase === PHASES.ANIMATING) {
+        await sleep(1000);
+        if (this.phase === PHASES.ANIMATING) {
+          // Force reset to enemy turn if stuck
+          this.phase = PHASES.ENEMY_TURN;
+        }
+      }
+      
       if (this.phase !== PHASES.ENEMY_TURN) return;
 
-      await sleep(900);
+      // Delay so player can see it's enemy turn
+      await sleep(1500);
+      
+      // Double check phase hasn't changed
+      if (this.phase !== PHASES.ENEMY_TURN) return;
+      
       const decision = decideBotAction(this.$state);
+      
       if (decision.type === 'item') {
-        this.lastResult = { text: `Le bot utilise ${describeBotItem(decision.itemId)}.` };
+        // Signal item use to UI
+        this.pendingBotItem = decision.itemId;
+        await sleep(100);
+        
         await this.useItem(decision.itemId, 'enemy');
+        
+        // Clear pending item
+        this.pendingBotItem = null;
+        
+        // Delay after item use
+        await sleep(800);
+        
+        // Check if bot should act again
+        if (this.phase === PHASES.ENEMY_TURN) {
+          this.queueBotAction();
+        }
       } else {
-        await this.shoot(decision.target);
+        // Signal that bot wants to shoot - UI will handle animation
+        const targetText = decision.target === 'self' ? 'sur lui-même' : 'sur vous';
+        this.lastResult = { text: `💀 L'ennemi tire ${targetText}...` };
+        await sleep(800);
+        
+        // Set pending action for UI to process with animation
+        this.pendingBotAction = {
+          type: 'shoot',
+          target: decision.target
+        };
       }
+    },
+    
+    clearPendingBotAction() {
+      this.pendingBotAction = null;
     }
   }
 });

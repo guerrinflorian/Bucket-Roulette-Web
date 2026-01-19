@@ -57,4 +57,42 @@ button {
 
 .hud-banner {
   @apply rounded-full bg-black/50 px-5 py-2 text-center text-xs font-bold uppercase tracking-[0.3em] text-amber-100;
+  border: 1px solid rgba(255, 180, 100, 0.1);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Cinematic Effects */
+.camera-shake {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.glow-hit {
+  box-shadow: 0 0 30px rgba(255, 96, 96, 0.6);
+  border-color: rgba(255, 96, 96, 0.4) !important;
+}
+
+.impact-freeze {
+  filter: brightness(1.5) contrast(1.2);
+}
+
+/* Scrollbar styling for a cleaner look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(242, 179, 109, 0.3);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(242, 179, 109, 0.5);
 }

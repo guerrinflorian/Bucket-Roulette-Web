@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="140" viewBox="0 0 300 140">
-  <rect x="20" y="50" width="200" height="40" rx="12" fill="#3a2a1f" />
-  <rect x="180" y="70" width="80" height="18" rx="8" fill="#2a1c14" />
-  <rect x="40" y="85" width="40" height="45" rx="8" fill="#5a3b2a" />
-  <text x="150" y="40" text-anchor="middle" fill="#f4e9d9" font-family="Trebuchet MS" font-size="16">PISTOL</text>
-</svg>
