@@ -88,6 +88,8 @@ const onlineFlipShown = ref(false);
 const turnCountdown = ref(null);
 const currentTimerPhase = ref(null);
 const isTurnTimerPaused = ref(false);
+const timerBlockCount = ref(0);
+const isApplyingTimerState = ref(false);
 const TURN_TIME_LIMIT = 15;
 const EMOJI_COOLDOWN_MS = 5000;
 const EMOJI_DISPLAY_MS = 3000;
@@ -105,6 +107,7 @@ const emojiTimeouts = {
   player: null,
   enemy: null
 };
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const isMyTurn = computed(() => {
   if (!isOnlineMode.value) return true;
   // In online mode: host is player, guest is enemy
@@ -194,6 +197,8 @@ const shouldAutoTimeout = computed(() => {
   return isMyTurn.value;
 });
 
+const onlineActorKey = computed(() => (netStore.isHost ? 'player' : 'enemy'));
+
 // Watch for pending bot shoot action
 watch(() => gameStore.pendingBotAction, async (action) => {
   if (action && action.type === 'shoot') {
@@ -249,17 +254,17 @@ watch(() => gameStore.reloadCount, async (count, prev) => {
 
 // Main shoot handler - controls the full animation flow
 const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null) => {
-  clearTurnTimer();
   // In online mode, check if it's our turn (unless receiving from network)
   if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
     console.log('Not your turn!');
     return;
   }
+
+  beginTimerBlock();
   
   // Send action to network (if not already from network)
   if (isOnlineMode.value && !fromNetwork) {
-    const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
-    netStore.sendAction({ type: 'shoot', target, actorKey: localActorKey });
+    netStore.sendAction({ type: 'shoot', target, actorKey: onlineActorKey.value });
   }
   
   // Safety: if already animating, wait a bit and check again
@@ -393,6 +398,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
   } finally {
     // 11. ALWAYS unlock UI
     gameStore.isAnimating = false;
+    endTimerBlock();
     if (shotResolved) {
       syncStateIfHost(fromNetwork);
     }
@@ -411,8 +417,7 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
   const runItemAction = async () => {
     // Send action to network (if not already from network)
     if (isOnlineMode.value && !fromNetwork) {
-      const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
-      netStore.sendAction({ type: 'item', itemId, actorKey: localActorKey });
+      netStore.sendAction({ type: 'item', itemId, actorKey: onlineActorKey.value });
     }
 
     const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
@@ -491,8 +496,7 @@ const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
   if (!canAct.value && !fromNetwork) return;
 
   if (isOnlineMode.value && !fromNetwork) {
-    const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
-    netStore.sendAction({ type: 'timeout', actorKey: localActorKey });
+    netStore.sendAction({ type: 'timeout', actorKey: onlineActorKey.value });
   }
 
   gameStore.timeoutTurn(actorKeyOverride);
@@ -559,8 +563,6 @@ const restart = () => {
   router.push('/menu');
 };
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Setup multiplayer listeners
 onMounted(() => {
   if (!gameStore.players.player.items) {
@@ -599,6 +601,16 @@ onMounted(() => {
         await handleTimeout(true, action.actorKey || null);
       } else if (action.type === 'coinFlip') {
         gameStore.setCoinFlipResult(action.starts);
+      } else if (action.type === 'timer') {
+        if (action.state) {
+          setTurnTimerState(
+            action.state.remaining ?? null,
+            action.state.paused,
+            undefined,
+            action.state.phase,
+            false
+          );
+        }
       } else if (action.type === 'emoji') {
         handleReceiveEmoji(action.emoji);
       }
@@ -648,7 +660,7 @@ watch(
       netStore.clearOpponentLeft();
       return;
     }
-    const winnerKey = netStore.isHost ? 'player' : 'enemy';
+    const winnerKey = opponentLeft.wasHost ? 'enemy' : 'player';
     const opponentName = netStore.opponentName || 'Adversaire';
     gameStore.winner = winnerKey;
     gameStore.phase = 'game_over';
@@ -658,24 +670,6 @@ watch(
     netStore.clearOpponentLeft();
   }
 );
-
-const startTurnTimer = () => {
-  runTurnTimer(TURN_TIME_LIMIT, shouldAutoTimeout.value);
-};
-
-const runTurnTimer = (duration, autoTimeout = true) => {
-  clearTurnTimer(false);
-  turnCountdown.value = duration;
-  turnTick = setInterval(() => {
-    if (turnCountdown.value === null) return;
-    turnCountdown.value = Math.max(0, turnCountdown.value - 1);
-  }, 1000);
-  if (autoTimeout) {
-    turnTimer = setTimeout(async () => {
-      await handleTimeout();
-    }, duration * 1000);
-  }
-};
 
 const clearTurnTimer = (resetCountdown = true) => {
   if (turnTimer) {
@@ -691,62 +685,176 @@ const clearTurnTimer = (resetCountdown = true) => {
   }
 };
 
+const updateTimerStore = (remaining, paused, autoTimeout, phase) => {
+  isApplyingTimerState.value = true;
+  gameStore.turnTimer = {
+    remaining,
+    paused,
+    autoTimeout,
+    phase
+  };
+  queueMicrotask(() => {
+    isApplyingTimerState.value = false;
+  });
+};
+
+const broadcastTimerState = (state) => {
+  if (!isOnlineMode.value || !netStore.isHost) return;
+  netStore.sendAction({ type: 'timer', state });
+};
+
+const setTurnTimerState = (remaining, paused, autoTimeout, phase, broadcast = true) => {
+  clearTurnTimer(false);
+  if (phase !== undefined) {
+    currentTimerPhase.value = phase;
+  }
+
+  const resolvedAutoTimeout = autoTimeout ?? shouldAutoTimeout.value;
+
+  if (remaining === null || remaining === undefined) {
+    turnCountdown.value = null;
+    isTurnTimerPaused.value = false;
+    updateTimerStore(null, false, resolvedAutoTimeout, currentTimerPhase.value);
+    if (broadcast) {
+      broadcastTimerState({
+        remaining: null,
+        paused: false,
+        autoTimeout: resolvedAutoTimeout,
+        phase: currentTimerPhase.value
+      });
+    }
+    return;
+  }
+
+  turnCountdown.value = Math.max(0, remaining);
+  isTurnTimerPaused.value = !!paused;
+
+  if (!isTurnTimerPaused.value) {
+    turnTick = setInterval(() => {
+      if (turnCountdown.value === null) return;
+      turnCountdown.value = Math.max(0, turnCountdown.value - 1);
+    }, 1000);
+    if (resolvedAutoTimeout) {
+      turnTimer = setTimeout(async () => {
+        await handleTimeout();
+      }, turnCountdown.value * 1000);
+    }
+  }
+
+  updateTimerStore(turnCountdown.value, isTurnTimerPaused.value, resolvedAutoTimeout, currentTimerPhase.value);
+  if (broadcast) {
+    broadcastTimerState({
+      remaining: turnCountdown.value,
+      paused: isTurnTimerPaused.value,
+      autoTimeout: resolvedAutoTimeout,
+      phase: currentTimerPhase.value
+    });
+  }
+};
+
+const startTurnTimer = () => {
+  const shouldPause = timerBlockCount.value > 0;
+  setTurnTimerState(TURN_TIME_LIMIT, shouldPause, shouldAutoTimeout.value, gameStore.phase);
+};
+
 const pauseTurnTimer = () => {
   if (turnCountdown.value === null) return;
-  clearTurnTimer(false);
-  isTurnTimerPaused.value = true;
+  setTurnTimerState(turnCountdown.value, true, shouldAutoTimeout.value, currentTimerPhase.value);
 };
 
 const resumeTurnTimer = () => {
   if (turnCountdown.value === null) return;
   if (!isTurnTimerPaused.value) return;
-  const remaining = Math.max(0, turnCountdown.value);
-  isTurnTimerPaused.value = false;
-  if (remaining > 0) {
-    runTurnTimer(remaining, shouldAutoTimeout.value);
+  setTurnTimerState(turnCountdown.value, false, shouldAutoTimeout.value, currentTimerPhase.value);
+};
+
+const beginTimerBlock = () => {
+  timerBlockCount.value += 1;
+  if (turnCountdown.value !== null) {
+    pauseTurnTimer();
+  }
+};
+
+const endTimerBlock = () => {
+  timerBlockCount.value = Math.max(0, timerBlockCount.value - 1);
+  if (timerBlockCount.value === 0 && turnCountdown.value !== null && isTurnTimerPaused.value) {
+    resumeTurnTimer();
   }
 };
 
 const pauseTurnTimerFor = async (action) => {
   const shouldPause = turnCountdown.value !== null;
-  if (shouldPause) {
-    pauseTurnTimer();
-  }
+  beginTimerBlock();
   try {
     await action();
   } finally {
-    if (shouldPause) {
+    endTimerBlock();
+    if (!shouldPause && timerBlockCount.value === 0) {
       resumeTurnTimer();
     }
   }
 };
 
 watch(
+  () => showOnlineFlip.value || gameStore.phase === 'coin_flip',
+  (isBlocked) => {
+    if (isBlocked) {
+      beginTimerBlock();
+      return;
+    }
+    endTimerBlock();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => gameStore.turnTimer,
+  (timer) => {
+    if (isApplyingTimerState.value) return;
+    if (!isOnlineMode.value || netStore.isHost || !timer) return;
+    setTurnTimerState(
+      timer.remaining ?? null,
+      timer.paused,
+      undefined,
+      timer.phase,
+      false
+    );
+  },
+  { deep: true, immediate: true }
+);
+
+watch(
   () => [gameStore.phase, shouldAutoTimeout.value],
   ([phase, autoTimeout]) => {
     const isTurnPhase = phase === 'player_turn' || phase === 'enemy_turn';
     if (!isTurnPhase) {
-      clearTurnTimer();
-      isTurnTimerPaused.value = false;
-      currentTimerPhase.value = null;
+      if (phase === 'animating' && turnCountdown.value !== null) {
+        setTurnTimerState(turnCountdown.value, true, autoTimeout, currentTimerPhase.value);
+        return;
+      }
+      setTurnTimerState(null, false, autoTimeout, null);
+      return;
+    }
+
+    if (isOnlineMode.value && !netStore.isHost) {
       return;
     }
 
     if (currentTimerPhase.value !== phase) {
       currentTimerPhase.value = phase;
-      runTurnTimer(TURN_TIME_LIMIT, autoTimeout);
+      startTurnTimer();
       return;
     }
 
     if (turnCountdown.value === null) {
-      runTurnTimer(TURN_TIME_LIMIT, autoTimeout);
+      startTurnTimer();
       return;
     }
 
     const shouldHaveTimeout = autoTimeout && !turnTimer;
     const shouldRemoveTimeout = !autoTimeout && turnTimer;
     if (shouldHaveTimeout || shouldRemoveTimeout) {
-      runTurnTimer(turnCountdown.value, autoTimeout);
+      setTurnTimerState(turnCountdown.value, isTurnTimerPaused.value, autoTimeout, currentTimerPhase.value);
     }
   },
   { immediate: true }
