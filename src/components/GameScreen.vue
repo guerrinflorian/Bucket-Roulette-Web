@@ -85,6 +85,7 @@ const isOnlineMode = computed(() => gameStore.mode === 'online');
 const showOnlineFlip = ref(false);
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
+const initialFlipResolved = ref(false);
 const turnCountdown = ref(null);
 const currentTimerPhase = ref(null);
 const isTurnTimerPaused = ref(false);
@@ -232,6 +233,26 @@ watch(() => gameStore.pendingBotItem, async (itemId) => {
   }
 });
 
+const waitForInitialFlip = () => {
+  if (initialFlipResolved.value) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const stop = watch(initialFlipResolved, (value) => {
+      if (value) {
+        stop();
+        resolve();
+      }
+    });
+  });
+};
+
+const resetTurnTimerAfterAction = () => {
+  if (gameStore.phase !== 'player_turn' && gameStore.phase !== 'enemy_turn') return;
+  if (isOnlineMode.value && !netStore.isHost) return;
+  startTurnTimer();
+};
+
 const syncStateIfHost = (fromNetwork = false) => {
   if (isOnlineMode.value && netStore.isHost && !fromNetwork) {
     netStore.syncState(gameStore.serializeForNetwork());
@@ -243,6 +264,9 @@ watch(() => gameStore.reloadCount, async (count, prev) => {
   if (count && count !== prev) {
     if (!gameSceneRef.value) {
       await sleep(100);
+    }
+    if (!initialFlipResolved.value) {
+      await waitForInitialFlip();
     }
     if (gameSceneRef.value?.showReloadNotice) {
       await pauseTurnTimerFor(async () => {
@@ -337,6 +361,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // Apply game logic
       await gameStore.shoot(target, actorKey);
       shotResolved = true;
+      resetTurnTimerAfterAction();
       await sleep(200);
       
     } else {
@@ -384,6 +409,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // 10. Apply game logic
       await gameStore.shoot(target, actorKey);
       shotResolved = true;
+      resetTurnTimerAfterAction();
       
       // 11. Brief pause
       await sleep(400);
@@ -489,6 +515,8 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
   } else {
     await runItemAction();
   }
+
+  resetTurnTimerAfterAction();
 };
 
 const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
@@ -665,7 +693,7 @@ watch(
     gameStore.winner = winnerKey;
     gameStore.phase = 'game_over';
     gameStore.lastResult = {
-      text: `🏳️ ${opponentName} a quitté la partie. Victoire par forfait.`
+      text: `🏳️ ${opponentName} a quitté la partie. Victoire par abandon de l'adversaire.`
     };
     netStore.clearOpponentLeft();
   }
@@ -803,6 +831,16 @@ watch(
       return;
     }
     endTimerBlock();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [gameStore.phase, showOnlineFlip.value],
+  ([phase, onlineFlip]) => {
+    if (!initialFlipResolved.value && phase !== 'coin_flip' && !onlineFlip) {
+      initialFlipResolved.value = true;
+    }
   },
   { immediate: true }
 );
