@@ -87,7 +87,7 @@ const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
 const turnCountdown = ref(null);
 const isTurnTimerPaused = ref(false);
-const TURN_TIME_LIMIT = 10;
+const TURN_TIME_LIMIT = 15;
 const EMOJI_COOLDOWN_MS = 5000;
 const EMOJI_DISPLAY_MS = 3000;
 let turnTimer = null;
@@ -154,8 +154,16 @@ const canUseItems = computed(() => {
   return true;
 });
 
+const isEmojiCooldownActive = computed(() => {
+  return emojiNow.value - emojiLastSentAt.value.player < EMOJI_COOLDOWN_MS;
+});
+
+const isEmojiDisabledByTimer = computed(() => {
+  return turnCountdown.value !== null && turnCountdown.value <= 1;
+});
+
 const canSendEmoji = computed(() => {
-  return emojiNow.value - emojiLastSentAt.value.player >= EMOJI_COOLDOWN_MS;
+  return !gameStore.isAnimating && !isEmojiDisabledByTimer.value && !isEmojiCooldownActive.value;
 });
 
 const emojiCooldownLeft = computed(() => {
@@ -261,10 +269,6 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
     const actor = gameStore.players[actorKey];
     const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
     let targetKey = target === 'self' ? actorKey : opponentKey;
-    
-    if (actor.invertTargetNext) {
-      targetKey = targetKey === actorKey ? opponentKey : actorKey;
-    }
     
     const shot = gameStore.barrel.chambers[gameStore.barrel.index];
     const isReal = shot === 'real';

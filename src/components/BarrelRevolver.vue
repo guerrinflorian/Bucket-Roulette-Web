@@ -148,16 +148,7 @@ function rotateToNextSlot() {
   
   // Already at target angle? Add a full rotation for dramatic effect
   if (rotationAngle.value === targetAngle) {
-    // Disable transition, jump back one full rotation
-    transitionEnabled.value = false;
-    rotationAngle.value = targetAngle + 360;
-    
-    // Force reflow then animate
-    setTimeout(() => {
-      transitionEnabled.value = true;
-      rotationAngle.value = targetAngle;
-    }, 20);
-    return true;
+    return false;
   }
   
   // Normal case: just animate to new target

@@ -46,13 +46,17 @@ export const ITEM_DEFS = [
     }
   },
   {
-    id: 'invert',
-    name: 'Inverser la cible',
-    description: 'Le prochain tir inverse votre cible.',
-    canUse: (state, actorKey) => !state.players[actorKey].invertTargetNext,
+    id: 'handcuffs',
+    name: 'Les Menottes',
+    description: "Empêche l'adversaire de jouer au prochain tour.",
+    canUse: (state, actorKey) => {
+      const targetKey = actorKey === 'player' ? 'enemy' : 'player';
+      return !state.players[targetKey].skipNextTurn;
+    },
     apply: (state, actorKey) => {
-      state.players[actorKey].invertTargetNext = true;
-      return { message: `${state.players[actorKey].name} prépare une inversion.` };
+      const targetKey = actorKey === 'player' ? 'enemy' : 'player';
+      state.players[targetKey].skipNextTurn = true;
+      return { message: `⛓️ ${state.players[targetKey].name} sera menotté au prochain tour.` };
     }
   }
 ];
@@ -61,11 +65,30 @@ export function getItemById(id) {
   return ITEM_DEFS.find((item) => item.id === id);
 }
 
+const ITEM_WEIGHTS = {
+  heart: 1,
+  double: 0.55,
+  peek: 0.8,
+  eject: 0.75,
+  handcuffs: 0.7
+};
+
+function rollWeightedItemId() {
+  const totalWeight = ITEM_DEFS.reduce((sum, item) => sum + (ITEM_WEIGHTS[item.id] ?? 1), 0);
+  let roll = Math.random() * totalWeight;
+  for (const item of ITEM_DEFS) {
+    roll -= ITEM_WEIGHTS[item.id] ?? 1;
+    if (roll <= 0) {
+      return item.id;
+    }
+  }
+  return ITEM_DEFS[0]?.id ?? 'heart';
+}
+
 export function rollRandomItems(count) {
   const items = [];
   for (let i = 0; i < count; i += 1) {
-    const index = Math.floor(Math.random() * ITEM_DEFS.length);
-    items.push(ITEM_DEFS[index].id);
+    items.push(rollWeightedItemId());
   }
   return items;
 }
