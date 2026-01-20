@@ -335,7 +335,7 @@ const counts = computed(() => remainingCounts(props.barrel));
 const realCount = computed(() => counts.value.real);
 const blankCount = computed(() => counts.value.blank);
 const totalCount = computed(() => counts.value.remaining);
-const showBarrelInfo = computed(() => !props.isFlipVisible);
+const showBarrelInfo = computed(() => !props.isFlipVisible && (props.barrel?.index ?? 0) === 0);
 
 const phaseLabel = computed(() => {
   if (props.phase === 'player_turn') return '🎮 VOTRE TOUR';
