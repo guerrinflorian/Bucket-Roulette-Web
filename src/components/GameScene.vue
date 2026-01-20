@@ -174,7 +174,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { gsap } from 'gsap';
 import BarrelRevolver from './BarrelRevolver.vue';
 import GameSceneActions from './game/GameSceneActions.vue';
@@ -228,6 +228,7 @@ const gameScreen = ref(null);
 const gameContent = ref(null);
 const barrelComp = ref(null);
 const showEmojiPicker = ref(false);
+const visibilityResetHandler = ref(null);
 
 // Action choice modal (before shooting)
 const showActionModal = ref(false);
@@ -287,7 +288,7 @@ const onEmojiSelect = (emoji) => {
 watch(
   () => [props.turnTimeLeft, props.canSendEmoji, props.isAnimating, props.phase],
   ([turnLeft, canSend, isAnimating, phase]) => {
-    if (turnLeft !== null && turnLeft <= 1) {
+    if (turnLeft !== null && turnLeft <= 3) {
       showEmojiPicker.value = false;
       return;
     }
@@ -296,6 +297,22 @@ watch(
     }
   }
 );
+
+onMounted(() => {
+  const handler = () => {
+    if (document.visibilityState === 'visible') {
+      resetZoom();
+    }
+  };
+  visibilityResetHandler.value = handler;
+  document.addEventListener('visibilitychange', handler);
+});
+
+onBeforeUnmount(() => {
+  if (visibilityResetHandler.value) {
+    document.removeEventListener('visibilitychange', visibilityResetHandler.value);
+  }
+});
 
 const canAct = computed(() => {
   if (props.canActOverride !== null) {
@@ -410,6 +427,11 @@ function startZoom() {
     duration: 0.8,
     ease: 'power2.out'
   });
+}
+
+function resetZoom() {
+  if (!gameContent.value) return;
+  gsap.set(gameContent.value, { scale: 1, x: 0, y: 0 });
 }
 
 // Show shot result modal

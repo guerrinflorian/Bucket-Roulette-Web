@@ -159,7 +159,7 @@ const isEmojiCooldownActive = computed(() => {
 });
 
 const isEmojiDisabledByTimer = computed(() => {
-  return turnCountdown.value !== null && turnCountdown.value <= 1;
+  return turnCountdown.value !== null && turnCountdown.value <= 3;
 });
 
 const canSendEmoji = computed(() => {
