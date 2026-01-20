@@ -31,7 +31,7 @@
         </div>
         
         <!-- Barrel Info -->
-        <div class="barrel-info">
+        <div v-if="showBarrelInfo" class="barrel-info">
           <span>🔴 {{ realCount }} réelles</span>
           <span class="separator">•</span>
           <span>⚪ {{ blankCount }} blanches</span>
@@ -49,6 +49,7 @@
       <GameSceneItems
         :items="player.items"
         :can-act="canAct"
+        :can-use-items="canUseItems"
         @use-item="handleUseItem"
       />
 
@@ -172,6 +173,10 @@ const props = defineProps({
   canActOverride: {
     type: Boolean,
     default: null
+  },
+  canUseItems: {
+    type: Boolean,
+    default: null
   }
 });
 
@@ -220,11 +225,18 @@ const canAct = computed(() => {
   }
   return props.phase === 'player_turn' && !props.isAnimating;
 });
+const canUseItems = computed(() => {
+  if (props.canUseItems !== null) {
+    return props.canUseItems;
+  }
+  return canAct.value;
+});
 
 const counts = computed(() => remainingCounts(props.barrel));
 const realCount = computed(() => counts.value.real);
 const blankCount = computed(() => counts.value.blank);
 const totalCount = computed(() => counts.value.remaining);
+const showBarrelInfo = computed(() => props.barrel?.index === 0);
 
 const phaseLabel = computed(() => {
   if (props.phase === 'player_turn') return '🎮 VOTRE TOUR';
@@ -283,7 +295,7 @@ async function showEjectResult(isReal) {
 async function showReloadNotice(text = 'Barillet chargé.') {
   reloadText.value = text || 'Barillet chargé.';
   showReloadModal.value = true;
-  await new Promise(resolve => setTimeout(resolve, 1600));
+  await new Promise(resolve => setTimeout(resolve, 2400));
   showReloadModal.value = false;
 }
 

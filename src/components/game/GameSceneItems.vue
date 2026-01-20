@@ -5,7 +5,7 @@
         v-for="(itemId, index) in items"
         :key="`${itemId}-${index}`"
         class="item-btn"
-        :disabled="!canAct"
+        :disabled="!canUseItems"
         @click="handleUseItem(itemId)"
       >
         <span class="item-icon">{{ getItemEmoji(itemId) }}</span>
@@ -17,6 +17,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 const props = defineProps({
   items: {
     type: Array,
@@ -25,7 +26,18 @@ const props = defineProps({
   canAct: {
     type: Boolean,
     default: false
+  },
+  canUseItems: {
+    type: Boolean,
+    default: null
   }
+});
+
+const canUseItems = computed(() => {
+  if (props.canUseItems === null) {
+    return props.canAct;
+  }
+  return props.canUseItems;
 });
 
 const emit = defineEmits(['use-item']);
