@@ -11,6 +11,7 @@
       :last-action="gameStore.lastAction"
       :is-animating="gameStore.isAnimating"
       :can-act-override="canAct"
+      :can-use-items="canUseItems"
       :turn-time-left="turnCountdown"
       @shoot="handleShoot"
       @use-item="handleUseItem"
@@ -80,6 +81,7 @@ const showOnlineFlip = ref(false);
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
 const turnCountdown = ref(null);
+const isTurnTimerPaused = ref(false);
 const TURN_TIME_LIMIT = 10;
 let turnTimer = null;
 let turnTick = null;
@@ -125,6 +127,12 @@ const canAct = computed(() => {
     return gameStore.phase === 'player_turn';
   }
   return isMyTurn.value;
+});
+
+const canUseItems = computed(() => {
+  if (!canAct.value) return false;
+  if (turnCountdown.value !== null && turnCountdown.value <= 2) return false;
+  return true;
 });
 
 // UI mapping: local player is always shown at the bottom
@@ -184,7 +192,9 @@ watch(() => gameStore.reloadCount, async (count, prev) => {
       await sleep(100);
     }
     if (gameSceneRef.value?.showReloadNotice) {
-      await gameSceneRef.value.showReloadNotice(gameStore.lastReloadInfo);
+      await pauseTurnTimerFor(async () => {
+        await gameSceneRef.value.showReloadNotice(gameStore.lastReloadInfo);
+      });
     }
   }
 }, { immediate: true });
@@ -347,7 +357,6 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
 
 const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = null) => {
   if (gameStore.isAnimating) return;
-  clearTurnTimer();
   
   // In online mode, check if it's our turn (unless receiving from network)
   if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
@@ -365,15 +374,17 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
   
   // For peek, we need to show the result
   if (itemId === 'peek') {
-    const nextBullet = gameStore.barrel.chambers[gameStore.barrel.index];
-    await gameStore.useItem(itemId, actorKey);
-    syncStateIfHost(fromNetwork);
-    
-    // Show peek result modal
-    if (gameSceneRef.value && nextBullet) {
-      await gameSceneRef.value.showPeekResult(nextBullet === 'real');
-    }
-  } 
+    await pauseTurnTimerFor(async () => {
+      const nextBullet = gameStore.barrel.chambers[gameStore.barrel.index];
+      await gameStore.useItem(itemId, actorKey);
+      syncStateIfHost(fromNetwork);
+      
+      // Show peek result modal
+      if (gameSceneRef.value && nextBullet) {
+        await gameSceneRef.value.showPeekResult(nextBullet === 'real');
+      }
+    });
+  }
   // For eject, we need to spin, reveal, then eject
   else if (itemId === 'eject') {
     gameStore.isAnimating = true;
@@ -536,18 +547,22 @@ onUnmounted(() => {
 });
 
 const startTurnTimer = () => {
-  clearTurnTimer();
-  turnCountdown.value = TURN_TIME_LIMIT;
+  runTurnTimer(TURN_TIME_LIMIT);
+};
+
+const runTurnTimer = (duration) => {
+  clearTurnTimer(false);
+  turnCountdown.value = duration;
   turnTick = setInterval(() => {
     if (turnCountdown.value === null) return;
     turnCountdown.value = Math.max(0, turnCountdown.value - 1);
   }, 1000);
   turnTimer = setTimeout(async () => {
     await handleTimeout();
-  }, TURN_TIME_LIMIT * 1000);
+  }, duration * 1000);
 };
 
-const clearTurnTimer = () => {
+const clearTurnTimer = (resetCountdown = true) => {
   if (turnTimer) {
     clearTimeout(turnTimer);
     turnTimer = null;
@@ -556,14 +571,51 @@ const clearTurnTimer = () => {
     clearInterval(turnTick);
     turnTick = null;
   }
-  turnCountdown.value = null;
+  if (resetCountdown) {
+    turnCountdown.value = null;
+  }
+};
+
+const pauseTurnTimer = () => {
+  if (turnCountdown.value === null) return;
+  clearTurnTimer(false);
+  isTurnTimerPaused.value = true;
+};
+
+const resumeTurnTimer = () => {
+  if (turnCountdown.value === null) return;
+  if (!isTurnTimerPaused.value) return;
+  const remaining = Math.max(0, turnCountdown.value);
+  isTurnTimerPaused.value = false;
+  if (remaining > 0) {
+    runTurnTimer(remaining);
+  }
+};
+
+const pauseTurnTimerFor = async (action) => {
+  const shouldPause = turnCountdown.value !== null;
+  if (shouldPause) {
+    pauseTurnTimer();
+  }
+  try {
+    await action();
+  } finally {
+    if (shouldPause) {
+      resumeTurnTimer();
+    }
+  }
 };
 
 watch(canAct, (value) => {
   if (value) {
-    startTurnTimer();
+    if (turnCountdown.value === null) {
+      startTurnTimer();
+    } else {
+      resumeTurnTimer();
+    }
   } else {
     clearTurnTimer();
+    isTurnTimerPaused.value = false;
   }
 });
 </script>
