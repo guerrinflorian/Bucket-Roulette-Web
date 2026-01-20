@@ -18,7 +18,7 @@
         
         <!-- 6 Chamber Slots -->
         <div
-          v-for="(chamber, i) in 6"
+          v-for="(_, i) in slotCount"
           :key="i"
           class="chamber-slot"
           :class="getSlotClass(i)"
@@ -60,6 +60,8 @@ const emit = defineEmits(['animation-start', 'animation-end']);
 const cylinder = ref(null);
 const barrelContainer = ref(null);
 const fallingBullet = ref(null);
+const slotCount = computed(() => props.barrelData?.chambers?.length || 6);
+const slotAngle = computed(() => 360 / slotCount.value);
 
 // Manual rotation control - only rotates when we tell it to
 const rotationAngle = ref(360); // Start at 360 (one full turn back from 0)
@@ -75,9 +77,9 @@ const revealIsReal = ref(false);
 function playReloadAnimation() {
   if (!barrelContainer.value) return;
   const spins = Math.floor(Math.random() * 3) + 2;
-  const randomSlot = Math.floor(Math.random() * 6);
+  const randomSlot = Math.floor(Math.random() * slotCount.value);
   transitionEnabled.value = false;
-  rotationAngle.value = 360 + spins * 360 + randomSlot * 60;
+  rotationAngle.value = 360 + spins * 360 + randomSlot * slotAngle.value;
   gsap.set(barrelContainer.value, { opacity: 0 });
   setTimeout(() => {
     rotationAngle.value = 360;
@@ -118,9 +120,8 @@ function getSlotClass(index) {
 
 // Position chambers in circle - slot 0 at TOP
 function getSlotPosition(i) {
-  const total = 6;
   const radius = 52;
-  const angle = (i / total) * Math.PI * 2 - Math.PI / 2;
+  const angle = (i / slotCount.value) * Math.PI * 2 - Math.PI / 2;
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
   return {
@@ -133,8 +134,8 @@ function getSlotPosition(i) {
 function rotateToNextSlot() {
   const targetIndex = props.barrelData?.index || 0;
   // Target angle: negative because we rotate clockwise
-  // Each slot is 60 degrees
-  const targetAngle = -targetIndex * 60;
+  // Each slot is based on current barrel size
+  const targetAngle = -targetIndex * slotAngle.value;
   
   // First shot - animate from initial position (360) to target
   if (!hasHadFirstSpin.value) {

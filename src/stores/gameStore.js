@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { createBarrel, isEmpty, remainingCounts } from '../engine/barrel.js';
+import { createBarrel, formatBarrelAnnouncement, isEmpty, remainingCounts } from '../engine/barrel.js';
 import { PHASES, MAX_HP, ITEMS_PER_RELOAD } from '../engine/rules.js';
 import { rollRandomItems, applyItem } from '../engine/items.js';
 import { decideBotAction, describeBotItem } from '../engine/bot.js';
@@ -42,6 +42,7 @@ export const useGameStore = defineStore('game', {
     roomId: null,
     isAnimating: false,
     reloadCount: 0,
+    lastReloadInfo: null,
     // Pending bot action for UI to handle
     pendingBotAction: null,
     // Pending bot item use for UI to display
@@ -59,6 +60,7 @@ export const useGameStore = defineStore('game', {
       this.phase = PHASES.COIN_FLIP;
       this.currentTurn = null;
       this.barrel = createBarrel();
+      this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
       this.players.player.hp = MAX_HP;
       this.players.enemy.hp = MAX_HP;
       this.players.player.items = [];
@@ -72,7 +74,8 @@ export const useGameStore = defineStore('game', {
       this.lastResult = null;
       this.lastAction = null;
       this.winner = null;
-      this.reloadCount = 0;
+      this.reloadCount = 1;
+      this.lastResult = { text: `🔄 ${this.lastReloadInfo}` };
       this.dealItems();
     },
     setRoom(id) {
@@ -92,6 +95,7 @@ export const useGameStore = defineStore('game', {
       if (state.lastAction !== undefined) this.lastAction = state.lastAction;
       if (state.winner !== undefined) this.winner = state.winner;
       if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
+      if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
     },
     // Serialize state for network sync
     serializeForNetwork() {
@@ -104,15 +108,17 @@ export const useGameStore = defineStore('game', {
         lastAction: this.lastAction,
         winner: this.winner,
         reloadCount: this.reloadCount,
+        lastReloadInfo: this.lastReloadInfo,
         onlineFlipResult: this.currentTurn
       };
     },
     reloadBarrel({ notify = true } = {}) {
       this.barrel = createBarrel();
+      this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
       this.dealItems();
       if (notify) {
         this.reloadCount += 1;
-        this.lastResult = { text: '🔄 Barillet rechargé (cartouches mélangées).' };
+        this.lastResult = { text: `🔄 ${this.lastReloadInfo}` };
       }
     },
     dealItems() {

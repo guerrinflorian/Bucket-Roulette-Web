@@ -5,7 +5,6 @@ export const ITEM_DEFS = [
   {
     id: 'heart',
     name: '+1 Coeur',
-    icon: '/src/assets/items/heart.svg',
     description: 'Soigne 1 PV (max 5).',
     canUse: (state, actorKey) => state.players[actorKey].hp < MAX_HP,
     apply: (state, actorKey) => {
@@ -17,7 +16,6 @@ export const ITEM_DEFS = [
   {
     id: 'double',
     name: 'Double dégâts',
-    icon: '/src/assets/items/double.svg',
     description: 'Le prochain tir (même à blanc) consomme l’effet. Si réel : 2 PV.',
     canUse: (state, actorKey) => !state.players[actorKey].doubleDamageNextShot,
     apply: (state, actorKey) => {
@@ -28,7 +26,6 @@ export const ITEM_DEFS = [
   {
     id: 'peek',
     name: 'Voir la prochaine balle',
-    icon: '/src/assets/items/peek.svg',
     description: 'Révèle la prochaine cartouche pour vous.',
     canUse: (state) => peekNext(state.barrel) !== null,
     apply: (state, actorKey) => {
@@ -40,7 +37,6 @@ export const ITEM_DEFS = [
   {
     id: 'eject',
     name: 'Éjecter la prochaine balle',
-    icon: '/src/assets/items/eject.svg',
     description: 'Retire la prochaine cartouche sans la tirer.',
     canUse: (state) => peekNext(state.barrel) !== null,
     apply: (state, actorKey) => {
@@ -52,7 +48,6 @@ export const ITEM_DEFS = [
   {
     id: 'invert',
     name: 'Inverser la cible',
-    icon: '/src/assets/items/eject.svg',
     description: 'Le prochain tir inverse votre cible.',
     canUse: (state, actorKey) => !state.players[actorKey].invertTargetNext,
     apply: (state, actorKey) => {
