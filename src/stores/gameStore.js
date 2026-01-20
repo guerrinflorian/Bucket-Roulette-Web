@@ -27,7 +27,7 @@ export const useGameStore = defineStore('game', {
       },
       enemy: {
         id: 'enemy',
-        name: 'Capitaine',
+        name: 'Adversaire',
         hp: MAX_HP,
         maxHp: MAX_HP,
         items: [],

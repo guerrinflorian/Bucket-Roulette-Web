@@ -11,7 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ferrucc-io/emoji-picker": "^1.0.0",
     "@quasar/extras": "^1.16.12",
+    "custom-avatar-component": "^1.0.0",
     "gsap": "^3.12.5",
     "pinia": "^2.1.7",
     "quasar": "^2.17.7",
