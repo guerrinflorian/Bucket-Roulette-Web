@@ -94,11 +94,11 @@ function getItemEmoji(id) {
 <style scoped>
 .player-section {
   flex-shrink: 0;
-  padding: 12px 16px;
+  padding: 10px 14px;
 }
 
 .player-section-bottom {
-  padding-bottom: 16px;
+  padding-bottom: 14px;
 }
 
 .player-card {
@@ -107,7 +107,7 @@ function getItemEmoji(id) {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
@@ -228,5 +228,42 @@ function getItemEmoji(id) {
 
 .hp-player {
   background: linear-gradient(90deg, #15803d, #22c55e);
+}
+
+@media (max-height: 700px) {
+  .player-section {
+    padding: 8px 12px;
+  }
+
+  .player-section-bottom {
+    padding-bottom: 10px;
+  }
+
+  .player-card {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+
+  .player-avatar {
+    transform: scale(0.9);
+  }
+
+  .player-name {
+    font-size: 12px;
+  }
+
+  .player-hp-text {
+    font-size: 11px;
+  }
+
+  .hp-bar {
+    height: 8px;
+  }
+
+  .enemy-item-badge {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
 }
 </style>

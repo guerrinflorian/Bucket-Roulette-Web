@@ -548,10 +548,13 @@ defineExpose({
 <style scoped>
 .game-screen {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   background: linear-gradient(to bottom, #1c1917, #0c0a09, #000);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .game-content {
@@ -560,6 +563,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   transform-origin: center 45%;
+  min-height: 100%;
 }
 
 /* Center section */
@@ -569,15 +573,15 @@ defineExpose({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   min-height: 0;
-  padding: 8px;
+  padding: 6px 8px;
 }
 
 .turn-indicator {
-  padding: 8px 20px;
+  padding: 6px 18px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -586,7 +590,7 @@ defineExpose({
 
 .turn-timer {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -614,7 +618,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 10px;
   color: #78716c;
 }
 
@@ -627,7 +631,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .emoji-trigger {
@@ -651,13 +655,43 @@ defineExpose({
 
 /* Peeked banner */
 .peeked-banner {
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
   border: 2px solid;
   animation: pulse-peek 2s ease-in-out infinite;
+}
+
+@media (max-height: 740px) {
+  .game-content {
+    gap: 4px;
+  }
+
+  .center-section {
+    gap: 6px;
+  }
+
+  .turn-indicator {
+    font-size: 10px;
+    padding: 5px 14px;
+  }
+
+  .barrel-info {
+    display: none;
+  }
+
+  .peeked-banner {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .emoji-toolbar {
+    padding-bottom: 6px;
+  }
 }
 
 @keyframes pulse-peek {

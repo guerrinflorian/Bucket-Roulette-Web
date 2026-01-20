@@ -621,6 +621,25 @@ onUnmounted(() => {
   clearTimeout(emojiTimeouts.enemy);
 });
 
+watch(
+  () => netStore.opponentLeft,
+  (opponentLeft) => {
+    if (!opponentLeft || !isOnlineMode.value) return;
+    if (gameStore.phase === 'game_over') {
+      netStore.clearOpponentLeft();
+      return;
+    }
+    const winnerKey = netStore.isHost ? 'player' : 'enemy';
+    const opponentName = netStore.opponentName || 'Adversaire';
+    gameStore.winner = winnerKey;
+    gameStore.phase = 'game_over';
+    gameStore.lastResult = {
+      text: `🏳️ ${opponentName} a quitté la partie. Victoire par forfait.`
+    };
+    netStore.clearOpponentLeft();
+  }
+);
+
 const startTurnTimer = () => {
   runTurnTimer(TURN_TIME_LIMIT);
 };
@@ -698,9 +717,11 @@ watch(canAct, (value) => {
 <style scoped>
 .game-wrapper {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   background: black;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
 }
 

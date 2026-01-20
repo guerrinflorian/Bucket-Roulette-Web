@@ -11,6 +11,7 @@ export const useNetStore = defineStore('net', {
     playerName: null,
     opponentName: null,
     opponentConnected: false,
+    opponentLeft: null,
     roomReady: false,
     error: null,
     lastPing: null
@@ -98,6 +99,10 @@ export const useNetStore = defineStore('net', {
           console.log('👋 Player left:', playerId);
           this.opponentConnected = false;
           this.roomReady = false;
+          this.opponentLeft = {
+            playerId,
+            wasHost
+          };
           if (wasHost) {
             this.error = "L'hôte a quitté la partie";
           }
@@ -237,6 +242,7 @@ export const useNetStore = defineStore('net', {
       this.roomId = null;
       this.isHost = false;
       this.opponentConnected = false;
+      this.opponentLeft = null;
       this.roomReady = false;
       this.error = null;
     },
@@ -244,6 +250,10 @@ export const useNetStore = defineStore('net', {
     // Clear error
     clearError() {
       this.error = null;
+    },
+
+    clearOpponentLeft() {
+      this.opponentLeft = null;
     }
   }
 });

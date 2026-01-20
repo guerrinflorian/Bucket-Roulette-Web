@@ -34,7 +34,7 @@
             <!-- Spent = empty hole -->
             <span v-else-if="isSpent(i)" class="bullet-empty"></span>
             <!-- Unknown = ? -->
-            <span v-else class="bullet-unknown">?</span>
+            <span v-else class="bullet-unknown" aria-hidden="true"></span>
           </div>
         </div>
       </div>
@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { gsap } from 'gsap';
 
 const props = defineProps({
@@ -62,6 +62,8 @@ const barrelContainer = ref(null);
 const fallingBullet = ref(null);
 const slotCount = computed(() => props.barrelData?.chambers?.length || 6);
 const slotAngle = computed(() => 360 / slotCount.value);
+const barrelSize = ref(140);
+const barrelRadius = computed(() => barrelSize.value * 0.38);
 
 // Manual rotation control - only rotates when we tell it to
 const rotationAngle = ref(360); // Start at 360 (one full turn back from 0)
@@ -120,7 +122,7 @@ function getSlotClass(index) {
 
 // Position chambers in circle - slot 0 at TOP
 function getSlotPosition(i) {
-  const radius = 52;
+  const radius = barrelRadius.value;
   const angle = (i / slotCount.value) * Math.PI * 2 - Math.PI / 2;
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
@@ -234,6 +236,21 @@ watch(() => props.barrelData, (next, prev) => {
   }
 }, { deep: false });
 
+const updateBarrelSize = () => {
+  if (barrelContainer.value) {
+    barrelSize.value = barrelContainer.value.offsetWidth;
+  }
+};
+
+onMounted(() => {
+  updateBarrelSize();
+  window.addEventListener('resize', updateBarrelSize);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateBarrelSize);
+});
+
 defineExpose({ 
   cylinder,
   barrelContainer,
@@ -250,7 +267,13 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 36px;
+  --barrel-size: clamp(112px, 34vw, 160px);
+  --slot-size: clamp(22px, 6.2vw, 30px);
+  --bullet-size: clamp(12px, 3.6vw, 16px);
+  --center-size: clamp(26px, 7vw, 34px);
+  --center-inner-size: clamp(12px, 3.4vw, 16px);
+  --indicator-size: clamp(22px, 6vw, 30px);
+  padding-top: clamp(26px, 6vw, 36px);
 }
 
 .barrel-indicator {
@@ -266,8 +289,8 @@ defineExpose({
 }
 
 .indicator-arrow {
-  width: 28px;
-  height: 28px;
+  width: var(--indicator-size);
+  height: var(--indicator-size);
   color: #f59e0b;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
   animation: bounce-arrow 1.5s ease-in-out infinite;
@@ -288,8 +311,8 @@ defineExpose({
 }
 
 .barrel-container {
-  width: 140px;
-  height: 140px;
+  width: var(--barrel-size);
+  height: var(--barrel-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -297,11 +320,11 @@ defineExpose({
 
 .barrel-wheel {
   position: relative;
-  width: 130px;
-  height: 130px;
+  width: calc(var(--barrel-size) - 10px);
+  height: calc(var(--barrel-size) - 10px);
   border-radius: 50%;
-  background: linear-gradient(145deg, #2a2520, #1a1512);
-  border: 4px solid #3d352d;
+  background: radial-gradient(circle at 30% 30%, #3a2f26 0%, #1a1512 55%, #0f0c0a 100%);
+  border: 4px solid #4a4036;
   box-shadow: 
     inset 0 0 25px rgba(0,0,0,0.6),
     0 6px 24px rgba(0,0,0,0.5),
@@ -312,8 +335,8 @@ defineExpose({
 }
 
 .barrel-center {
-  width: 32px;
-  height: 32px;
+  width: var(--center-size);
+  height: var(--center-size);
   border-radius: 50%;
   background: linear-gradient(145deg, #1a1512, #0d0a07);
   border: 2px solid #3d352d;
@@ -324,8 +347,8 @@ defineExpose({
 }
 
 .barrel-center-inner {
-  width: 14px;
-  height: 14px;
+  width: var(--center-inner-size);
+  height: var(--center-inner-size);
   border-radius: 50%;
   background: #0d0a07;
   border: 1px solid #2a2520;
@@ -333,20 +356,20 @@ defineExpose({
 
 .chamber-slot {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  width: var(--slot-size);
+  height: var(--slot-size);
   border-radius: 50%;
-  background: linear-gradient(145deg, #1a1512, #0d0a07);
-  border: 2px solid #3d352d;
+  background: linear-gradient(145deg, #201a16, #0c0a08);
+  border: 2px solid #4a4036;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.7);
   transition: opacity 0.3s ease, background 0.3s ease;
 }
 
 .chamber-inner {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -354,40 +377,57 @@ defineExpose({
 }
 
 .bullet-unknown {
-  color: #57534e;
-  font-size: 11px;
+  position: relative;
+  width: calc(var(--bullet-size) + 2px);
+  height: calc(var(--bullet-size) + 2px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #2f2924, #15100c);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08), inset 0 -2px 4px rgba(0,0,0,0.6);
+}
+
+.bullet-unknown::after {
+  content: '?';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a8a29e;
+  font-size: 10px;
+  letter-spacing: 0.08em;
 }
 
 .bullet-empty {
-  width: 12px;
-  height: 12px;
+  width: var(--bullet-size);
+  height: var(--bullet-size);
   border-radius: 50%;
   background: #0a0806;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
 }
 
 .bullet-real {
-  width: 14px;
-  height: 14px;
+  width: var(--bullet-size);
+  height: var(--bullet-size);
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #ff6b6b, #dc2626, #991b1b);
+  background: radial-gradient(circle at 30% 30%, #ffb4b4, #ef4444 45%, #7f1d1d 100%);
   box-shadow: 
-    0 0 12px rgba(220, 38, 38, 0.8),
-    0 0 24px rgba(220, 38, 38, 0.4),
-    inset 0 -2px 4px rgba(0,0,0,0.3);
-  animation: bullet-pulse-real 0.5s ease-in-out infinite alternate;
+    0 0 10px rgba(239, 68, 68, 0.75),
+    0 0 22px rgba(239, 68, 68, 0.45),
+    inset 0 -2px 4px rgba(0,0,0,0.35);
+  animation: bullet-pulse-real 0.6s ease-in-out infinite alternate;
 }
 
 .bullet-blank {
-  width: 14px;
-  height: 14px;
+  width: var(--bullet-size);
+  height: var(--bullet-size);
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #ffffff, #f8fafc, #e2e8f0);
+  background: radial-gradient(circle at 30% 30%, #ffffff, #e2e8f0 55%, #94a3b8 100%);
   box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.9),
-    0 0 20px rgba(255, 255, 255, 0.6),
-    inset 0 -2px 4px rgba(0,0,0,0.25);
-  animation: bullet-pulse-blank 0.5s ease-in-out infinite alternate;
+    0 0 10px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(226, 232, 240, 0.6),
+    inset 0 -2px 4px rgba(0,0,0,0.2);
+  animation: bullet-pulse-blank 0.6s ease-in-out infinite alternate;
 }
 
 @keyframes bullet-pulse-real {
@@ -430,7 +470,7 @@ defineExpose({
   border-color: #dc2626 !important;
   box-shadow: 
     inset 0 2px 5px rgba(0,0,0,0.6),
-    0 0 15px rgba(220, 38, 38, 0.5) !important;
+    0 0 15px rgba(220, 38, 38, 0.45) !important;
 }
 
 .chamber-reveal-blank {
@@ -438,7 +478,7 @@ defineExpose({
   border-color: #f8fafc !important;
   box-shadow: 
     inset 0 2px 5px rgba(0,0,0,0.6),
-    0 0 15px rgba(255, 255, 255, 0.6) !important;
+    0 0 14px rgba(255, 255, 255, 0.5) !important;
 }
 
 .chamber-spent {
@@ -455,12 +495,23 @@ defineExpose({
 
 .bullet-real-falling {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #ff6b6b, #dc2626, #991b1b);
+  background: radial-gradient(circle at 30% 30%, #ffb4b4, #ef4444 45%, #7f1d1d 100%);
   box-shadow: 
     0 0 15px rgba(220, 38, 38, 0.9),
     0 0 30px rgba(220, 38, 38, 0.5);
+}
+
+@media (max-height: 700px) {
+  .barrel-wrapper {
+    --barrel-size: clamp(100px, 30vw, 140px);
+    padding-top: 22px;
+  }
+
+  .indicator-label {
+    font-size: 8px;
+  }
 }
 </style>

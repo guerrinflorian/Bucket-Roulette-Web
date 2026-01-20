@@ -35,7 +35,7 @@ const emit = defineEmits(['shoot']);
   display: flex;
   gap: 12px;
   justify-content: center;
-  padding: 12px 16px 20px;
+  padding: 10px 16px 16px;
 }
 
 .shoot-btn {
@@ -43,8 +43,8 @@ const emit = defineEmits(['shoot']);
   max-width: 220px;
   border: none;
   border-radius: 14px;
-  padding: 12px 16px;
-  font-size: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #f8fafc;
   cursor: pointer;
@@ -68,5 +68,17 @@ const emit = defineEmits(['shoot']);
 .shoot-self {
   background: linear-gradient(145deg, #292524, #1c1917);
   box-shadow: 0 4px 20px rgba(120, 113, 108, 0.25);
+}
+
+@media (max-height: 700px) {
+  .actions-section {
+    padding: 8px 12px 12px;
+    gap: 8px;
+  }
+
+  .shoot-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
 }
 </style>
