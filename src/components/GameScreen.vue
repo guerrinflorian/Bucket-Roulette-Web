@@ -13,8 +13,13 @@
       :can-act-override="canAct"
       :can-use-items="canUseItems"
       :turn-time-left="turnCountdown"
+      :can-send-emoji="canSendEmoji"
+      :emoji-cooldown-left="emojiCooldownLeft"
+      :player-emoji="playerEmoji"
+      :enemy-emoji="enemyEmoji"
       @shoot="handleShoot"
       @use-item="handleUseItem"
+      @send-emoji="handleSendEmoji"
     />
     
     <!-- Fallback if store not ready -->
@@ -83,8 +88,22 @@ const onlineFlipShown = ref(false);
 const turnCountdown = ref(null);
 const isTurnTimerPaused = ref(false);
 const TURN_TIME_LIMIT = 10;
+const EMOJI_COOLDOWN_MS = 5000;
+const EMOJI_DISPLAY_MS = 3000;
 let turnTimer = null;
 let turnTick = null;
+let emojiTick = null;
+const emojiNow = ref(Date.now());
+const playerEmoji = ref('');
+const enemyEmoji = ref('');
+const emojiLastSentAt = ref({
+  player: 0,
+  enemy: 0
+});
+const emojiTimeouts = {
+  player: null,
+  enemy: null
+};
 const isMyTurn = computed(() => {
   if (!isOnlineMode.value) return true;
   // In online mode: host is player, guest is enemy
@@ -133,6 +152,15 @@ const canUseItems = computed(() => {
   if (!canAct.value) return false;
   if (turnCountdown.value !== null && turnCountdown.value <= 2) return false;
   return true;
+});
+
+const canSendEmoji = computed(() => {
+  return emojiNow.value - emojiLastSentAt.value.player >= EMOJI_COOLDOWN_MS;
+});
+
+const emojiCooldownLeft = computed(() => {
+  const remaining = EMOJI_COOLDOWN_MS - (emojiNow.value - emojiLastSentAt.value.player);
+  return Math.max(0, Math.ceil(remaining / 1000));
 });
 
 // UI mapping: local player is always shown at the bottom
@@ -448,6 +476,42 @@ const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
   syncStateIfHost(fromNetwork);
 };
 
+const showEmoji = (target, emoji) => {
+  if (target === 'player') {
+    playerEmoji.value = emoji;
+    clearTimeout(emojiTimeouts.player);
+    emojiTimeouts.player = setTimeout(() => {
+      playerEmoji.value = '';
+    }, EMOJI_DISPLAY_MS);
+    return;
+  }
+
+  enemyEmoji.value = emoji;
+  clearTimeout(emojiTimeouts.enemy);
+  emojiTimeouts.enemy = setTimeout(() => {
+    enemyEmoji.value = '';
+  }, EMOJI_DISPLAY_MS);
+};
+
+const handleSendEmoji = (emoji) => {
+  if (!emoji || !canSendEmoji.value) return;
+  const now = Date.now();
+  emojiLastSentAt.value = { ...emojiLastSentAt.value, player: now };
+  showEmoji('player', emoji);
+
+  if (isOnlineMode.value) {
+    netStore.sendAction({ type: 'emoji', emoji });
+  }
+};
+
+const handleReceiveEmoji = (emoji) => {
+  if (!emoji) return;
+  const now = Date.now();
+  if (now - emojiLastSentAt.value.enemy < EMOJI_COOLDOWN_MS) return;
+  emojiLastSentAt.value = { ...emojiLastSentAt.value, enemy: now };
+  showEmoji('enemy', emoji);
+};
+
 const onCoinFlip = async (starts) => {
   // Add delay after coin flip before starting
   await sleep(500);
@@ -512,6 +576,8 @@ onMounted(() => {
         await handleTimeout(true, action.actorKey || null);
       } else if (action.type === 'coinFlip') {
         gameStore.setCoinFlipResult(action.starts);
+      } else if (action.type === 'emoji') {
+        handleReceiveEmoji(action.emoji);
       }
       
       // Host syncs state after processing
@@ -534,6 +600,10 @@ onMounted(() => {
       onlineFlipShown.value = true;
     }
   }
+
+  emojiTick = setInterval(() => {
+    emojiNow.value = Date.now();
+  }, 1000);
 });
 
 onUnmounted(() => {
@@ -542,6 +612,9 @@ onUnmounted(() => {
     netStore.offGameAction();
   }
   clearTurnTimer();
+  if (emojiTick) clearInterval(emojiTick);
+  clearTimeout(emojiTimeouts.player);
+  clearTimeout(emojiTimeouts.enemy);
 });
 
 const startTurnTimer = () => {

@@ -1,15 +1,19 @@
 <template>
   <section class="player-section" :class="{ 'player-section-bottom': isBottom }">
     <div class="player-card" :class="{ 'player-card-reverse': isReversed }">
-      <img
-        v-if="!isReversed"
-        :src="avatarSrc"
-        :alt="player?.name || 'Joueur'"
-        class="player-avatar"
-      />
+      <div class="avatar-stack">
+        <q-avatar size="56px" class="player-avatar">
+          <CustomAvatar :name="firstName" />
+        </q-avatar>
+        <Transition name="emoji-pop">
+          <div v-if="emoji" class="emoji-bubble" :class="{ 'emoji-bubble-reverse': isReversed }">
+            {{ emoji }}
+          </div>
+        </Transition>
+      </div>
       <div class="player-info">
         <div class="player-header">
-          <span class="player-name">{{ player.name }}</span>
+          <span class="player-name">{{ displayName }}</span>
           <span class="player-hp-text">{{ player.hp }}/{{ player.maxHp }}</span>
         </div>
         <div class="hp-bar">
@@ -20,12 +24,6 @@
           ></div>
         </div>
       </div>
-      <img
-        v-if="isReversed"
-        :src="avatarSrc"
-        :alt="player?.name || 'Joueur'"
-        class="player-avatar"
-      />
       <div v-if="showItems && player.items?.length" class="enemy-items">
         <span
           v-for="(itemId, index) in player.items"
@@ -41,15 +39,12 @@
 
 <script setup>
 import { computed } from 'vue';
+import CustomAvatar from 'custom-avatar-component';
 
 const props = defineProps({
   player: {
     type: Object,
     required: true
-  },
-  avatarSrc: {
-    type: String,
-    default: ''
   },
   isEnemy: {
     type: Boolean,
@@ -66,9 +61,15 @@ const props = defineProps({
   showItems: {
     type: Boolean,
     default: false
+  },
+  emoji: {
+    type: String,
+    default: ''
   }
 });
 
+const displayName = computed(() => props.player?.name || 'Joueur');
+const firstName = computed(() => displayName.value.split(' ')[0] || displayName.value);
 const hpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
 
 const itemEmoji = {
@@ -110,6 +111,13 @@ function getItemEmoji(id) {
   flex-direction: row-reverse;
 }
 
+.avatar-stack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .enemy-items {
   display: flex;
   gap: 4px;
@@ -132,8 +140,36 @@ function getItemEmoji(id) {
 .player-avatar {
   width: 56px;
   height: 56px;
-  object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+}
+
+.emoji-bubble {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.emoji-bubble-reverse {
+  right: auto;
+  left: -10px;
+}
+
+.emoji-pop-enter-active,
+.emoji-pop-leave-active {
+  transition: all 0.25s ease;
+}
+
+.emoji-pop-enter-from,
+.emoji-pop-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.9);
 }
 
 .player-info {

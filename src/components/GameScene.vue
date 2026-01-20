@@ -5,9 +5,9 @@
       <!-- ENEMY SECTION (TOP) -->
       <GameScenePlayerCard
         :player="enemy"
-        :avatar-src="enemyAvatarSrc"
         is-enemy
         show-items
+        :emoji="enemyEmoji"
       />
 
       <!-- CENTER SECTION -->
@@ -59,12 +59,34 @@
         @shoot="emit('shoot', $event)"
       />
 
+      <div class="emoji-toolbar">
+        <q-btn
+          round
+          dense
+          flat
+          icon="emoji_emotions"
+          color="white"
+          :disable="!canSendEmoji"
+          class="emoji-trigger"
+        >
+          <q-tooltip>Envoyer un emoji</q-tooltip>
+          <q-menu v-model="showEmojiPicker" anchor="top middle" self="bottom middle">
+            <div class="emoji-picker-wrapper">
+              <emoji-picker @emoji-click="onEmojiSelect" @emoji-select="onEmojiSelect" />
+            </div>
+          </q-menu>
+        </q-btn>
+        <div v-if="!canSendEmoji" class="emoji-cooldown">
+          ⏳ {{ emojiCooldownLeft }}s
+        </div>
+      </div>
+
       <!-- PLAYER SECTION (BOTTOM) -->
       <GameScenePlayerCard
         :player="player"
-        :avatar-src="playerAvatarSrc"
         :is-reversed="true"
         :is-bottom="true"
+        :emoji="playerEmoji"
       />
 
     </div>
@@ -154,9 +176,8 @@ import BarrelRevolver from './BarrelRevolver.vue';
 import GameSceneActions from './game/GameSceneActions.vue';
 import GameSceneItems from './game/GameSceneItems.vue';
 import GameScenePlayerCard from './game/GameScenePlayerCard.vue';
-import enemyAvatar from '../assets/portraits/enemy_portrait.png';
-import playerAvatar from '../assets/portraits/player_back.png';
 import { remainingCounts } from '../engine/barrel.js';
+import '@ferrucc-io/emoji-picker';
 
 const props = defineProps({
   player: Object,
@@ -177,14 +198,31 @@ const props = defineProps({
   canUseItems: {
     type: Boolean,
     default: null
+  },
+  canSendEmoji: {
+    type: Boolean,
+    default: true
+  },
+  emojiCooldownLeft: {
+    type: Number,
+    default: 0
+  },
+  playerEmoji: {
+    type: String,
+    default: ''
+  },
+  enemyEmoji: {
+    type: String,
+    default: ''
   }
 });
 
-const emit = defineEmits(['shoot', 'use-item']);
+const emit = defineEmits(['shoot', 'use-item', 'send-emoji']);
 
 const gameScreen = ref(null);
 const gameContent = ref(null);
 const barrelComp = ref(null);
+const showEmojiPicker = ref(false);
 
 // Action choice modal (before shooting)
 const showActionModal = ref(false);
@@ -217,8 +255,16 @@ const showReloadModal = ref(false);
 const reloadText = ref('Cartouches mélangées aléatoirement.');
 
 // Computed
-const enemyAvatarSrc = enemyAvatar;
-const playerAvatarSrc = playerAvatar;
+const onEmojiSelect = (event) => {
+  const candidate = event?.detail?.emoji?.native
+    || event?.detail?.emoji?.unicode
+    || event?.detail?.unicode
+    || event?.detail?.emoji
+    || event?.detail;
+  if (!candidate || typeof candidate !== 'string') return;
+  emit('send-emoji', candidate);
+  showEmojiPicker.value = false;
+};
 const canAct = computed(() => {
   if (props.canActOverride !== null) {
     return props.canActOverride;
@@ -520,6 +566,33 @@ defineExpose({
 
 .separator {
   opacity: 0.5;
+}
+
+.emoji-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.emoji-trigger {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.emoji-picker-wrapper {
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+}
+
+.emoji-cooldown {
+  font-size: 12px;
+  font-weight: 600;
+  color: #facc15;
 }
 
 /* Peeked banner */
