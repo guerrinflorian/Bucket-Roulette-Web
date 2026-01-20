@@ -40,22 +40,22 @@
 
     <!-- Game Over Dialog -->
     <q-dialog v-model="showGameOver" persistent>
-      <q-card class="game-over-card" :class="gameStore.winner === 'player' ? 'card-victory' : 'card-defeat'">
+      <q-card class="game-over-card" :class="isLocalWinner ? 'card-victory' : 'card-defeat'">
         <q-card-section class="text-center">
           <div class="game-over-icon">
-            {{ gameStore.winner === 'player' ? '👑' : '💀' }}
+            {{ isLocalWinner ? '👑' : '💀' }}
           </div>
           <h1 class="game-over-title">
-            {{ gameStore.winner === 'player' ? 'VICTOIRE' : 'DÉFAITE' }}
+            {{ isLocalWinner ? 'VICTOIRE' : 'DÉFAITE' }}
           </h1>
           <p class="game-over-subtitle">
-            {{ gameStore.winner === 'player' ? 'Vous avez survécu !' : 'Vous êtes mort...' }}
+            {{ isLocalWinner ? 'Vous avez survécu !' : 'Vous êtes mort...' }}
           </p>
         </q-card-section>
         <q-card-actions align="center" class="pb-6">
           <q-btn 
             unelevated 
-            :color="gameStore.winner === 'player' ? 'positive' : 'negative'" 
+            :color="isLocalWinner ? 'positive' : 'negative'" 
             label="Retour au menu" 
             class="px-8 py-2 text-lg font-bold"
             @click="restart"
@@ -86,6 +86,7 @@ const showOnlineFlip = ref(false);
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
 const turnCountdown = ref(null);
+const currentTimerPhase = ref(null);
 const isTurnTimerPaused = ref(false);
 const TURN_TIME_LIMIT = 15;
 const EMOJI_COOLDOWN_MS = 5000;
@@ -150,7 +151,7 @@ const canAct = computed(() => {
 
 const canUseItems = computed(() => {
   if (!canAct.value) return false;
-  if (turnCountdown.value !== null && turnCountdown.value <= 2) return false;
+  if (turnCountdown.value !== null && turnCountdown.value <= 1) return false;
   return true;
 });
 
@@ -180,6 +181,17 @@ const uiPlayer = computed(() => {
 const uiEnemy = computed(() => {
   if (!isOnlineMode.value) return gameStore.players.enemy;
   return netStore.isHost ? gameStore.players.enemy : gameStore.players.player;
+});
+
+const isLocalWinner = computed(() => {
+  if (!gameStore.winner) return false;
+  if (!isOnlineMode.value) return gameStore.winner === 'player';
+  return gameStore.winner === (netStore.isHost ? 'player' : 'enemy');
+});
+
+const shouldAutoTimeout = computed(() => {
+  if (!isOnlineMode.value) return true;
+  return isMyTurn.value;
 });
 
 // Watch for pending bot shoot action
@@ -396,17 +408,17 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
     return;
   }
   
-  // Send action to network (if not already from network)
-  if (isOnlineMode.value && !fromNetwork) {
-    const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
-    netStore.sendAction({ type: 'item', itemId, actorKey: localActorKey });
-  }
+  const runItemAction = async () => {
+    // Send action to network (if not already from network)
+    if (isOnlineMode.value && !fromNetwork) {
+      const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
+      netStore.sendAction({ type: 'item', itemId, actorKey: localActorKey });
+    }
 
-  const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
-  
-  // For peek, we need to show the result
-  if (itemId === 'peek') {
-    await pauseTurnTimerFor(async () => {
+    const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
+    
+    // For peek, we need to show the result
+    if (itemId === 'peek') {
       const nextBullet = gameStore.barrel.chambers[gameStore.barrel.index];
       await gameStore.useItem(itemId, actorKey);
       syncStateIfHost(fromNetwork);
@@ -415,55 +427,62 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
       if (gameSceneRef.value && nextBullet) {
         await gameSceneRef.value.showPeekResult(nextBullet === 'real');
       }
-    });
-  }
-  // For eject, we need to spin, reveal, then eject
-  else if (itemId === 'eject') {
-    gameStore.isAnimating = true;
-    
-    try {
-      // Get what will be ejected BEFORE the item is used
-      const ejectedBullet = gameStore.barrel.chambers[gameStore.barrel.index];
-      const isReal = ejectedBullet === 'real';
-      
-      // Spin barrel to show current slot
-      if (gameSceneRef.value?.rotateBarrel) {
-        gameSceneRef.value.rotateBarrel();
-        await sleep(1000);
-      }
-      
-      // Reveal what's in the chamber
-      if (gameSceneRef.value?.revealBullet) {
-        gameSceneRef.value.revealBullet(isReal);
-      }
-      
-      // Pause to see
-      await sleep(1500);
-      
-      // Show eject modal
-      if (gameSceneRef.value?.showEjectResult) {
-        await gameSceneRef.value.showEjectResult(isReal);
-      }
-      
-      // Drop animation if real
-      if (isReal && gameSceneRef.value?.dropBullet) {
-        gameSceneRef.value.dropBullet();
-      } else if (gameSceneRef.value?.hideBullet) {
-        gameSceneRef.value.hideBullet();
-      }
-      
-      // Now apply the item (increments barrel index)
-      await gameStore.useItem(itemId, actorKey);
-      syncStateIfHost(fromNetwork);
-      
-      await sleep(300);
-    } finally {
-      gameStore.isAnimating = false;
+      return;
     }
-  }
-  else {
+    // For eject, we need to spin, reveal, then eject
+    if (itemId === 'eject') {
+      gameStore.isAnimating = true;
+      
+      try {
+        // Get what will be ejected BEFORE the item is used
+        const ejectedBullet = gameStore.barrel.chambers[gameStore.barrel.index];
+        const isReal = ejectedBullet === 'real';
+        
+        // Spin barrel to show current slot
+        if (gameSceneRef.value?.rotateBarrel) {
+          gameSceneRef.value.rotateBarrel();
+          await sleep(1000);
+        }
+        
+        // Reveal what's in the chamber
+        if (gameSceneRef.value?.revealBullet) {
+          gameSceneRef.value.revealBullet(isReal);
+        }
+        
+        // Pause to see
+        await sleep(1500);
+        
+        // Show eject modal
+        if (gameSceneRef.value?.showEjectResult) {
+          await gameSceneRef.value.showEjectResult(isReal);
+        }
+        
+        // Drop animation if real
+        if (isReal && gameSceneRef.value?.dropBullet) {
+          gameSceneRef.value.dropBullet();
+        } else if (gameSceneRef.value?.hideBullet) {
+          gameSceneRef.value.hideBullet();
+        }
+        
+        // Now apply the item (increments barrel index)
+        await gameStore.useItem(itemId, actorKey);
+        syncStateIfHost(fromNetwork);
+        
+        await sleep(300);
+      } finally {
+        gameStore.isAnimating = false;
+      }
+      return;
+    }
+
     await gameStore.useItem(itemId, actorKey);
     syncStateIfHost(fromNetwork);
+  };
+
+  if (!fromNetwork) {
+    await pauseTurnTimerFor(runItemAction);
+  } else {
+    await runItemAction();
   }
 };
 
@@ -641,19 +660,21 @@ watch(
 );
 
 const startTurnTimer = () => {
-  runTurnTimer(TURN_TIME_LIMIT);
+  runTurnTimer(TURN_TIME_LIMIT, shouldAutoTimeout.value);
 };
 
-const runTurnTimer = (duration) => {
+const runTurnTimer = (duration, autoTimeout = true) => {
   clearTurnTimer(false);
   turnCountdown.value = duration;
   turnTick = setInterval(() => {
     if (turnCountdown.value === null) return;
     turnCountdown.value = Math.max(0, turnCountdown.value - 1);
   }, 1000);
-  turnTimer = setTimeout(async () => {
-    await handleTimeout();
-  }, duration * 1000);
+  if (autoTimeout) {
+    turnTimer = setTimeout(async () => {
+      await handleTimeout();
+    }, duration * 1000);
+  }
 };
 
 const clearTurnTimer = (resetCountdown = true) => {
@@ -682,7 +703,7 @@ const resumeTurnTimer = () => {
   const remaining = Math.max(0, turnCountdown.value);
   isTurnTimerPaused.value = false;
   if (remaining > 0) {
-    runTurnTimer(remaining);
+    runTurnTimer(remaining, shouldAutoTimeout.value);
   }
 };
 
@@ -700,18 +721,36 @@ const pauseTurnTimerFor = async (action) => {
   }
 };
 
-watch(canAct, (value) => {
-  if (value) {
-    if (turnCountdown.value === null) {
-      startTurnTimer();
-    } else {
-      resumeTurnTimer();
+watch(
+  () => [gameStore.phase, shouldAutoTimeout.value],
+  ([phase, autoTimeout]) => {
+    const isTurnPhase = phase === 'player_turn' || phase === 'enemy_turn';
+    if (!isTurnPhase) {
+      clearTurnTimer();
+      isTurnTimerPaused.value = false;
+      currentTimerPhase.value = null;
+      return;
     }
-  } else {
-    clearTurnTimer();
-    isTurnTimerPaused.value = false;
-  }
-});
+
+    if (currentTimerPhase.value !== phase) {
+      currentTimerPhase.value = phase;
+      runTurnTimer(TURN_TIME_LIMIT, autoTimeout);
+      return;
+    }
+
+    if (turnCountdown.value === null) {
+      runTurnTimer(TURN_TIME_LIMIT, autoTimeout);
+      return;
+    }
+
+    const shouldHaveTimeout = autoTimeout && !turnTimer;
+    const shouldRemoveTimeout = !autoTimeout && turnTimer;
+    if (shouldHaveTimeout || shouldRemoveTimeout) {
+      runTurnTimer(turnCountdown.value, autoTimeout);
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

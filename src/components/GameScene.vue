@@ -664,6 +664,10 @@ defineExpose({
   animation: pulse-peek 2s ease-in-out infinite;
 }
 
+:deep(.q-dialog__inner--standard) {
+  padding: 18px 12px;
+}
+
 @media (max-height: 740px) {
   .game-content {
     gap: 4px;
@@ -691,6 +695,71 @@ defineExpose({
 @media (max-width: 420px) {
   .emoji-toolbar {
     padding-bottom: 6px;
+  }
+
+  .action-modal-card,
+  .enemy-item-card,
+  .reload-modal-card,
+  .peek-modal-card,
+  .eject-modal-card {
+    min-width: 0;
+    width: min(90vw, 320px);
+    max-width: 90vw;
+    padding: 16px 18px;
+  }
+
+  .enemy-item-card,
+  .reload-modal-card {
+    padding: 18px 20px;
+  }
+
+  .action-modal-icon {
+    font-size: 34px;
+  }
+
+  .action-modal-text {
+    font-size: 14px;
+  }
+
+  .enemy-item-icon {
+    font-size: 38px;
+  }
+
+  .enemy-item-name {
+    font-size: 16px;
+  }
+
+  .reload-title {
+    font-size: 14px;
+  }
+
+  .reload-subtitle {
+    font-size: 11px;
+  }
+
+  .peek-modal-result,
+  .eject-modal-result {
+    font-size: 16px;
+  }
+
+  .reveal-card {
+    padding: 28px 24px;
+  }
+
+  .reveal-icon {
+    font-size: 56px;
+  }
+
+  .reveal-title {
+    font-size: 26px;
+  }
+
+  .reveal-subtitle {
+    font-size: 13px;
+  }
+
+  .reveal-damage {
+    font-size: 24px;
   }
 }
 
@@ -907,6 +976,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
   z-index: 3000;
 }
 
@@ -916,6 +986,7 @@ defineExpose({
   text-align: center;
   border: 3px solid;
   animation: reveal-pop 0.4s ease-out;
+  max-width: 92vw;
 }
 
 @keyframes reveal-pop {
