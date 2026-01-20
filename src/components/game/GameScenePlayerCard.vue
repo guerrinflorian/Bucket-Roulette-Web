@@ -2,8 +2,13 @@
   <section class="player-section" :class="{ 'player-section-bottom': isBottom }">
     <div class="player-card" :class="{ 'player-card-reverse': isReversed }">
       <div class="avatar-stack">
-        <q-avatar size="56px" class="player-avatar">
-          <CustomAvatar :name="firstName" />
+       <q-avatar size="56px" class="player-avatar">
+          <Avatar 
+            :name="firstName" 
+            variant="beam" 
+            :size="56" 
+            :colors="avatarColors"
+          />
         </q-avatar>
         <Transition name="emoji-pop">
           <div v-if="emoji" class="emoji-bubble" :class="{ 'emoji-bubble-reverse': isReversed }">
@@ -39,7 +44,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import CustomAvatar from 'custom-avatar-component';
+import Avatar from "vue-boring-avatars";
 
 const props = defineProps({
   player: {
@@ -71,6 +76,7 @@ const props = defineProps({
 const displayName = computed(() => props.player?.name || 'Joueur');
 const firstName = computed(() => displayName.value.split(' ')[0] || displayName.value);
 const hpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
+const avatarColors = ["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"];
 
 const itemEmoji = {
   heart: '❤️',

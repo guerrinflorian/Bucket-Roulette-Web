@@ -72,7 +72,11 @@
           <q-tooltip>Envoyer un emoji</q-tooltip>
           <q-menu v-model="showEmojiPicker" anchor="top middle" self="bottom middle">
             <div class="emoji-picker-wrapper">
-              <emoji-picker @emoji-click="onEmojiSelect" @emoji-select="onEmojiSelect" />
+              <EmojiPicker 
+                :native="true" 
+                theme="dark"
+                @select="onEmojiSelect" 
+              />
             </div>
           </q-menu>
         </q-btn>
@@ -177,7 +181,8 @@ import GameSceneActions from './game/GameSceneActions.vue';
 import GameSceneItems from './game/GameSceneItems.vue';
 import GameScenePlayerCard from './game/GameScenePlayerCard.vue';
 import { remainingCounts } from '../engine/barrel.js';
-import '@ferrucc-io/emoji-picker';
+import EmojiPicker from 'vue3-emoji-picker';
+import 'vue3-emoji-picker/css';
 
 const props = defineProps({
   player: Object,
@@ -255,16 +260,14 @@ const showReloadModal = ref(false);
 const reloadText = ref('Cartouches mélangées aléatoirement.');
 
 // Computed
-const onEmojiSelect = (event) => {
-  const candidate = event?.detail?.emoji?.native
-    || event?.detail?.emoji?.unicode
-    || event?.detail?.unicode
-    || event?.detail?.emoji
-    || event?.detail;
-  if (!candidate || typeof candidate !== 'string') return;
-  emit('send-emoji', candidate);
+const onEmojiSelect = (emoji) => {
+  // L'objet renvoyé par ce picker contient l'emoji dans la propriété 'i'
+  if (!emoji || !emoji.i) return;
+  
+  emit('send-emoji', emoji.i);
   showEmojiPicker.value = false;
 };
+
 const canAct = computed(() => {
   if (props.canActOverride !== null) {
     return props.canActOverride;
