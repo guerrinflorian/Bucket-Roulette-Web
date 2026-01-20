@@ -248,6 +248,7 @@ export const useGameStore = defineStore('game', {
 
         const shot = this.barrel.chambers[this.barrel.index];
         this.barrel.index += 1;
+        this.barrel.firstShotFired = true;
         this.players.player.peekedNext = null;
         this.players.enemy.peekedNext = null;
 
@@ -329,7 +330,7 @@ export const useGameStore = defineStore('game', {
         this.winner = winnerKey;
         this.phase = PHASES.GAME_OVER;
         this.lastResult = {
-          text: `🏳️ ${actorName} a abandonné après deux tours passés.`
+          text: `🏳️ ${actorName} est AFK. Victoire par abandon de l'adversaire.`
         };
         return;
       }

@@ -23,7 +23,8 @@ export function createBarrel() {
 
   return {
     chambers,
-    index: 0
+    index: 0,
+    firstShotFired: false
   };
 }
 
