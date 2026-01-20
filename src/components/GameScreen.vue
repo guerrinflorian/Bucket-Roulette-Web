@@ -51,7 +51,7 @@
           <q-btn 
             unelevated 
             :color="gameStore.winner === 'player' ? 'positive' : 'negative'" 
-            label="Rejouer" 
+            label="Retour au menu" 
             class="px-8 py-2 text-lg font-bold"
             @click="restart"
           />
@@ -467,11 +467,9 @@ const onOnlineFlipResolved = async () => {
 const restart = () => {
   if (isOnlineMode.value) {
     netStore.leaveRoom();
-    gameStore.sessionActive = false;
-    router.push('/menu');
-  } else {
-    gameStore.initGame(gameStore.mode);
   }
+  gameStore.sessionActive = false;
+  router.push('/menu');
 };
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));

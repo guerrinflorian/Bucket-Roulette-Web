@@ -46,7 +46,11 @@ export const useGameStore = defineStore('game', {
     // Pending bot action for UI to handle
     pendingBotAction: null,
     // Pending bot item use for UI to display
-    pendingBotItem: null
+    pendingBotItem: null,
+    timeoutStreak: {
+      player: 0,
+      enemy: 0
+    }
   }),
   getters: {
     isPlayerTurn: (state) => state.phase === PHASES.PLAYER_TURN,
@@ -76,6 +80,8 @@ export const useGameStore = defineStore('game', {
       this.winner = null;
       this.reloadCount = 1;
       this.lastResult = { text: `🔄 ${this.lastReloadInfo}` };
+      this.timeoutStreak.player = 0;
+      this.timeoutStreak.enemy = 0;
       this.dealItems();
     },
     setRoom(id) {
@@ -96,6 +102,10 @@ export const useGameStore = defineStore('game', {
       if (state.winner !== undefined) this.winner = state.winner;
       if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
       if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
+      if (state.timeoutStreak) {
+        this.timeoutStreak.player = state.timeoutStreak.player ?? this.timeoutStreak.player;
+        this.timeoutStreak.enemy = state.timeoutStreak.enemy ?? this.timeoutStreak.enemy;
+      }
     },
     // Serialize state for network sync
     serializeForNetwork() {
@@ -109,6 +119,7 @@ export const useGameStore = defineStore('game', {
         winner: this.winner,
         reloadCount: this.reloadCount,
         lastReloadInfo: this.lastReloadInfo,
+        timeoutStreak: this.timeoutStreak,
         onlineFlipResult: this.currentTurn
       };
     },
@@ -155,6 +166,7 @@ export const useGameStore = defineStore('game', {
         this.lastResult = { text: result.message };
         return;
       }
+      this.timeoutStreak[actorKey] = 0;
       const index = actor.items.indexOf(itemId);
       if (index !== -1) {
         actor.items.splice(index, 1);
@@ -211,6 +223,8 @@ export const useGameStore = defineStore('game', {
         if (isReal && hadDouble) {
           damage = 2;
         }
+
+        this.timeoutStreak[actorKey] = 0;
 
         if (damage > 0) {
           this.players[targetKey].hp = Math.max(0, this.players[targetKey].hp - damage);
@@ -273,6 +287,17 @@ export const useGameStore = defineStore('game', {
       this.lastResult = {
         text: `⏳ ${actorName} a perdu son tour.`
       };
+
+      this.timeoutStreak[actorKey] += 1;
+      if (this.timeoutStreak[actorKey] >= 2) {
+        const winnerKey = actorKey === 'player' ? 'enemy' : 'player';
+        this.winner = winnerKey;
+        this.phase = PHASES.GAME_OVER;
+        this.lastResult = {
+          text: `🏳️ ${actorName} a abandonné après deux tours passés.`
+        };
+        return;
+      }
 
       this.phase = actorKey === 'player' ? PHASES.ENEMY_TURN : PHASES.PLAYER_TURN;
 
