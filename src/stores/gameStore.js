@@ -163,6 +163,11 @@ export const useGameStore = defineStore('game', {
     resolveNextTurn(nextActorKey) {
       let nextKey = nextActorKey;
       const skipped = [];
+      const oppositeKey = nextKey === 'player' ? 'enemy' : 'player';
+
+      if (this.players[oppositeKey]?.skipNextTurn) {
+        this.players[oppositeKey].skipNextTurn = false;
+      }
 
       for (let i = 0; i < 2; i += 1) {
         if (this.players[nextKey]?.skipNextTurn) {
@@ -286,7 +291,8 @@ export const useGameStore = defineStore('game', {
         await sleep(900);
 
         if (this.players[targetKey].hp <= 0) {
-          this.winner = actorKey;
+          const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
+          this.winner = actorKey === targetKey ? opponentKey : actorKey;
           this.phase = PHASES.GAME_OVER;
           return;
         }

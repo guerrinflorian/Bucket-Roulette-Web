@@ -50,7 +50,7 @@
             {{ isLocalWinner ? 'VICTOIRE' : 'DÉFAITE' }}
           </h1>
           <p class="game-over-subtitle">
-            {{ isLocalWinner ? 'Vous avez survécu !' : 'Vous êtes mort...' }}
+            {{ gameOverSubtitle }}
           </p>
         </q-card-section>
         <q-card-actions align="center" class="pb-6">
@@ -88,6 +88,12 @@ const isFlipVisible = computed(() => gameStore.phase === 'coin_flip' || showOnli
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
 const initialFlipResolved = ref(false);
+const isOnlineInitialFlipPending = computed(() => {
+  if (!isOnlineMode.value) return false;
+  if (onlineFlipShown.value) return false;
+  if (!gameStore.currentTurn) return false;
+  return isInitialOnlineFlip();
+});
 const turnCountdown = ref(null);
 const currentTimerPhase = ref(null);
 const isTurnTimerPaused = ref(false);
@@ -193,6 +199,14 @@ const isLocalWinner = computed(() => {
   if (!gameStore.winner) return false;
   if (!isOnlineMode.value) return gameStore.winner === 'player';
   return gameStore.winner === (netStore.isHost ? 'player' : 'enemy');
+});
+
+const gameOverSubtitle = computed(() => {
+  const lastText = gameStore.lastResult?.text || '';
+  if (/abandon|afk/i.test(lastText)) {
+    return lastText;
+  }
+  return isLocalWinner.value ? 'Vous avez survécu !' : 'Vous êtes mort...';
 });
 
 const shouldAutoTimeout = computed(() => {
@@ -838,9 +852,9 @@ watch(
 );
 
 watch(
-  () => [gameStore.phase, showOnlineFlip.value],
-  ([phase, onlineFlip]) => {
-    if (!initialFlipResolved.value && phase !== 'coin_flip' && !onlineFlip) {
+  () => [gameStore.phase, showOnlineFlip.value, isOnlineInitialFlipPending.value],
+  ([phase, onlineFlip, onlineFlipPending]) => {
+    if (!initialFlipResolved.value && phase !== 'coin_flip' && !onlineFlip && !onlineFlipPending) {
       initialFlipResolved.value = true;
     }
   },
