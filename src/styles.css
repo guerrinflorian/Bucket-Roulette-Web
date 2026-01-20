@@ -31,7 +31,7 @@ button {
 
 .app-shell {
   min-height: 100vh;
-  background: url('./assets/backgrounds/tavern_bg.svg') center/cover no-repeat fixed;
+  background: url('./assets/backgrounds/room_bg.jpg') center/cover no-repeat fixed;
 }
 
 .app-overlay {

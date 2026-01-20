@@ -1,9 +1,21 @@
-import { BARREL_SIZE, REAL_MIN, REAL_MAX } from './rules.js';
 import { randomInt, shuffle } from './rng.js';
 
+const BARREL_TOTAL_MIN = 2;
+const BARREL_TOTAL_MAX = 7;
+const REAL_COUNT_OPTIONS = {
+  2: [1],
+  3: [1, 2],
+  4: [2],
+  5: [2, 3],
+  6: [2, 3, 4],
+  7: [3, 4]
+};
+
 export function createBarrel() {
-  const realCount = randomInt(REAL_MIN, REAL_MAX);
-  const blanks = BARREL_SIZE - realCount;
+  const total = randomInt(BARREL_TOTAL_MIN, BARREL_TOTAL_MAX);
+  const options = REAL_COUNT_OPTIONS[total] || [Math.floor(total / 2)];
+  const realCount = options[randomInt(0, options.length - 1)];
+  const blanks = total - realCount;
   const chambers = shuffle([
     ...Array(realCount).fill('real'),
     ...Array(blanks).fill('blank')
@@ -13,6 +25,21 @@ export function createBarrel() {
     chambers,
     index: 0
   };
+}
+
+export function getBarrelSummary(barrel) {
+  const total = barrel?.chambers?.length ?? 0;
+  const real = barrel?.chambers?.filter((round) => round === 'real').length ?? 0;
+  return {
+    total,
+    real,
+    blank: Math.max(0, total - real)
+  };
+}
+
+export function formatBarrelAnnouncement(barrel) {
+  const { total, real, blank } = getBarrelSummary(barrel);
+  return `Barillet chargé : ${total} cartouches (${real} réelles, ${blank} blanches).`;
 }
 
 export function peekNext(barrel) {

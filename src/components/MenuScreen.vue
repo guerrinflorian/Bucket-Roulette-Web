@@ -259,6 +259,7 @@ const startMultiplayer = async () => {
     lastAction: gameStore.lastAction,
     winner: gameStore.winner,
     reloadCount: gameStore.reloadCount,
+    lastReloadInfo: gameStore.lastReloadInfo,
     hostName: netStore.playerName,
     guestName: netStore.opponentName,
     onlineFlipResult: starts

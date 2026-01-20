@@ -1,7 +1,4 @@
 export const MAX_HP = 5;
-export const BARREL_SIZE = 6;
-export const REAL_MIN = 2;
-export const REAL_MAX = 4;
 export const ITEMS_PER_RELOAD = 1;
 
 export const PHASES = Object.freeze({
