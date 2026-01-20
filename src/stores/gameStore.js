@@ -43,6 +43,12 @@ export const useGameStore = defineStore('game', {
     isAnimating: false,
     reloadCount: 0,
     lastReloadInfo: null,
+    turnTimer: {
+      remaining: null,
+      paused: false,
+      phase: null,
+      autoTimeout: true
+    },
     // Pending bot action for UI to handle
     pendingBotAction: null,
     // Pending bot item use for UI to display
@@ -104,6 +110,12 @@ export const useGameStore = defineStore('game', {
       if (state.winner !== undefined) this.winner = state.winner;
       if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
       if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
+      if (state.turnTimer) {
+        this.turnTimer.remaining = state.turnTimer.remaining ?? this.turnTimer.remaining;
+        this.turnTimer.paused = state.turnTimer.paused ?? this.turnTimer.paused;
+        this.turnTimer.phase = state.turnTimer.phase ?? this.turnTimer.phase;
+        this.turnTimer.autoTimeout = state.turnTimer.autoTimeout ?? this.turnTimer.autoTimeout;
+      }
       if (state.timeoutStreak) {
         this.timeoutStreak.player = state.timeoutStreak.player ?? this.timeoutStreak.player;
         this.timeoutStreak.enemy = state.timeoutStreak.enemy ?? this.timeoutStreak.enemy;
@@ -121,6 +133,7 @@ export const useGameStore = defineStore('game', {
         winner: this.winner,
         reloadCount: this.reloadCount,
         lastReloadInfo: this.lastReloadInfo,
+        turnTimer: this.turnTimer,
         timeoutStreak: this.timeoutStreak,
         onlineFlipResult: this.currentTurn
       };
