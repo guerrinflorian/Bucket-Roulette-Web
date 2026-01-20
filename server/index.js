@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 const httpServer = createServer();
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+    origin: "*",
     methods: ['GET', 'POST']
   }
 });
@@ -19,6 +19,17 @@ function generateRoomCode() {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
+}
+
+function getRoomInfo(room) {
+  return {
+    hostId: room.host,
+    hostName: room.hostName,
+    guestId: room.guest,
+    guestName: room.guestName,
+    gameStarted: room.gameStarted,
+    gameEnded: room.gameEnded
+  };
 }
 
 io.on('connection', (socket) => {
@@ -42,7 +53,9 @@ io.on('connection', (socket) => {
       guest: null,
       guestName: null,
       gameState: null,
-      players: [socket.id]
+      players: [socket.id],
+      gameStarted: false,
+      gameEnded: false
     });
 
     socket.join(roomId);
@@ -51,7 +64,7 @@ io.on('connection', (socket) => {
     socket.playerName = playerName;
 
     console.log(`🏠 Room created: ${roomId} by ${playerName} (${socket.id})`);
-    socket.emit('room:created', { roomId, isHost: true });
+    socket.emit('room:created', { roomId, isHost: true, hostName: playerName });
   });
 
   // Join an existing room
@@ -72,6 +85,16 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (room.gameEnded) {
+      socket.emit('room:error', { message: 'Cette partie est terminée' });
+      return;
+    }
+
+    if (room.gameStarted) {
+      socket.emit('room:error', { message: 'La partie a déjà commencé' });
+      return;
+    }
+
     if (room.players.length >= 2) {
       socket.emit('room:error', { message: 'Room pleine' });
       return;
@@ -87,8 +110,12 @@ io.on('connection', (socket) => {
 
     console.log(`👥 ${playerName} (${socket.id}) joined room ${normalizedRoomId}`);
 
-    // Notify the guest they joined
-    socket.emit('room:joined', { roomId: normalizedRoomId, isHost: false });
+    // Notify the guest they joined with full room info
+    socket.emit('room:joined', { 
+      roomId: normalizedRoomId, 
+      isHost: false,
+      ...getRoomInfo(room)
+    });
 
     // Notify the host that someone joined (with name)
     io.to(room.host).emit('room:player-joined', { 
@@ -98,12 +125,7 @@ io.on('connection', (socket) => {
 
     // If both players are here, notify both that the game can start
     if (room.players.length === 2) {
-      io.to(normalizedRoomId).emit('room:ready', { 
-        hostId: room.host,
-        hostName: room.hostName,
-        guestId: room.guest,
-        guestName: room.guestName
-      });
+      io.to(normalizedRoomId).emit('room:ready', getRoomInfo(room));
     }
   });
 
@@ -115,7 +137,13 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (room.gameEnded) {
+      socket.emit('room:error', { message: 'Cette partie est terminée' });
+      return;
+    }
+
     room.gameState = gameState;
+    room.gameStarted = true;
     console.log(`🎮 Game started in room ${roomId} by host ${socket.id}`);
     console.log(`📤 Broadcasting game:state to room ${roomId} (${room.players.length} players)`);
     
@@ -130,6 +158,8 @@ io.on('connection', (socket) => {
     if (!roomId || !action || !action.type) return;
     const room = rooms.get(roomId);
     if (!room) return;
+
+    if (room.gameEnded) return;
 
     console.log(`🎯 Action in room ${roomId}:`, action.type);
 
@@ -147,10 +177,29 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
 
     room.gameState = gameState;
+    
+    // Check if game ended
+    if (gameState.winner) {
+      room.gameEnded = true;
+      console.log(`🏆 Game ended in room ${roomId}, winner: ${gameState.winner}`);
+    }
+
     // Send to guest only
     if (room.guest) {
       io.to(room.guest).emit('game:state', gameState);
     }
+  });
+
+  // Game ended
+  socket.on('game:end', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    room.gameEnded = true;
+    console.log(`🏁 Game ended in room ${roomId}`);
+    
+    // Notify all players
+    io.to(roomId).emit('room:game-ended', { roomId });
   });
 
   // Handle disconnection
@@ -160,28 +209,109 @@ io.on('connection', (socket) => {
     if (socket.roomId) {
       const room = rooms.get(socket.roomId);
       if (room) {
-        // Notify other player
+        const wasHost = socket.isHost;
+        const playerName = socket.playerName;
+
+        // Notify other player immediately
         socket.to(socket.roomId).emit('room:player-left', { 
           playerId: socket.id,
-          wasHost: socket.isHost 
+          playerName: playerName,
+          wasHost: wasHost
         });
 
         // Remove player from room
         room.players = room.players.filter(id => id !== socket.id);
 
-        // If room is empty, delete it
+        // If room is empty or game hasn't started, delete room
+        if (room.players.length === 0) {
+          rooms.delete(socket.roomId);
+          console.log(`🗑️ Room ${socket.roomId} deleted (empty)`);
+        } else if (wasHost) {
+          // If host left, either promote guest or delete room
+          if (room.gameStarted && !room.gameEnded) {
+            // Game in progress, end it
+            room.gameEnded = true;
+            io.to(socket.roomId).emit('room:host-left', { 
+              message: "L'hôte a quitté la partie" 
+            });
+            console.log(`🚪 Host left during game in room ${socket.roomId}`);
+          } else if (!room.gameStarted) {
+            // Game not started yet, promote guest
+            room.host = room.guest;
+            room.hostName = room.guestName;
+            room.guest = null;
+            room.guestName = null;
+            
+            // Update socket data for promoted player
+            const promotedSocket = io.sockets.sockets.get(room.host);
+            if (promotedSocket) {
+              promotedSocket.isHost = true;
+            }
+            
+            io.to(room.host).emit('room:promoted-host', {
+              hostName: room.hostName
+            });
+            console.log(`👑 ${room.hostName} promoted to host in room ${socket.roomId}`);
+          }
+        } else {
+          // Guest left
+          room.guest = null;
+          room.guestName = null;
+          
+          if (room.gameStarted && !room.gameEnded) {
+            // Game in progress, notify host
+            io.to(room.host).emit('room:guest-left', { 
+              message: "L'adversaire a quitté la partie" 
+            });
+          }
+        }
+      }
+    }
+  });
+
+  // Leave room manually
+  socket.on('room:leave', () => {
+    if (socket.roomId) {
+      const room = rooms.get(socket.roomId);
+      if (room) {
+        const wasHost = socket.isHost;
+        
+        // Notify other player
+        socket.to(socket.roomId).emit('room:player-left', { 
+          playerId: socket.id,
+          playerName: socket.playerName,
+          wasHost: wasHost
+        });
+
+        // Remove player from room
+        room.players = room.players.filter(id => id !== socket.id);
+        socket.leave(socket.roomId);
+
         if (room.players.length === 0) {
           rooms.delete(socket.roomId);
           console.log(`🗑️ Room ${socket.roomId} deleted`);
-        } else if (socket.isHost) {
-          // If host left, promote guest to host
+        } else if (wasHost) {
           room.host = room.guest;
+          room.hostName = room.guestName;
           room.guest = null;
-          io.to(room.host).emit('room:promoted-host');
+          room.guestName = null;
+          
+          const promotedSocket = io.sockets.sockets.get(room.host);
+          if (promotedSocket) {
+            promotedSocket.isHost = true;
+          }
+          
+          io.to(room.host).emit('room:promoted-host', {
+            hostName: room.hostName
+          });
         } else {
           room.guest = null;
+          room.guestName = null;
         }
       }
+      
+      socket.roomId = null;
+      socket.isHost = false;
     }
   });
 

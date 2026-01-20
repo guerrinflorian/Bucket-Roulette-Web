@@ -1,11 +1,14 @@
-const SILENT_WAV =
-  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=';
+import spinSrc from '../assets/audio/barrel_spin.mp3';
+import reloadSrc from '../assets/audio/revolver_reload.mp3';
+import shotSrc from '../assets/audio/revolver_shot.mp3';
+import blankSrc from '../assets/audio/revolver_no_ammo_shot.mp3';
 
 const SOUND_MAP = {
-  click: SILENT_WAV,
-  shot: SILENT_WAV,
-  blank: SILENT_WAV,
-  reload: SILENT_WAV
+  spin: spinSrc,
+  shot: shotSrc,
+  blank: blankSrc,
+  reload: reloadSrc,
+  click: reloadSrc // Fallback pour les items
 };
 
 class AudioManager {
@@ -22,7 +25,9 @@ class AudioManager {
     const audio = this.sounds[key];
     if (!audio) return;
     audio.currentTime = 0;
-    audio.play().catch(() => {});
+    audio.play().catch((err) => {
+      console.warn(`Could not play audio ${key}:`, err);
+    });
   }
 }
 

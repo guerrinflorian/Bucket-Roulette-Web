@@ -286,8 +286,6 @@ export const useGameStore = defineStore('game', {
           text: isReal ? 'BALLE RÉELLE !' : 'À BLANC...'
         };
 
-        audioManager.play(isReal ? 'shot' : 'blank');
-
         await sleep(900);
 
         if (this.players[targetKey].hp <= 0) {

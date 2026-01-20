@@ -94,11 +94,11 @@ function getItemEmoji(id) {
 <style scoped>
 .player-section {
   flex-shrink: 0;
-  padding: 10px 14px;
+  padding: 12px 16px;
 }
 
 .player-section-bottom {
-  padding-bottom: 14px;
+  padding-bottom: 16px;
 }
 
 .player-card {
@@ -106,11 +106,13 @@ function getItemEmoji(id) {
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.4);
+  gap: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
 .player-card-reverse {
@@ -126,53 +128,68 @@ function getItemEmoji(id) {
 
 .enemy-items {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .enemy-item-badge {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  font-size: 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  font-size: 15px;
   cursor: help;
+  transition: all 0.2s;
+}
+
+.enemy-item-badge:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.1);
 }
 
 .player-avatar {
   width: 56px;
   height: 56px;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .emoji-bubble {
   position: absolute;
-  top: -10px;
-  right: -10px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.45);
+  top: -12px;
+  right: -12px;
+  background: rgba(10, 10, 15, 0.92);
+  border: 2px solid rgba(245, 158, 11, 0.4);
   border-radius: 999px;
   padding: 6px;
-  min-width: 36px;
-  min-height: 36px;
-  max-width: 56px;
-  max-height: 56px;
+  min-width: 40px;
+  min-height: 40px;
+  max-width: 60px;
+  max-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1;
   overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 158, 11, 0.15);
+  animation: emoji-bounce 0.3s ease-out;
+}
+
+@keyframes emoji-bounce {
+  0% { transform: scale(0) rotate(-20deg); }
+  60% { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 
 .emoji-bubble-reverse {
   right: auto;
-  left: -10px;
+  left: -12px;
 }
 
 .emoji-pop-enter-active,
@@ -183,7 +200,7 @@ function getItemEmoji(id) {
 .emoji-pop-enter-from,
 .emoji-pop-leave-to {
   opacity: 0;
-  transform: translateY(6px) scale(0.9);
+  transform: translateY(8px) scale(0.8);
 }
 
 .player-info {
@@ -195,39 +212,45 @@ function getItemEmoji(id) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .player-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  color: #e7e5e4;
+  color: #f4f4f5;
+  letter-spacing: 0.01em;
 }
 
 .player-hp-text {
-  font-size: 12px;
-  font-family: monospace;
-  color: #a8a29e;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-weight: 600;
+  color: #a1a1aa;
 }
 
 .hp-bar {
-  height: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .hp-fill {
   height: 100%;
-  transition: width 0.5s ease;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 999px;
 }
 
 .hp-enemy {
   background: linear-gradient(90deg, #b91c1c, #ef4444);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
 }
 
 .hp-player {
   background: linear-gradient(90deg, #15803d, #22c55e);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
 }
 
 @media (max-height: 700px) {
@@ -236,12 +259,13 @@ function getItemEmoji(id) {
   }
 
   .player-section-bottom {
-    padding-bottom: 10px;
+    padding-bottom: 12px;
   }
 
   .player-card {
-    padding: 8px 12px;
-    gap: 10px;
+    padding: 10px 14px;
+    gap: 12px;
+    border-radius: 16px;
   }
 
   .player-avatar {
@@ -249,7 +273,7 @@ function getItemEmoji(id) {
   }
 
   .player-name {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .player-hp-text {
@@ -257,13 +281,19 @@ function getItemEmoji(id) {
   }
 
   .hp-bar {
-    height: 8px;
+    height: 10px;
   }
 
   .enemy-item-badge {
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+
+  .emoji-bubble {
+    min-width: 34px;
+    min-height: 34px;
+    font-size: 22px;
   }
 }
 </style>

@@ -8,18 +8,20 @@ export const useNetStore = defineStore('net', {
     connecting: false,
     roomId: null,
     isHost: false,
+    hostName: null,
     playerName: null,
     opponentName: null,
     opponentConnected: false,
     opponentLeft: null,
     roomReady: false,
+    gameEnded: false,
     error: null,
     lastPing: null
   }),
 
   getters: {
     isInRoom: (state) => !!state.roomId,
-    canStartGame: (state) => state.roomReady && state.isHost
+    canStartGame: (state) => state.roomReady && state.isHost && !state.gameEnded
   },
 
   actions: {
@@ -32,7 +34,9 @@ export const useNetStore = defineStore('net', {
 
       return new Promise((resolve, reject) => {
         // Connect to server
-        this.socket = io('http://localhost:3001', {
+        const serverUrl = `http://${window.location.hostname}:3001`;
+        console.log('🔌 Connecting to server at:', serverUrl);
+        this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'],
           timeout: 10000,
           reconnection: true,
@@ -62,18 +66,23 @@ export const useNetStore = defineStore('net', {
         });
 
         // Room events
-        this.socket.on('room:created', ({ roomId, isHost }) => {
+        this.socket.on('room:created', ({ roomId, isHost, hostName }) => {
           console.log('🏠 Room created:', roomId);
           this.roomId = roomId;
           this.isHost = isHost;
+          this.hostName = hostName || this.playerName;
           this.error = null;
+          this.gameEnded = false;
         });
 
-        this.socket.on('room:joined', ({ roomId, isHost }) => {
+        this.socket.on('room:joined', ({ roomId, isHost, hostName, guestName }) => {
           console.log('👥 Joined room:', roomId);
           this.roomId = roomId;
           this.isHost = isHost;
+          this.hostName = hostName;
+          this.opponentName = isHost ? guestName : hostName;
           this.error = null;
+          this.gameEnded = false;
         });
 
         this.socket.on('room:error', ({ message }) => {
@@ -91,26 +100,56 @@ export const useNetStore = defineStore('net', {
           console.log('🎮 Room ready! Host:', hostName, 'Guest:', guestName);
           this.roomReady = true;
           this.opponentConnected = true;
+          this.hostName = hostName;
           // Set opponent name based on our role
           this.opponentName = this.isHost ? guestName : hostName;
         });
 
-        this.socket.on('room:player-left', ({ playerId, wasHost }) => {
-          console.log('👋 Player left:', playerId);
+        this.socket.on('room:player-left', ({ playerId, playerName, wasHost }) => {
+          console.log('👋 Player left:', playerName || playerId);
           this.opponentConnected = false;
           this.roomReady = false;
           this.opponentLeft = {
             playerId,
+            playerName,
             wasHost
           };
           if (wasHost) {
             this.error = "L'hôte a quitté la partie";
+          } else {
+            this.error = "L'adversaire a quitté la room";
           }
         });
 
-        this.socket.on('room:promoted-host', () => {
+        this.socket.on('room:host-left', ({ message }) => {
+          console.log('🚪 Host left:', message);
+          this.opponentConnected = false;
+          this.roomReady = false;
+          this.gameEnded = true;
+          this.opponentLeft = { wasHost: true, message };
+          this.error = message;
+        });
+
+        this.socket.on('room:guest-left', ({ message }) => {
+          console.log('🚪 Guest left:', message);
+          this.opponentConnected = false;
+          this.roomReady = false;
+          this.opponentLeft = { wasHost: false, message };
+          this.error = message;
+        });
+
+        this.socket.on('room:game-ended', ({ roomId }) => {
+          console.log('🏁 Game ended in room:', roomId);
+          this.gameEnded = true;
+        });
+
+        this.socket.on('room:promoted-host', ({ hostName }) => {
           console.log('👑 You are now the host');
           this.isHost = true;
+          this.hostName = hostName || this.playerName;
+          this.opponentConnected = false;
+          this.opponentName = null;
+          this.roomReady = false;
         });
 
         this.socket.on('pong', ({ time }) => {
@@ -138,6 +177,7 @@ export const useNetStore = defineStore('net', {
         await this.connect();
         this.socket.emit('room:create', { playerName: this.playerName });
         this.isHost = true;
+        this.hostName = this.playerName;
       } catch (err) {
         this.error = err.message;
       }
@@ -192,6 +232,13 @@ export const useNetStore = defineStore('net', {
       this.socket.emit('game:start', { roomId: this.roomId, gameState });
     },
 
+    // Notify server game ended
+    endGame() {
+      if (!this.socket || !this.roomId) return;
+      this.socket.emit('game:end', { roomId: this.roomId });
+      this.gameEnded = true;
+    },
+
     // Listen for game state updates (for guest)
     onGameState(callback) {
       if (!this.socket) return;
@@ -208,6 +255,18 @@ export const useNetStore = defineStore('net', {
       this.socket.off('game:action');
       this.socket.on('game:action', callback);
       console.log('✅ game:action listener added');
+    },
+
+    // Listen for opponent leaving
+    onOpponentLeft(callback) {
+      if (!this.socket) return;
+      this.socket.off('room:player-left');
+      this.socket.off('room:host-left');
+      this.socket.off('room:guest-left');
+      
+      this.socket.on('room:player-left', callback);
+      this.socket.on('room:host-left', callback);
+      this.socket.on('room:guest-left', callback);
     },
 
     // Remove listeners
@@ -232,18 +291,24 @@ export const useNetStore = defineStore('net', {
       }
     },
 
-    // Leave room and disconnect
+    // Leave room properly (notify server)
     leaveRoom() {
       if (this.socket) {
+        if (this.roomId) {
+          this.socket.emit('room:leave');
+        }
         this.socket.disconnect();
       }
       this.socket = null;
       this.connected = false;
       this.roomId = null;
       this.isHost = false;
+      this.hostName = null;
       this.opponentConnected = false;
+      this.opponentName = null;
       this.opponentLeft = null;
       this.roomReady = false;
+      this.gameEnded = false;
       this.error = null;
     },
 

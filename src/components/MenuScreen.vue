@@ -2,104 +2,141 @@
   <q-page class="menu-page">
     <!-- Animated background -->
     <div class="bg-effects">
-      <div class="bg-glow glow-1"></div>
-      <div class="bg-glow glow-2"></div>
-      <div class="bg-particles"></div>
+      <div class="bg-gradient"></div>
+      <div class="bg-grid"></div>
+      <div class="floating-bullets">
+        <div class="bullet b1">🔴</div>
+        <div class="bullet b2">⚪</div>
+        <div class="bullet b3">🔴</div>
+        <div class="bullet b4">⚪</div>
+        <div class="bullet b5">🔴</div>
+      </div>
     </div>
 
     <!-- Main content -->
     <div class="menu-content">
       <!-- Logo/Title -->
       <header class="menu-header">
-        <div class="logo-icon">🎰</div>
+        <div class="logo-container">
+          <div class="revolver-icon">
+            <svg viewBox="0 0 100 100" class="revolver-svg">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="3"/>
+              <circle cx="50" cy="50" r="12" fill="currentColor"/>
+              <circle cx="50" cy="20" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+              <circle cx="76" cy="35" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+              <circle cx="76" cy="65" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+              <circle cx="50" cy="80" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+              <circle cx="24" cy="65" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+              <circle cx="24" cy="35" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
         <h1 class="game-title">
-          <span class="title-bucket">BUCKET</span>
-          <span class="title-roulette">ROULETTE</span>
+          <span class="title-main">BUCKET</span>
+          <span class="title-sub">ROULETTE</span>
         </h1>
         <p class="tagline">Tentez votre chance... si vous l'osez</p>
       </header>
 
-      <section class="name-panel">
-        <div class="name-card">
-          <label class="name-label">Nom du joueur</label>
-          <div v-if="!netStore.playerName || editingName" class="name-input-section">
-            <input
-              v-model="playerNameInput"
-              type="text"
-              class="name-input"
-              placeholder="Votre nom"
-              maxlength="12"
-              @keyup.enter="setPlayerName"
-            />
-            <button class="name-btn" @click="setPlayerName" :disabled="!playerNameInput.trim()">
-              Valider
-            </button>
+      <!-- Player name section -->
+      <section class="player-section" v-if="!showMultiplayer">
+        <div class="player-card">
+          <div class="player-avatar">
+            <span class="avatar-emoji">🎭</span>
           </div>
-          <div v-else class="name-confirmed">
-            <span class="name-value">{{ netStore.playerName }}</span>
-            <button class="edit-name-btn" @click="startEditingName">Modifier</button>
+          <div class="player-info">
+            <template v-if="!netStore.playerName || editingName">
+              <input
+                v-model="playerNameInput"
+                type="text"
+                class="name-input"
+                placeholder="Votre pseudo..."
+                maxlength="12"
+                @keyup.enter="setPlayerName"
+                ref="nameInputRef"
+              />
+              <button class="save-name-btn" @click="setPlayerName" :disabled="!playerNameInput.trim()">
+                <span>✓</span>
+              </button>
+            </template>
+            <template v-else>
+              <span class="player-name">{{ netStore.playerName }}</span>
+              <button class="edit-btn" @click="startEditingName">
+                <span>✏️</span>
+              </button>
+            </template>
           </div>
-          <p v-if="nameError" class="name-error">{{ nameError }}</p>
         </div>
+        <p v-if="nameError" class="error-text">{{ nameError }}</p>
       </section>
 
       <!-- Main menu buttons -->
       <div class="menu-buttons" v-if="!showMultiplayer">
-        <button class="menu-btn btn-primary" @click="startBot" :disabled="!netStore.playerName">
-          <span class="btn-icon">🤖</span>
-          <span class="btn-text">
-            <span class="btn-title">Jouer vs Bot</span>
-            <span class="btn-desc">Affrontez l'IA</span>
-          </span>
+        <button class="game-btn btn-solo" @click="startBot" :disabled="!netStore.playerName">
+          <div class="btn-glow"></div>
+          <div class="btn-content">
+            <span class="btn-icon">🤖</span>
+            <div class="btn-text">
+              <span class="btn-title">Solo vs IA</span>
+              <span class="btn-subtitle">Entraînez-vous contre le bot</span>
+            </div>
+          </div>
         </button>
 
-        <button class="menu-btn btn-secondary" @click="showMultiplayer = true" :disabled="!netStore.playerName">
-          <span class="btn-icon">👥</span>
-          <span class="btn-text">
-            <span class="btn-title">Multijoueur</span>
-            <span class="btn-desc">Jouez avec un ami</span>
-          </span>
+        <button class="game-btn btn-multi" @click="showMultiplayer = true" :disabled="!netStore.playerName">
+          <div class="btn-glow"></div>
+          <div class="btn-content">
+            <span class="btn-icon">⚔️</span>
+            <div class="btn-text">
+              <span class="btn-title">Multijoueur</span>
+              <span class="btn-subtitle">Défiez un ami en ligne</span>
+            </div>
+          </div>
         </button>
       </div>
 
       <!-- Multiplayer panel -->
       <div class="multiplayer-panel" v-if="showMultiplayer">
         <button class="back-btn" @click="goBack">
-          <span>←</span> Retour
+          <span class="back-icon">←</span>
+          <span>Retour</span>
         </button>
 
-        <h2 class="panel-title">Multijoueur</h2>
-
-        <!-- Connection status -->
-        <div v-if="netStore.playerName" class="connection-status" :class="{ connected: netStore.connected }">
-          <span class="status-dot"></span>
-          <span class="status-text">
-            {{ netStore.connecting ? 'Connexion...' : netStore.connected ? 'Connecté' : 'Déconnecté' }}
-          </span>
+        <div class="panel-header">
+          <h2 class="panel-title">⚔️ Multijoueur</h2>
+          <div class="connection-badge" :class="{ online: netStore.connected }">
+            <span class="badge-dot"></span>
+            <span class="badge-text">
+              {{ netStore.connecting ? 'Connexion...' : netStore.connected ? 'En ligne' : 'Hors ligne' }}
+            </span>
+          </div>
         </div>
 
         <!-- Error message -->
-        <div v-if="netStore.error" class="error-message">
-          {{ netStore.error }}
-          <button class="dismiss-btn" @click="netStore.clearError">✕</button>
+        <div v-if="netStore.error" class="error-banner">
+          <span class="error-icon">⚠️</span>
+          <span class="error-msg">{{ netStore.error }}</span>
+          <button class="error-close" @click="netStore.clearError">✕</button>
         </div>
 
         <!-- Not in room yet -->
-        <div v-if="netStore.playerName && !netStore.roomId" class="room-actions">
+        <div v-if="!netStore.roomId" class="room-actions">
           <button class="action-btn create-btn" @click="createRoom" :disabled="netStore.connecting">
             <span class="action-icon">🏠</span>
-            <span class="action-text">Créer une partie</span>
+            <span class="action-label">Créer une partie</span>
           </button>
 
-          <div class="divider">
-            <span>ou</span>
+          <div class="separator">
+            <span class="sep-line"></span>
+            <span class="sep-text">ou rejoindre</span>
+            <span class="sep-line"></span>
           </div>
 
-          <div class="join-form">
+          <div class="join-section">
             <input
               v-model="roomInput"
               type="text"
-              class="room-input"
+              class="code-input"
               placeholder="CODE"
               maxlength="4"
               @input="roomInput = roomInput.toUpperCase()"
@@ -111,49 +148,79 @@
           </div>
         </div>
 
-        <!-- In room - waiting for opponent -->
+        <!-- In room - lobby -->
         <div v-else class="room-lobby">
-          <div class="room-code-display">
+          <div class="lobby-code">
             <span class="code-label">Code de la partie</span>
-            <div class="code-value" @click="copyCode">
-              <span>{{ netStore.roomId }}</span>
-              <span class="copy-hint">📋 Cliquer pour copier</span>
+            <div class="code-display" @click="copyCode">
+              <span class="code-text">{{ netStore.roomId }}</span>
+              <span class="code-copy">📋</span>
             </div>
+            <span class="code-hint">Cliquez pour copier</span>
           </div>
 
-          <div class="lobby-status">
-            <div class="player-slot you">
-              <span class="slot-icon">{{ netStore.isHost ? '👑' : '👤' }}</span>
-              <span class="slot-label">{{ netStore.playerName }}{{ netStore.isHost ? ' (Hôte)' : '' }}</span>
-              <span class="slot-status ready">Prêt</span>
+          <div class="players-list">
+            <!-- Host player -->
+            <div class="player-row" :class="{ 'is-you': netStore.isHost }">
+              <div class="player-badge host">
+                <span class="badge-crown">👑</span>
+                <span class="badge-label">HÔTE</span>
+              </div>
+              <div class="player-details">
+                <span class="player-row-name">
+                  {{ netStore.isHost ? netStore.playerName : netStore.opponentName || '...' }}
+                </span>
+                <span v-if="netStore.isHost" class="you-tag">(vous)</span>
+              </div>
+              <div class="player-status ready">
+                <span class="status-dot"></span>
+                <span>Prêt</span>
+              </div>
             </div>
 
-            <div class="player-slot opponent" :class="{ waiting: !netStore.opponentConnected }">
-              <span class="slot-icon">{{ netStore.opponentConnected ? '👤' : '⏳' }}</span>
-              <span class="slot-label">{{ netStore.opponentName || 'En attente...' }}</span>
-              <span class="slot-status" :class="netStore.opponentConnected ? 'ready' : ''">
-                {{ netStore.opponentConnected ? 'Prêt' : 'En attente' }}
-              </span>
+            <!-- Guest player -->
+            <div class="player-row" :class="{ 'is-you': !netStore.isHost, 'waiting': !netStore.opponentConnected && netStore.isHost }">
+              <div class="player-badge guest">
+                <span class="badge-icon">👤</span>
+                <span class="badge-label">INVITÉ</span>
+              </div>
+              <div class="player-details">
+                <template v-if="netStore.isHost">
+                  <span class="player-row-name" v-if="netStore.opponentConnected">{{ netStore.opponentName }}</span>
+                  <span class="waiting-text" v-else>En attente d'un joueur...</span>
+                </template>
+                <template v-else>
+                  <span class="player-row-name">{{ netStore.playerName }}</span>
+                  <span class="you-tag">(vous)</span>
+                </template>
+              </div>
+              <div class="player-status" :class="{ ready: !netStore.isHost || netStore.opponentConnected }">
+                <span class="status-dot"></span>
+                <span>{{ (!netStore.isHost || netStore.opponentConnected) ? 'Prêt' : 'Attente' }}</span>
+              </div>
             </div>
           </div>
 
           <button 
             v-if="netStore.isHost && netStore.roomReady"
-            class="start-btn"
+            class="start-game-btn"
             @click="startMultiplayer"
           >
-            🎮 Lancer la partie
+            <span class="start-icon">🎮</span>
+            <span>Lancer la partie</span>
           </button>
 
-          <p v-else-if="netStore.isHost" class="waiting-text">
+          <p v-else-if="netStore.isHost" class="waiting-message">
+            <span class="pulse-dot"></span>
             En attente d'un adversaire...
           </p>
-          <p v-else class="waiting-text">
-            En attente que l'hôte lance la partie...
+          <p v-else class="waiting-message">
+            <span class="pulse-dot"></span>
+            L'hôte va bientôt lancer la partie...
           </p>
 
-          <button class="leave-btn" @click="leaveRoom">
-            Quitter la room
+          <button class="leave-room-btn" @click="leaveRoom">
+            🚪 Quitter la room
           </button>
         </div>
       </div>
@@ -167,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
@@ -181,6 +248,7 @@ const roomInput = ref('');
 const playerNameInput = ref('');
 const editingName = ref(!netStore.playerName);
 const nameError = ref('');
+const nameInputRef = ref(null);
 
 const startBot = () => {
   if (!netStore.playerName) {
@@ -207,10 +275,12 @@ const setPlayerName = () => {
   editingName.value = false;
 };
 
-const startEditingName = () => {
+const startEditingName = async () => {
   editingName.value = true;
   playerNameInput.value = netStore.playerName || '';
   nameError.value = '';
+  await nextTick();
+  nameInputRef.value?.focus();
 };
 
 const createRoom = async () => {
@@ -338,50 +408,66 @@ onUnmounted(() => {
 
 <style scoped>
 .menu-page {
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(135deg, #0a0908 0%, #1c1917 50%, #0f0d0c 100%);
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #0a0a0f;
   position: relative;
-  overflow-y: auto;
   overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Background effects */
 .bg-effects {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
-.bg-glow {
+.bg-gradient {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.4;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(220, 38, 38, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 0% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
 }
 
-.glow-1 {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, #dc2626 0%, transparent 70%);
-  top: -200px;
-  right: -100px;
-  animation: float 8s ease-in-out infinite;
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 70%);
 }
 
-.glow-2 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
-  bottom: -150px;
-  left: -100px;
-  animation: float 10s ease-in-out infinite reverse;
+.floating-bullets {
+  position: absolute;
+  inset: 0;
 }
 
-@keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(30px, 20px); }
+.bullet {
+  position: absolute;
+  font-size: 20px;
+  opacity: 0.15;
+  animation: float-bullet 20s ease-in-out infinite;
+}
+
+.b1 { top: 15%; left: 10%; animation-delay: 0s; }
+.b2 { top: 25%; right: 15%; animation-delay: -4s; }
+.b3 { top: 60%; left: 5%; animation-delay: -8s; }
+.b4 { top: 70%; right: 8%; animation-delay: -12s; }
+.b5 { top: 85%; left: 50%; animation-delay: -16s; }
+
+@keyframes float-bullet {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-30px) rotate(90deg); }
+  50% { transform: translateY(0) rotate(180deg); }
+  75% { transform: translateY(30px) rotate(270deg); }
 }
 
 /* Menu content */
@@ -390,168 +476,200 @@ onUnmounted(() => {
   z-index: 1;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32px 20px;
-  gap: 28px;
+  padding: 40px 20px;
+  padding-bottom: 60px;
+  gap: 32px;
+  box-sizing: border-box;
+}
+
+/* Center content only when there's enough space and not in multiplayer mode */
+@media (min-height: 750px) {
+  .menu-content:not(:has(.multiplayer-panel)) {
+    justify-content: center;
+  }
+}
+
+/* Multiplayer panel always starts from top for better scroll */
+.menu-content:has(.multiplayer-panel) {
+  justify-content: flex-start;
+  padding-top: 30px;
+  padding-bottom: 80px;
 }
 
 /* Header */
 .menu-header {
   text-align: center;
-  flex-shrink: 0;
 }
 
-.menu-header,
-.name-panel,
-.menu-buttons,
-.multiplayer-panel {
-  text-align: center;
+.logo-container {
+  margin-bottom: 16px;
 }
 
-.name-panel {
+.revolver-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+  animation: spin-slow 20s linear infinite;
+}
+
+.revolver-svg {
   width: 100%;
-  max-width: 360px;
+  height: 100%;
+  color: #f59e0b;
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.4));
 }
 
-.name-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(15, 14, 12, 0.6);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  text-align: center;
-}
-
-.name-confirmed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.name-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: #fef3c7;
-}
-
-.edit-name-btn {
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.1);
-  color: #fef3c7;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.edit-name-btn:hover {
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.2);
-}
-
-.name-error {
-  margin: 0;
-  font-size: 12px;
-  color: #fca5a5;
-}
-
-.logo-icon {
-  font-size: 40px;
-  margin-bottom: 10px;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .game-title {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
   margin: 0;
 }
 
-.title-bucket {
-  font-size: 32px;
+.title-main {
+  font-size: 42px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.15em;
   color: #fef3c7;
-  text-shadow: 0 0 30px rgba(245, 158, 11, 0.5);
+  text-shadow: 
+    0 0 40px rgba(245, 158, 11, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.3);
+  line-height: 1;
 }
 
-.title-roulette {
-  font-size: 22px;
+.title-sub {
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.4em;
   color: #dc2626;
-  text-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+  text-shadow: 0 0 30px rgba(220, 38, 38, 0.6);
 }
 
 .tagline {
-  margin-top: 6px;
-  font-size: 11px;
-  color: #a8a29e;
-  letter-spacing: 0.06em;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #71717a;
+  font-style: italic;
 }
 
-@media (min-width: 1024px) {
-  .menu-content {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 24px 40px;
-    gap: 24px;
-    display: grid;
-    grid-template-columns: minmax(300px, 360px) minmax(420px, 520px);
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      "header panel"
-      "name panel";
-    align-items: center;
-    justify-content: center;
-    justify-items: center;
-  }
+/* Player section */
+.player-section {
+  width: 100%;
+  max-width: 340px;
+}
 
-  .menu-header {
-    grid-area: header;
-    text-align: center;
-    justify-self: center;
-  }
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
 
-  .menu-header,
-  .name-panel,
-  .menu-buttons,
-  .multiplayer-panel {
-    width: 100%;
-  }
+.player-avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1f1f2e 0%, #0f0f17 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
 
-  .name-panel {
-    grid-area: name;
-    max-width: 340px;
-    justify-self: center;
-  }
+.avatar-emoji {
+  font-size: 24px;
+}
 
-  .menu-buttons,
-  .multiplayer-panel {
-    grid-area: panel;
-    max-width: 520px;
-    justify-self: center;
-  }
+.player-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-  .menu-footer {
-    grid-area: footer;
-    text-align: center;
-  }
+.player-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fef3c7;
+}
+
+.name-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #fef3c7;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.name-input::placeholder {
+  color: #52525b;
+}
+
+.name-input:focus {
+  border-color: #f59e0b;
+}
+
+.save-name-btn,
+.edit-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 10px;
+  color: #0a0a0f;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.save-name-btn:hover:not(:disabled),
+.edit-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+}
+
+.save-name-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.edit-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+}
+
+.edit-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fef3c7;
+}
+
+.error-text {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #f87171;
+  text-align: center;
 }
 
 /* Menu buttons */
@@ -560,62 +678,55 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 360px;
-  align-items: center;
+  max-width: 340px;
 }
 
-.menu-btn {
+.game-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border-radius: 16px;
+  border: 1px solid;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.game-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.game-btn:hover:not(:disabled) .btn-glow {
+  opacity: 1;
+}
+
+.btn-content {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 20px 24px;
-  border-radius: 16px;
-  border: 2px solid;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: left;
   width: 100%;
 }
 
-.menu-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-primary {
-  background: linear-gradient(145deg, rgba(220, 38, 38, 0.2), rgba(153, 27, 27, 0.3));
-  border-color: rgba(220, 38, 38, 0.5);
-}
-
-.btn-primary:hover {
-  background: linear-gradient(145deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.4));
-  border-color: #dc2626;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(220, 38, 38, 0.3);
-}
-
-.btn-secondary {
-  background: linear-gradient(145deg, rgba(245, 158, 11, 0.15), rgba(180, 83, 9, 0.2));
-  border-color: rgba(245, 158, 11, 0.4);
-}
-
-.btn-secondary:hover {
-  background: linear-gradient(145deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.3));
-  border-color: #f59e0b;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2);
-}
-
 .btn-icon {
-  font-size: 32px;
+  font-size: 36px;
 }
 
 .btn-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  text-align: left;
 }
 
 .btn-title {
@@ -624,27 +735,59 @@ onUnmounted(() => {
   color: #fef3c7;
 }
 
-.btn-desc {
+.btn-subtitle {
   font-size: 12px;
-  color: #a8a29e;
+  color: #a1a1aa;
+  margin-top: 2px;
+}
+
+.btn-solo {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(153, 27, 27, 0.2) 100%);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.btn-solo .btn-glow {
+  background: radial-gradient(ellipse at center, rgba(220, 38, 38, 0.2) 0%, transparent 70%);
+}
+
+.btn-solo:hover:not(:disabled) {
+  border-color: #dc2626;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.25);
+}
+
+.btn-multi {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(180, 83, 9, 0.18) 100%);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.btn-multi .btn-glow {
+  background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+}
+
+.btn-multi:hover:not(:disabled) {
+  border-color: #f59e0b;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(245, 158, 11, 0.2);
 }
 
 /* Multiplayer panel */
 .multiplayer-panel {
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  flex-shrink: 0;
-  align-items: center;
+  gap: 20px;
 }
 
 .back-btn {
   align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: none;
   border: none;
-  color: #a8a29e;
+  color: #71717a;
   font-size: 14px;
   cursor: pointer;
   padding: 8px 0;
@@ -655,126 +798,87 @@ onUnmounted(() => {
   color: #fef3c7;
 }
 
+.back-icon {
+  font-size: 18px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .panel-title {
   font-size: 24px;
   font-weight: 700;
   color: #fef3c7;
-  text-align: center;
   margin: 0;
 }
 
-/* Name input section */
-.name-input-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.name-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #e7e5e4;
-  text-align: center;
-}
-
-.name-input {
-  padding: 14px 20px;
-  border-radius: 12px;
-  border: 2px solid #3d352d;
-  background: rgba(0, 0, 0, 0.3);
-  color: #fef3c7;
-  font-size: 16px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.name-input::placeholder {
-  color: #57534e;
-}
-
-.name-input:focus {
-  border-color: #f59e0b;
-}
-
-.name-btn {
-  padding: 14px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  background: linear-gradient(145deg, #f59e0b, #d97706);
-  border: none;
-  border-radius: 12px;
-  color: #1c1917;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.name-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-}
-
-.name-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Connection status */
-.connection-status {
+.connection-badge {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 6px 14px;
   background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
   font-size: 12px;
 }
 
-.status-dot {
+.badge-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #ef4444;
+  transition: background 0.3s, box-shadow 0.3s;
 }
 
-.connection-status.connected .status-dot {
+.connection-badge.online .badge-dot {
   background: #22c55e;
-  box-shadow: 0 0 10px #22c55e;
+  box-shadow: 0 0 12px #22c55e;
 }
 
-.status-text {
-  color: #a8a29e;
+.badge-text {
+  color: #a1a1aa;
 }
 
-/* Error message */
-.error-message {
+/* Error banner */
+.error-banner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 12px;
+}
+
+.error-icon {
+  font-size: 18px;
+}
+
+.error-msg {
+  flex: 1;
   color: #fca5a5;
   font-size: 14px;
 }
 
-.dismiss-btn {
+.error-close {
   background: none;
   border: none;
   color: #fca5a5;
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
 }
 
 /* Room actions */
 .room-actions {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 100%;
+  gap: 20px;
 }
 
 .action-btn {
@@ -783,7 +887,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 12px;
   padding: 16px 24px;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -791,14 +895,14 @@ onUnmounted(() => {
 }
 
 .create-btn {
-  background: linear-gradient(145deg, #22c55e, #16a34a);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   border: none;
   color: white;
 }
 
 .create-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.35);
 }
 
 .create-btn:disabled {
@@ -806,62 +910,66 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.divider {
+.separator {
   display: flex;
   align-items: center;
   gap: 16px;
-  color: #57534e;
-  font-size: 12px;
 }
 
-.divider::before,
-.divider::after {
-  content: '';
+.sep-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #57534e, transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
 }
 
-.join-form {
+.sep-text {
+  font-size: 12px;
+  color: #52525b;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.join-section {
   display: flex;
   gap: 12px;
 }
 
-.room-input {
+.code-input {
   flex: 1;
   padding: 16px 20px;
-  border-radius: 12px;
-  border: 2px solid #3d352d;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
   color: #fef3c7;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.35em;
   text-align: center;
   text-transform: uppercase;
   outline: none;
   transition: border-color 0.2s;
 }
 
-.room-input::placeholder {
-  color: #57534e;
+.code-input::placeholder {
+  color: #3f3f46;
   letter-spacing: 0.2em;
+  font-weight: 600;
 }
 
-.room-input:focus {
+.code-input:focus {
   border-color: #f59e0b;
 }
 
 .join-btn {
-  background: linear-gradient(145deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   border: none;
-  color: #1c1917;
-  padding: 16px 24px;
+  color: #0a0a0f;
+  padding: 16px 28px;
 }
 
 .join-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.35);
 }
 
 .join-btn:disabled {
@@ -873,271 +981,391 @@ onUnmounted(() => {
 .room-lobby {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 100%;
+  gap: 20px;
 }
 
-.room-code-display {
+.lobby-code {
   text-align: center;
-  padding: 16px 20px;
-  background: linear-gradient(145deg, rgba(245, 158, 11, 0.1), rgba(180, 83, 9, 0.15));
-  border: 2px solid rgba(245, 158, 11, 0.3);
-  border-radius: 12px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.12) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 16px;
 }
 
 .code-label {
   display: block;
-  font-size: 12px;
-  color: #a8a29e;
+  font-size: 11px;
+  color: #71717a;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
+  letter-spacing: 0.15em;
+  margin-bottom: 10px;
 }
 
-.code-value {
+.code-display {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   cursor: pointer;
   transition: transform 0.2s;
 }
 
-.code-value:hover {
+.code-display:hover {
   transform: scale(1.02);
 }
 
-.code-value span:first-child {
-  font-size: 36px;
+.code-text {
+  font-size: 40px;
   font-weight: 900;
-  letter-spacing: 0.25em;
+  letter-spacing: 0.3em;
   color: #f59e0b;
-  text-shadow: 0 0 30px rgba(245, 158, 11, 0.5);
+  text-shadow: 0 0 40px rgba(245, 158, 11, 0.5);
 }
 
-.copy-hint {
-  font-size: 11px !important;
-  color: #78716c !important;
-  letter-spacing: 0.05em !important;
+.code-copy {
+  font-size: 20px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
 }
 
-/* Lobby status */
-.lobby-status {
+.code-display:hover .code-copy {
+  opacity: 1;
+}
+
+.code-hint {
+  display: block;
+  font-size: 11px;
+  color: #52525b;
+  margin-top: 8px;
+}
+
+/* Players list */
+.players-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.player-slot {
+.player-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 14px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  transition: all 0.2s;
 }
 
-.player-slot.waiting {
+.player-row.is-you {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.player-row.waiting {
   opacity: 0.5;
   border-style: dashed;
 }
 
-.slot-icon {
-  font-size: 24px;
+.player-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 50px;
 }
 
-.slot-label {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-  color: #e7e5e4;
+.badge-crown,
+.badge-icon {
+  font-size: 22px;
 }
 
-.slot-status {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #78716c;
-}
-
-.slot-status.ready {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
-}
-
-/* Start button */
-.start-btn {
-  padding: 18px 32px;
-  font-size: 18px;
+.badge-label {
+  font-size: 9px;
   font-weight: 700;
-  background: linear-gradient(145deg, #22c55e, #16a34a);
-  border: none;
-  border-radius: 12px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
+  letter-spacing: 0.1em;
+  color: #71717a;
 }
 
-.start-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(34, 197, 94, 0.4);
+.player-badge.host .badge-label {
+  color: #f59e0b;
+}
+
+.player-details {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-row-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+.you-tag {
+  font-size: 11px;
+  color: #71717a;
 }
 
 .waiting-text {
-  text-align: center;
-  color: #78716c;
-  font-size: 14px;
-  animation: pulse-opacity 2s ease-in-out infinite;
+  font-size: 13px;
+  color: #52525b;
+  font-style: italic;
 }
 
-@keyframes pulse-opacity {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+.player-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  font-size: 11px;
+  color: #71717a;
 }
 
-.leave-btn {
-  padding: 12px 20px;
-  font-size: 14px;
-  background: transparent;
-  border: 1px solid #57534e;
-  border-radius: 8px;
-  color: #a8a29e;
+.player-status.ready {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.player-status.ready .status-dot {
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Start game button */
+.start-game-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px 32px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border: none;
+  border-radius: 14px;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.leave-btn:hover {
+.start-game-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(34, 197, 94, 0.4);
+}
+
+.start-icon {
+  font-size: 22px;
+}
+
+.waiting-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #71717a;
+  font-size: 14px;
+  text-align: center;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.leave-room-btn {
+  align-self: center;
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #71717a;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.leave-room-btn:hover {
   border-color: #ef4444;
-  color: #ef4444;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* Footer */
 .menu-footer {
   margin-top: auto;
-  padding-top: 16px;
-  flex-shrink: 0;
+  padding-top: 20px;
 }
 
 .menu-footer p {
-  font-size: 10px;
-  color: #57534e;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  color: #3f3f46;
   margin: 0;
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 480px) {
   .menu-content {
-    padding: 20px 16px;
-    gap: 20px;
+    padding: 30px 16px;
+    gap: 24px;
   }
-  
-  .logo-icon {
-    font-size: 36px;
-    margin-bottom: 8px;
+
+  .revolver-icon {
+    width: 60px;
+    height: 60px;
   }
-  
-  .title-bucket {
-    font-size: 26px;
-    letter-spacing: 0.1em;
+
+  .title-main {
+    font-size: 32px;
   }
-  
-  .title-roulette {
-    font-size: 18px;
-    letter-spacing: 0.12em;
+
+  .title-sub {
+    font-size: 16px;
+    letter-spacing: 0.3em;
   }
-  
-  .tagline {
-    font-size: 10px;
-    margin-top: 4px;
+
+  .player-card {
+    padding: 14px 16px;
   }
-  
-  .menu-btn {
-    padding: 14px 18px;
-    gap: 12px;
+
+  .player-avatar {
+    width: 42px;
+    height: 42px;
   }
-  
+
+  .btn-content {
+    padding: 16px 18px;
+    gap: 14px;
+  }
+
   .btn-icon {
-    font-size: 26px;
+    font-size: 28px;
   }
-  
+
   .btn-title {
-    font-size: 15px;
+    font-size: 16px;
   }
-  
-  .btn-desc {
-    font-size: 11px;
-  }
-  
+
   .panel-title {
     font-size: 20px;
   }
-  
-  .multiplayer-panel {
-    gap: 12px;
+
+  .lobby-code {
+    padding: 16px 14px;
   }
-  
-  .name-input,
-  .name-btn {
-    padding: 12px 18px;
-    font-size: 15px;
-  }
-  
-  .room-code-display {
-    padding: 12px 16px;
-  }
-  
-  .code-value span:first-child {
-    font-size: 30px;
+
+  .code-text {
+    font-size: 26px;
     letter-spacing: 0.2em;
   }
-  
-  .room-actions,
-  .room-lobby {
-    gap: 12px;
+
+  .code-copy {
+    font-size: 16px;
   }
-  
-  .action-btn,
-  .start-btn {
-    padding: 12px 18px;
+
+  .player-row {
+    padding: 12px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .player-badge {
+    min-width: 44px;
+  }
+
+  .badge-crown,
+  .badge-icon {
+    font-size: 18px;
+  }
+
+  .badge-label {
+    font-size: 8px;
+  }
+
+  .player-row-name {
     font-size: 14px;
   }
-  
-  .room-input {
-    padding: 12px 16px;
-    font-size: 17px;
+
+  .player-status {
+    padding: 5px 10px;
+    font-size: 10px;
   }
-  
-  .menu-footer {
-    padding-top: 12px;
+
+  .action-btn,
+  .start-game-btn {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .join-section {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .code-input {
+    font-size: 20px;
+    padding: 14px 16px;
+    letter-spacing: 0.25em;
+  }
+
+  .join-btn {
+    padding: 14px 20px;
+    width: 100%;
   }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 360px) {
   .menu-content {
-    padding: 16px 12px;
-    gap: 16px;
+    padding: 24px 12px;
+    gap: 20px;
   }
-  
-  .logo-icon {
-    font-size: 32px;
-  }
-  
-  .title-bucket {
-    font-size: 22px;
-  }
-  
-  .title-roulette {
-    font-size: 16px;
-  }
-  
-  .code-value span:first-child {
+
+  .title-main {
     font-size: 26px;
   }
-  
-  .multiplayer-panel {
-    gap: 10px;
+
+  .title-sub {
+    font-size: 14px;
+    letter-spacing: 0.25em;
+  }
+
+  .code-text {
+    font-size: 22px;
+    letter-spacing: 0.15em;
+  }
+
+  .player-row {
+    padding: 10px 10px;
+  }
+
+  .player-details {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+@media (min-width: 768px) {
+  .menu-content {
+    max-width: 500px;
+    margin: 0 auto;
   }
 }
 </style>

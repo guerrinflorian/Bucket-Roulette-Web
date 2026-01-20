@@ -72,6 +72,7 @@ import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
+import { audioManager } from '../engine/audio.js';
 import { remainingCounts } from '../engine/barrel.js';
 import GameScene from './GameScene.vue';
 import CoinFlipModal from './CoinFlipModal.vue';
@@ -88,6 +89,7 @@ const isFlipVisible = computed(() => gameStore.phase === 'coin_flip' || showOnli
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
 const initialFlipResolved = ref(false);
+const isHandlingShot = ref(false);
 const isOnlineInitialFlipPending = computed(() => {
   if (!isOnlineMode.value) return false;
   if (onlineFlipShown.value) return false;
@@ -299,6 +301,10 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
     console.log('Not your turn!');
     return;
   }
+  if (isHandlingShot.value) {
+    return;
+  }
+  isHandlingShot.value = true;
 
   beginTimerBlock();
   
@@ -359,6 +365,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       
       // Fast spin (no zoom)
       if (gameSceneRef.value?.rotateBarrel) {
+        audioManager.play('spin');
         gameSceneRef.value.rotateBarrel();
         await sleep(600); // Faster spin
       }
@@ -366,10 +373,10 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // Reveal the current bullet before showing the result (even on blanks)
       if (gameSceneRef.value?.revealBullet) {
         gameSceneRef.value.revealBullet(isReal);
-        await sleep(800);
+        setTimeout(() => audioManager.play(isReal ? 'shot' : 'blank'), 700);
       }
       
-      // Quick result
+      // Quick result (just after reveal)
       if (gameSceneRef.value?.showShotResult) {
         await gameSceneRef.value.showShotResult(actionData);
       }
@@ -388,8 +395,9 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
         await gameSceneRef.value.showActionChoice(actionData);
       }
       
-      // 4. Zoom on barrel
+      // 4. Zoom on barrel (start sound slightly earlier)
       if (gameSceneRef.value?.startZoom) {
+        audioManager.play('spin');
         gameSceneRef.value.startZoom();
         await sleep(600);
       }
@@ -403,12 +411,10 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // 6. Reveal what's in the chamber
       if (gameSceneRef.value?.revealBullet) {
         gameSceneRef.value.revealBullet(isReal);
+        setTimeout(() => audioManager.play(isReal ? 'shot' : 'blank'), 700);
       }
       
-      // 7. PAUSE to see the revealed bullet
-      await sleep(isReal ? 2500 : 1200);
-      
-      // 8. Show result modal
+      // 7. Show result modal (just after reveal)
       if (gameSceneRef.value?.showShotResult) {
         await gameSceneRef.value.showShotResult(actionData);
       } else {
@@ -441,6 +447,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
     // 11. ALWAYS unlock UI
     gameStore.isAnimating = false;
     endTimerBlock();
+    isHandlingShot.value = false;
     if (shotResolved) {
       syncStateIfHost(fromNetwork);
     }
@@ -487,6 +494,7 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
         
         // Spin barrel to show current slot
         if (gameSceneRef.value?.rotateBarrel) {
+          audioManager.play('spin');
           gameSceneRef.value.rotateBarrel();
           await sleep(1000);
         }
@@ -526,7 +534,8 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
     syncStateIfHost(fromNetwork);
   };
 
-  if (!fromNetwork) {
+  const shouldPauseForItem = itemId === 'peek' || itemId === 'eject';
+  if (shouldPauseForItem) {
     await pauseTurnTimerFor(runItemAction);
   } else {
     await runItemAction();
@@ -920,61 +929,118 @@ watch(
   width: 100vw;
   height: 100dvh;
   min-height: 100vh;
-  background: black;
+  background: #0a0a0f;
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
 }
 
+.game-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(220, 38, 38, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 0% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .loading {
-  color: white;
+  color: #a1a1aa;
   text-align: center;
   margin-top: 20%;
   font-size: 18px;
+  font-weight: 500;
 }
 
 .game-over-card {
-  min-width: 320px;
-  border-radius: 24px;
-  padding: 24px;
+  min-width: 340px;
+  max-width: 90vw;
+  border-radius: 28px;
+  padding: 36px 32px;
+  backdrop-filter: blur(20px);
+  animation: game-over-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes game-over-pop {
+  0% { transform: scale(0.8) rotate(-3deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
 .card-victory {
-  background: linear-gradient(145deg, #14532d, #052e16);
-  border: 2px solid rgba(34, 197, 94, 0.5);
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.15), rgba(5, 46, 22, 0.95));
+  border: 3px solid rgba(34, 197, 94, 0.5);
+  box-shadow: 
+    0 0 60px rgba(34, 197, 94, 0.3),
+    0 0 120px rgba(34, 197, 94, 0.15),
+    inset 0 0 40px rgba(34, 197, 94, 0.05);
 }
 
 .card-defeat {
-  background: linear-gradient(145deg, #450a0a, #1c0505);
-  border: 2px solid rgba(239, 68, 68, 0.5);
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.15), rgba(28, 5, 5, 0.95));
+  border: 3px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 
+    0 0 60px rgba(239, 68, 68, 0.3),
+    0 0 120px rgba(239, 68, 68, 0.15),
+    inset 0 0 40px rgba(239, 68, 68, 0.05);
 }
 
 .game-over-icon {
-  font-size: 64px;
-  margin-bottom: 8px;
+  font-size: 80px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+  animation: icon-bounce 0.6s ease-out 0.2s both;
+}
+
+@keyframes icon-bounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .game-over-title {
-  font-size: 42px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  margin: 0 0 8px 0;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 0 0 12px 0;
   text-transform: uppercase;
 }
 
 .card-victory .game-over-title {
   color: #86efac;
-  text-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+  text-shadow: 0 0 40px rgba(34, 197, 94, 0.6);
 }
 
 .card-defeat .game-over-title {
   color: #fca5a5;
-  text-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+  text-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
 }
 
 .game-over-subtitle {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
   margin: 0;
+  font-weight: 500;
+}
+
+@media (max-width: 420px) {
+  .game-over-card {
+    min-width: 280px;
+    padding: 28px 24px;
+  }
+
+  .game-over-icon {
+    font-size: 64px;
+  }
+
+  .game-over-title {
+    font-size: 36px;
+  }
+
+  .game-over-subtitle {
+    font-size: 14px;
+  }
 }
 </style>

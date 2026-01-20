@@ -504,6 +504,7 @@ defineExpose({
     0 0 30px rgba(220, 38, 38, 0.5);
 }
 
+
 @media (max-height: 700px) {
   .barrel-wrapper {
     --barrel-size: clamp(100px, 30vw, 140px);
