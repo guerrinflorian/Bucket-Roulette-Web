@@ -39,6 +39,13 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { gsap } from 'gsap';
 
+const props = defineProps({
+  forcedResult: {
+    type: String,
+    default: null // 'player' | 'enemy'
+  }
+});
+
 const emit = defineEmits(['resolved']);
 
 const show = ref(true);
@@ -51,7 +58,7 @@ onMounted(async () => {
   
   if (!coinEl.value || !resultEl.value) return;
   
-  const result = Math.random() > 0.5 ? 'player' : 'enemy';
+  const result = props.forcedResult || (Math.random() > 0.5 ? 'player' : 'enemy');
   // Player = heads (0°, 360°, 720°...), Enemy = tails (180°, 540°, 900°...)
   const finalRotation = result === 'player' ? 1440 : 1620; // 4 tours + position finale
   

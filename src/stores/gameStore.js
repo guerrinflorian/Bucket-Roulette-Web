@@ -12,6 +12,7 @@ export const useGameStore = defineStore('game', {
     mode: 'bot',
     phase: PHASES.COIN_FLIP,
     currentTurn: null,
+    sessionActive: false,
     barrel: createBarrel(),
     players: {
       player: {
@@ -40,6 +41,7 @@ export const useGameStore = defineStore('game', {
     winner: null,
     roomId: null,
     isAnimating: false,
+    reloadCount: 0,
     // Pending bot action for UI to handle
     pendingBotAction: null,
     // Pending bot item use for UI to display
@@ -53,6 +55,7 @@ export const useGameStore = defineStore('game', {
   actions: {
     initGame(mode = 'bot') {
       this.mode = mode;
+      this.sessionActive = true;
       this.phase = PHASES.COIN_FLIP;
       this.currentTurn = null;
       this.barrel = createBarrel();
@@ -69,10 +72,48 @@ export const useGameStore = defineStore('game', {
       this.lastResult = null;
       this.lastAction = null;
       this.winner = null;
+      this.reloadCount = 0;
       this.dealItems();
     },
     setRoom(id) {
       this.roomId = id;
+    },
+    // Hydrate state from network (for multiplayer sync)
+    hydrateFromNetwork(state) {
+      this.sessionActive = true;
+      if (state.phase) this.phase = state.phase;
+      if (state.currentTurn) this.currentTurn = state.currentTurn;
+      if (state.barrel) this.barrel = state.barrel;
+      if (state.players) {
+        if (state.players.player) Object.assign(this.players.player, state.players.player);
+        if (state.players.enemy) Object.assign(this.players.enemy, state.players.enemy);
+      }
+      if (state.lastResult !== undefined) this.lastResult = state.lastResult;
+      if (state.lastAction !== undefined) this.lastAction = state.lastAction;
+      if (state.winner !== undefined) this.winner = state.winner;
+      if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
+    },
+    // Serialize state for network sync
+    serializeForNetwork() {
+      return {
+        phase: this.phase,
+        currentTurn: this.currentTurn,
+        barrel: this.barrel,
+        players: this.players,
+        lastResult: this.lastResult,
+        lastAction: this.lastAction,
+        winner: this.winner,
+        reloadCount: this.reloadCount,
+        onlineFlipResult: this.currentTurn
+      };
+    },
+    reloadBarrel({ notify = true } = {}) {
+      this.barrel = createBarrel();
+      this.dealItems();
+      if (notify) {
+        this.reloadCount += 1;
+        this.lastResult = { text: '🔄 Barillet rechargé (cartouches mélangées).' };
+      }
     },
     dealItems() {
       this.players.player.items.push(...rollRandomItems(ITEMS_PER_RELOAD));
@@ -125,79 +166,91 @@ export const useGameStore = defineStore('game', {
         this.queueBotAction();
       }
     },
-    async shoot(target) {
+    async shoot(target, actorKeyOverride = null) {
       if (this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) return;
       if (this.phase !== PHASES.PLAYER_TURN && this.phase !== PHASES.ENEMY_TURN) return;
 
-      const actorKey = this.phase === PHASES.PLAYER_TURN ? 'player' : 'enemy';
-      const actor = this.players[actorKey];
-      if (actorKey === 'player' && this.phase !== PHASES.PLAYER_TURN) return;
+      const previousPhase = this.phase;
+
+      try {
+        const actorKey = actorKeyOverride || (this.phase === PHASES.PLAYER_TURN ? 'player' : 'enemy');
+        const actor = this.players[actorKey];
+        if (actorKey === 'player' && this.phase !== PHASES.PLAYER_TURN) return;
 
       if (isEmpty(this.barrel)) {
-        this.barrel = createBarrel();
-        this.dealItems();
+        this.reloadBarrel({ notify: true });
       }
 
-      this.phase = PHASES.ANIMATING;
-      const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
-      let targetKey = target === 'self' ? actorKey : opponentKey;
+        this.phase = PHASES.ANIMATING;
+        const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
+        let targetKey = target === 'self' ? actorKey : opponentKey;
 
-      if (actor.invertTargetNext) {
-        targetKey = targetKey === actorKey ? opponentKey : actorKey;
-        actor.invertTargetNext = false;
-      }
+        if (actor.invertTargetNext) {
+          targetKey = targetKey === actorKey ? opponentKey : actorKey;
+          actor.invertTargetNext = false;
+        }
 
-      const shot = this.barrel.chambers[this.barrel.index];
-      this.barrel.index += 1;
-      this.players.player.peekedNext = null;
-      this.players.enemy.peekedNext = null;
+        const shot = this.barrel.chambers[this.barrel.index];
+        this.barrel.index += 1;
+        this.players.player.peekedNext = null;
+        this.players.enemy.peekedNext = null;
 
-      const isReal = shot === 'real';
-      let damage = isReal ? 1 : 0;
-      if (isReal && actor.doubleDamageNextShot) {
-        damage = 2;
-        actor.doubleDamageNextShot = false;
-      }
+        const isReal = shot === 'real';
+        const hadDouble = actor.doubleDamageNextShot;
+        if (hadDouble) {
+          // Consumed on the next shot, even if blank
+          actor.doubleDamageNextShot = false;
+        }
+        let damage = isReal ? 1 : 0;
+        if (isReal && hadDouble) {
+          damage = 2;
+        }
 
-      if (damage > 0) {
-        this.players[targetKey].hp = Math.max(0, this.players[targetKey].hp - damage);
-      }
+        if (damage > 0) {
+          this.players[targetKey].hp = Math.max(0, this.players[targetKey].hp - damage);
+        }
 
-      this.lastAction = {
-        type: 'shot',
-        actor: actorKey,
-        target: targetKey,
-        shot,
-        damage
-      };
+        this.lastAction = {
+          type: 'shot',
+          actor: actorKey,
+          target: targetKey,
+          shot,
+          damage
+        };
 
-      this.lastResult = {
-        text: isReal ? 'BALLE RÉELLE !' : 'À BLANC...'
-      };
+        this.lastResult = {
+          text: isReal ? 'BALLE RÉELLE !' : 'À BLANC...'
+        };
 
-      audioManager.play(isReal ? 'shot' : 'blank');
+        audioManager.play(isReal ? 'shot' : 'blank');
 
-      await sleep(900);
+        await sleep(900);
 
-      if (this.players[targetKey].hp <= 0) {
-        this.winner = actorKey;
-        this.phase = PHASES.GAME_OVER;
-        return;
-      }
+        if (this.players[targetKey].hp <= 0) {
+          this.winner = actorKey;
+          this.phase = PHASES.GAME_OVER;
+          return;
+        }
 
-      if (isEmpty(this.barrel)) {
-        this.barrel = createBarrel();
-        this.dealItems();
-      }
+        if (isEmpty(this.barrel)) {
+          this.reloadBarrel({ notify: true });
+        }
 
-      if (!isReal && targetKey === actorKey) {
-        this.phase = actorKey === 'player' ? PHASES.PLAYER_TURN : PHASES.ENEMY_TURN;
-      } else {
-        this.phase = actorKey === 'player' ? PHASES.ENEMY_TURN : PHASES.PLAYER_TURN;
-      }
+        if (!isReal && targetKey === actorKey) {
+          this.phase = actorKey === 'player' ? PHASES.PLAYER_TURN : PHASES.ENEMY_TURN;
+        } else {
+          this.phase = actorKey === 'player' ? PHASES.ENEMY_TURN : PHASES.PLAYER_TURN;
+        }
 
-      if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
-        this.queueBotAction();
+        if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
+          this.queueBotAction();
+        }
+      } catch (error) {
+        // Safety: avoid being stuck in animating state
+        console.error('Error during shoot:', error);
+        if (this.phase === PHASES.ANIMATING) {
+          this.phase = previousPhase;
+        }
       }
     },
     async queueBotAction() {

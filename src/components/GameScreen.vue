@@ -3,13 +3,14 @@
     <GameScene
       ref="gameSceneRef"
       v-if="gameStore.players.player"
-      :player="gameStore.players.player"
-      :enemy="gameStore.players.enemy"
+      :player="uiPlayer"
+      :enemy="uiEnemy"
       :barrel="gameStore.barrel"
-      :phase="gameStore.phase"
+      :phase="uiPhase"
       :last-result="gameStore.lastResult"
       :last-action="gameStore.lastAction"
       :is-animating="gameStore.isAnimating"
+      :can-act-override="canAct"
       @shoot="handleShoot"
       @use-item="handleUseItem"
     />
@@ -21,6 +22,13 @@
     <CoinFlipModal 
       v-if="gameStore.phase === 'coin_flip'" 
       @resolved="onCoinFlip" 
+    />
+
+    <!-- Multiplayer start coin flip (forced, shown once per session) -->
+    <CoinFlipModal
+      v-if="showOnlineFlip"
+      :forced-result="onlineFlipResult"
+      @resolved="onOnlineFlipResolved"
     />
 
     <!-- Game Over Dialog -->
@@ -52,16 +60,78 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
+import { useNetStore } from '../stores/netStore.js';
 import { remainingCounts } from '../engine/barrel.js';
 import GameScene from './GameScene.vue';
 import CoinFlipModal from './CoinFlipModal.vue';
 
+const router = useRouter();
 const gameStore = useGameStore();
+const netStore = useNetStore();
 const gameSceneRef = ref(null);
 
 const showGameOver = computed(() => gameStore.phase === 'game_over');
+const isOnlineMode = computed(() => gameStore.mode === 'online');
+const showOnlineFlip = ref(false);
+const onlineFlipResult = ref(null);
+const onlineFlipShown = ref(false);
+const isMyTurn = computed(() => {
+  if (!isOnlineMode.value) return true;
+  // In online mode: host is player, guest is enemy
+  const myRole = netStore.isHost ? 'player' : 'enemy';
+  return (gameStore.phase === 'player_turn' && myRole === 'player') ||
+         (gameStore.phase === 'enemy_turn' && myRole === 'enemy');
+});
+
+const uiPhase = computed(() => {
+  if (!isOnlineMode.value) return gameStore.phase;
+  if (gameStore.phase === 'player_turn') {
+    return netStore.isHost ? 'player_turn' : 'enemy_turn';
+  }
+  if (gameStore.phase === 'enemy_turn') {
+    return netStore.isHost ? 'enemy_turn' : 'player_turn';
+  }
+  return gameStore.phase;
+});
+
+const mapOnlineFlipResult = (result) => {
+  if (!isOnlineMode.value || !result) return result;
+  if (netStore.isHost) return result;
+  return result === 'player' ? 'enemy' : 'player';
+};
+
+const isInitialOnlineFlip = (state = null) => {
+  const lastAction = state?.lastAction ?? gameStore.lastAction;
+  return !lastAction;
+};
+
+const uiNameForStoreKey = (key) => {
+  if (uiPlayer.value?.id === key) return uiPlayer.value?.name;
+  return uiEnemy.value?.name;
+};
+
+const canAct = computed(() => {
+  if (gameStore.isAnimating) return false;
+  if (gameStore.phase !== 'player_turn' && gameStore.phase !== 'enemy_turn') return false;
+  if (!isOnlineMode.value) {
+    return gameStore.phase === 'player_turn';
+  }
+  return isMyTurn.value;
+});
+
+// UI mapping: local player is always shown at the bottom
+const uiPlayer = computed(() => {
+  if (!isOnlineMode.value) return gameStore.players.player;
+  return netStore.isHost ? gameStore.players.player : gameStore.players.enemy;
+});
+
+const uiEnemy = computed(() => {
+  if (!isOnlineMode.value) return gameStore.players.enemy;
+  return netStore.isHost ? gameStore.players.enemy : gameStore.players.player;
+});
 
 // Watch for pending bot shoot action
 watch(() => gameStore.pendingBotAction, async (action) => {
@@ -96,8 +166,29 @@ watch(() => gameStore.pendingBotItem, async (itemId) => {
   }
 });
 
+// Watch for barrel reload to notify player
+watch(() => gameStore.reloadCount, async (count, prev) => {
+  if (count && count !== prev) {
+    if (gameSceneRef.value?.showReloadNotice) {
+      await gameSceneRef.value.showReloadNotice();
+    }
+  }
+});
+
 // Main shoot handler - controls the full animation flow
-const handleShoot = async (target) => {
+const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null) => {
+  // In online mode, check if it's our turn (unless receiving from network)
+  if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
+    console.log('Not your turn!');
+    return;
+  }
+  
+  // Send action to network (if not already from network)
+  if (isOnlineMode.value && !fromNetwork) {
+    const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
+    netStore.sendAction({ type: 'shoot', target, actorKey: localActorKey });
+  }
+  
   // Safety: if already animating, wait a bit and check again
   if (gameStore.isAnimating) {
     await sleep(500);
@@ -111,7 +202,7 @@ const handleShoot = async (target) => {
   
   try {
     // 2. Determine outcome BEFORE anything changes
-    const actorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
+    const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
     const actor = gameStore.players[actorKey];
     const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
     let targetKey = target === 'self' ? actorKey : opponentKey;
@@ -132,7 +223,10 @@ const handleShoot = async (target) => {
       actor: actorKey,
       target: targetKey,
       shot: shot,
-      damage: damage
+      damage: damage,
+      actorName: uiNameForStoreKey(actorKey),
+      targetName: uiNameForStoreKey(targetKey),
+      actorIsSelf: actorKey === targetKey
     };
     
     // Check if only blanks remain (fast mode)
@@ -152,6 +246,12 @@ const handleShoot = async (target) => {
         gameSceneRef.value.rotateBarrel();
         await sleep(600); // Faster spin
       }
+
+      // Reveal the current bullet before showing the result (even on blanks)
+      if (gameSceneRef.value?.revealBullet) {
+        gameSceneRef.value.revealBullet(isReal);
+        await sleep(800);
+      }
       
       // Quick result
       if (gameSceneRef.value?.showShotResult) {
@@ -159,7 +259,7 @@ const handleShoot = async (target) => {
       }
       
       // Apply game logic
-      await gameStore.shoot(target);
+      await gameStore.shoot(target, actorKey);
       await sleep(200);
       
     } else {
@@ -205,7 +305,7 @@ const handleShoot = async (target) => {
       }
       
       // 10. Apply game logic
-      await gameStore.shoot(target);
+      await gameStore.shoot(target, actorKey);
       
       // 11. Brief pause
       await sleep(400);
@@ -223,13 +323,27 @@ const handleShoot = async (target) => {
   }
 };
 
-const handleUseItem = async (itemId) => {
+const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = null) => {
   if (gameStore.isAnimating) return;
+  
+  // In online mode, check if it's our turn (unless receiving from network)
+  if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
+    console.log('Not your turn!');
+    return;
+  }
+  
+  // Send action to network (if not already from network)
+  if (isOnlineMode.value && !fromNetwork) {
+    const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
+    netStore.sendAction({ type: 'item', itemId, actorKey: localActorKey });
+  }
+
+  const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
   
   // For peek, we need to show the result
   if (itemId === 'peek') {
     const nextBullet = gameStore.barrel.chambers[gameStore.barrel.index];
-    await gameStore.useItem(itemId, 'player');
+    await gameStore.useItem(itemId, actorKey);
     
     // Show peek result modal
     if (gameSceneRef.value && nextBullet) {
@@ -272,7 +386,7 @@ const handleUseItem = async (itemId) => {
       }
       
       // Now apply the item (increments barrel index)
-      await gameStore.useItem(itemId, 'player');
+      await gameStore.useItem(itemId, actorKey);
       
       await sleep(300);
     } finally {
@@ -280,7 +394,7 @@ const handleUseItem = async (itemId) => {
     }
   }
   else {
-    await gameStore.useItem(itemId, 'player');
+    await gameStore.useItem(itemId, actorKey);
   }
 };
 
@@ -288,17 +402,101 @@ const onCoinFlip = async (starts) => {
   // Add delay after coin flip before starting
   await sleep(500);
   gameStore.setCoinFlipResult(starts);
+  
+  // In online mode, host syncs the coin flip result
+  if (isOnlineMode.value && netStore.isHost) {
+    netStore.syncState(gameStore.serializeForNetwork());
+  }
+};
+
+const onOnlineFlipResolved = async () => {
+  showOnlineFlip.value = false;
+  onlineFlipResult.value = null;
 };
 
 const restart = () => {
-  gameStore.initGame(gameStore.mode);
+  if (isOnlineMode.value) {
+    netStore.leaveRoom();
+    gameStore.sessionActive = false;
+    router.push('/menu');
+  } else {
+    gameStore.initGame(gameStore.mode);
+  }
 };
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Setup multiplayer listeners
 onMounted(() => {
   if (!gameStore.players.player.items) {
     gameStore.initGame('bot');
+  }
+  
+  // Online mode: listen for game state updates and actions
+  if (isOnlineMode.value) {
+    // Listen for state sync (for guests)
+    netStore.onGameState((state) => {
+      if (!netStore.isHost && state) {
+        gameStore.hydrateFromNetwork(state);
+        // Show forced coin flip once when initial state arrives
+        if (!onlineFlipShown.value && state.onlineFlipResult && isInitialOnlineFlip(state)) {
+          onlineFlipResult.value = mapOnlineFlipResult(state.onlineFlipResult);
+          showOnlineFlip.value = true;
+          onlineFlipShown.value = true;
+        }
+      }
+    });
+    
+    // Listen for actions from opponent
+    netStore.onGameAction(async ({ action, playerId, isHost }) => {
+      // Ignore our own actions
+      const isOurAction = (netStore.isHost && isHost) || (!netStore.isHost && !isHost);
+      if (isOurAction) return;
+      
+      console.log('📨 Received action from opponent:', action);
+      
+      // Execute the action (mark as fromNetwork to avoid re-sending)
+      if (action.type === 'shoot') {
+        await handleShoot(action.target, true, action.actorKey || null);
+      } else if (action.type === 'item') {
+        await handleUseItem(action.itemId, true, action.actorKey || null);
+      } else if (action.type === 'coinFlip') {
+        gameStore.setCoinFlipResult(action.starts);
+      }
+      
+      // Host syncs state after processing
+      if (netStore.isHost) {
+        netStore.syncState(gameStore.serializeForNetwork());
+      }
+    });
+
+    // Host: show flip once when entering game (forced result)
+    if (netStore.isHost && !onlineFlipShown.value && gameStore.currentTurn && isInitialOnlineFlip()) {
+      onlineFlipResult.value = mapOnlineFlipResult(gameStore.currentTurn);
+      showOnlineFlip.value = true;
+      onlineFlipShown.value = true;
+    }
+
+    // Guest: show flip once on initial load (state already hydrated in menu)
+    if (!netStore.isHost && !onlineFlipShown.value && gameStore.currentTurn && isInitialOnlineFlip()) {
+      onlineFlipResult.value = mapOnlineFlipResult(gameStore.currentTurn);
+      showOnlineFlip.value = true;
+      onlineFlipShown.value = true;
+    }
+  }
+});
+
+onUnmounted(() => {
+  if (isOnlineMode.value) {
+    netStore.offGameState();
+    netStore.offGameAction();
+  }
+});
+
+// Sync state after local actions in online mode
+watch(() => gameStore.lastAction, () => {
+  if (isOnlineMode.value && netStore.isHost && gameStore.lastAction) {
+    netStore.syncState(gameStore.serializeForNetwork());
   }
 });
 </script>

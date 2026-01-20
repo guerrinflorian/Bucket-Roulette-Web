@@ -28,7 +28,6 @@
               v-for="(itemId, index) in enemy.items" 
               :key="index"
               class="enemy-item-badge"
-              :title="getItemName(itemId)"
             >
               {{ getItemEmoji(itemId) }}
             </span>
@@ -78,6 +77,7 @@
           >
             <span class="item-icon">{{ getItemEmoji(itemId) }}</span>
             <span class="item-name">{{ getItemName(itemId) }}</span>
+            <q-tooltip>{{ getItemName(itemId) }} — {{ getItemDescription(itemId) }}</q-tooltip>
           </button>
         </div>
       </section>
@@ -90,6 +90,7 @@
           @click="emit('shoot', 'enemy')"
         >
           🎯 Tirer sur l'ennemi
+          <q-tooltip>Tirer sur l'ennemi. Si balle réelle, tour change.</q-tooltip>
         </button>
         <button
           class="shoot-btn shoot-self"
@@ -97,6 +98,7 @@
           @click="emit('shoot', 'self')"
         >
           🔫 Se tirer dessus
+          <q-tooltip>À blanc, vous rejouez. Réelle = dégâts.</q-tooltip>
         </button>
       </section>
 
@@ -131,6 +133,17 @@
         <q-card-section class="text-center">
           <div class="action-modal-icon">{{ actionModalIcon }}</div>
           <div class="action-modal-text">{{ actionModalText }}</div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- RELOAD MODAL -->
+    <q-dialog v-model="showReloadModal" persistent position="standard">
+      <q-card class="reload-modal-card">
+        <q-card-section class="text-center">
+          <div class="reload-icon">🔄</div>
+          <div class="reload-title">Barillet rechargé</div>
+          <div class="reload-subtitle">{{ reloadText }}</div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -205,7 +218,11 @@ const props = defineProps({
   phase: String,
   lastResult: Object,
   lastAction: Object,
-  isAnimating: Boolean
+  isAnimating: Boolean,
+  canActOverride: {
+    type: Boolean,
+    default: null
+  }
 });
 
 const emit = defineEmits(['shoot', 'use-item']);
@@ -240,10 +257,19 @@ const revealSubtitle = ref('');
 const revealDamage = ref(0);
 const revealCardClass = computed(() => revealIsReal.value ? 'card-real' : 'card-blank');
 
+// Reload modal
+const showReloadModal = ref(false);
+const reloadText = ref('Cartouches mélangées aléatoirement.');
+
 // Computed
 const enemyHpPercent = computed(() => (props.enemy.hp / props.enemy.maxHp) * 100);
 const playerHpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
-const canAct = computed(() => props.phase === 'player_turn' && !props.isAnimating);
+const canAct = computed(() => {
+  if (props.canActOverride !== null) {
+    return props.canActOverride;
+  }
+  return props.phase === 'player_turn' && !props.isAnimating;
+});
 
 const counts = computed(() => remainingCounts(props.barrel));
 const realCount = computed(() => counts.value.real);
@@ -263,11 +289,11 @@ const turnClass = computed(() => ({
 
 // Item helpers
 const itemData = {
-  heart: { emoji: '❤️', name: '+1 PV' },
-  double: { emoji: '⚡', name: 'Double dégâts' },
-  peek: { emoji: '🔍', name: 'Voir la balle' },
-  eject: { emoji: '🔄', name: 'Éjecter' },
-  invert: { emoji: '🔀', name: 'Inverser cible' }
+  heart: { emoji: '❤️', name: '+1 PV', description: 'Soigne 1 PV (max).'},
+  double: { emoji: '⚡', name: 'Double dégâts', description: 'Le prochain tir consomme l’effet.' },
+  peek: { emoji: '🔍', name: 'Voir la balle', description: 'Révèle la prochaine cartouche.' },
+  eject: { emoji: '🔄', name: 'Éjecter', description: 'Retire la prochaine cartouche sans tirer.' },
+  invert: { emoji: '🔀', name: 'Inverser cible', description: 'Inverse votre cible au prochain tir.' }
 };
 
 function getItemEmoji(id) {
@@ -276,6 +302,10 @@ function getItemEmoji(id) {
 
 function getItemName(id) {
   return itemData[id]?.name || id;
+}
+
+function getItemDescription(id) {
+  return itemData[id]?.description || 'Objet spécial';
 }
 
 function handleUseItem(itemId) {
@@ -319,19 +349,32 @@ async function showEjectResult(isReal) {
   showEjectModal.value = false;
 }
 
+// Show reload modal
+async function showReloadNotice(text = 'Cartouches mélangées aléatoirement.') {
+  reloadText.value = text;
+  showReloadModal.value = true;
+  await new Promise(resolve => setTimeout(resolve, 1600));
+  showReloadModal.value = false;
+}
+
 // Show action choice modal (before shooting)
 async function showActionChoice(actionData) {
-  const isSelf = actionData.actor === actionData.target;
-  
-  if (actionData.actor === 'player') {
-    actionModalIcon.value = isSelf ? '🔫' : '🎯';
-    actionModalText.value = isSelf ? 'Vous vous tirez dessus...' : "Vous tirez sur l'ennemi...";
-    actionModalClass.value = isSelf ? 'action-self' : 'action-enemy';
+  const actorName = actionData.actorName || (actionData.actor === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
+  const targetName = actionData.targetName || (actionData.target === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
+  const isSelf = actionData.actorIsSelf ?? (actionData.actor === actionData.target);
+  const isYou = actionData.actor === props.player?.id;
+
+  actionModalIcon.value = isSelf ? '🔫' : '🎯';
+  if (isSelf) {
+    actionModalText.value = isYou
+      ? `Vous vous tirez dessus...`
+      : `${actorName} s'est tiré dessus...`;
   } else {
-    actionModalIcon.value = isSelf ? '💀' : '☠️';
-    actionModalText.value = isSelf ? "L'ennemi se tire dessus..." : "L'ennemi vous tire dessus...";
-    actionModalClass.value = isSelf ? 'action-self' : 'action-enemy';
+    actionModalText.value = isYou
+      ? `Vous tirez sur ${targetName}...`
+      : `${actorName} tire sur vous...`;
   }
+  actionModalClass.value = isSelf ? 'action-self' : 'action-enemy';
   
   showActionModal.value = true;
   await new Promise(r => setTimeout(r, 1800));
@@ -356,15 +399,21 @@ async function showShotResult(actionData) {
   revealDamage.value = actionData.damage || 0;
   
   // Build subtitle text
-  const isSelf = actionData.actor === actionData.target;
-  if (actionData.actor === 'player') {
-    revealSubtitle.value = isSelf 
-      ? 'Vous vous êtes tiré dessus' 
-      : "Vous avez tiré sur l'ennemi";
+  const actorName = actionData.actorName || (actionData.actor === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
+  const targetName = actionData.targetName || (actionData.target === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
+  const isSelf = actionData.actorIsSelf ?? (actionData.actor === actionData.target);
+  const isYou = actionData.actor === props.player?.id;
+  const targetIsYou = actionData.target === props.player?.id;
+  if (isSelf) {
+    revealSubtitle.value = isYou
+      ? `Vous vous êtes tiré dessus`
+      : `${actorName} s'est tiré dessus`;
+  } else if (isYou) {
+    revealSubtitle.value = `Vous avez tiré sur ${targetName}`;
+  } else if (targetIsYou) {
+    revealSubtitle.value = `Vous vous êtes fait tirer dessus par ${actorName}`;
   } else {
-    revealSubtitle.value = isSelf 
-      ? "L'ennemi s'est tiré dessus" 
-      : "L'ennemi vous a tiré dessus";
+    revealSubtitle.value = `${actorName} a tiré sur ${targetName}`;
   }
   
   // Show modal
@@ -446,6 +495,7 @@ defineExpose({
   showEnemyUsingItem,
   showPeekResult,
   showEjectResult,
+  showReloadNotice,
   rotateBarrel,
   revealBullet,
   dropBullet,
@@ -810,6 +860,34 @@ defineExpose({
   font-size: 20px;
   font-weight: 700;
   color: #fbbf24;
+}
+
+/* Reload modal */
+.reload-modal-card {
+  background: linear-gradient(145deg, #1c1917, #0c0a09);
+  border: 2px solid rgba(245, 158, 11, 0.4);
+  border-radius: 20px;
+  padding: 22px 36px;
+  min-width: 260px;
+}
+
+.reload-icon {
+  font-size: 36px;
+  margin-bottom: 6px;
+}
+
+.reload-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.reload-subtitle {
+  font-size: 12px;
+  color: #a8a29e;
 }
 
 /* Peek modal */

@@ -18,7 +18,7 @@ export const ITEM_DEFS = [
     id: 'double',
     name: 'Double dégâts',
     icon: '/src/assets/items/double.svg',
-    description: 'Votre prochain tir réel inflige 2 PV.',
+    description: 'Le prochain tir (même à blanc) consomme l’effet. Si réel : 2 PV.',
     canUse: (state, actorKey) => !state.players[actorKey].doubleDamageNextShot,
     apply: (state, actorKey) => {
       state.players[actorKey].doubleDamageNextShot = true;

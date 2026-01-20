@@ -25,8 +25,12 @@
           :style="getSlotPosition(i)"
         >
           <div class="chamber-inner">
-            <!-- Revealed real bullet (red dot) -->
-            <span v-if="showRevealBullet && i === currentRevealIndex" class="bullet-real" ref="revealBulletEl"></span>
+            <!-- Revealed bullet (real or blank) -->
+            <span
+              v-if="showRevealBullet && i === currentRevealIndex"
+              :class="revealIsReal ? 'bullet-real' : 'bullet-blank'"
+              ref="revealBulletEl"
+            ></span>
             <!-- Spent = empty hole -->
             <span v-else-if="isSpent(i)" class="bullet-empty"></span>
             <!-- Unknown = ? -->
@@ -66,6 +70,24 @@ const transitionEnabled = ref(false);
 const showRevealBullet = ref(false);
 const showFallingBullet = ref(false);
 const currentRevealIndex = ref(0);
+const revealIsReal = ref(false);
+
+function playReloadAnimation() {
+  if (!barrelContainer.value) return;
+  const spins = Math.floor(Math.random() * 3) + 2;
+  const randomSlot = Math.floor(Math.random() * 6);
+  transitionEnabled.value = false;
+  rotationAngle.value = 360 + spins * 360 + randomSlot * 60;
+  gsap.set(barrelContainer.value, { opacity: 0 });
+  setTimeout(() => {
+    rotationAngle.value = 360;
+    gsap.to(barrelContainer.value, {
+      opacity: 1,
+      duration: 0.35,
+      ease: 'power1.out'
+    });
+  }, 180);
+}
 
 // Rotation style with controllable transition
 const barrelRotationStyle = computed(() => {
@@ -143,8 +165,7 @@ function rotateToNextSlot() {
 
 // Show red bullet at current slot (for real bullets)
 function revealBullet(isReal) {
-  if (!isReal) return false;
-  
+  revealIsReal.value = !!isReal;
   currentRevealIndex.value = props.barrelData?.index || 0;
   showRevealBullet.value = true;
   return true;
@@ -214,6 +235,8 @@ watch(() => props.barrelData, (next, prev) => {
     hasHadFirstSpin.value = false;
     showRevealBullet.value = false;
     showFallingBullet.value = false;
+    revealIsReal.value = false;
+    playReloadAnimation();
   }
 }, { deep: false });
 
@@ -358,6 +381,18 @@ defineExpose({
     0 0 12px rgba(220, 38, 38, 0.8),
     0 0 24px rgba(220, 38, 38, 0.4),
     inset 0 -2px 4px rgba(0,0,0,0.3);
+  animation: bullet-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.bullet-blank {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #f1f5f9, #cbd5f5, #94a3b8);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.6),
+    0 0 20px rgba(148, 163, 184, 0.4),
+    inset 0 -2px 4px rgba(0,0,0,0.25);
   animation: bullet-pulse 0.5s ease-in-out infinite alternate;
 }
 
