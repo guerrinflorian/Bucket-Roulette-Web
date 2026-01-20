@@ -253,6 +253,27 @@ export const useGameStore = defineStore('game', {
         }
       }
     },
+    timeoutTurn(actorKeyOverride = null) {
+      if (this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) return;
+      if (this.phase !== PHASES.PLAYER_TURN && this.phase !== PHASES.ENEMY_TURN) return;
+
+      const actorKey = actorKeyOverride || (this.phase === PHASES.PLAYER_TURN ? 'player' : 'enemy');
+      const actorName = this.players[actorKey]?.name || 'Joueur';
+
+      this.lastAction = {
+        type: 'timeout',
+        actor: actorKey
+      };
+      this.lastResult = {
+        text: `⏳ ${actorName} a perdu son tour.`
+      };
+
+      this.phase = actorKey === 'player' ? PHASES.ENEMY_TURN : PHASES.PLAYER_TURN;
+
+      if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
+        this.queueBotAction();
+      }
+    },
     async queueBotAction() {
       if (this.mode !== 'bot') return;
       

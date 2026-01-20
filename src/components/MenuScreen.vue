@@ -19,9 +19,33 @@
         <p class="tagline">Tentez votre chance... si vous l'osez</p>
       </header>
 
+      <section class="name-panel">
+        <div class="name-card">
+          <label class="name-label">Nom du joueur</label>
+          <div v-if="!netStore.playerName || editingName" class="name-input-section">
+            <input
+              v-model="playerNameInput"
+              type="text"
+              class="name-input"
+              placeholder="Votre nom"
+              maxlength="12"
+              @keyup.enter="setPlayerName"
+            />
+            <button class="name-btn" @click="setPlayerName" :disabled="!playerNameInput.trim()">
+              Valider
+            </button>
+          </div>
+          <div v-else class="name-confirmed">
+            <span class="name-value">{{ netStore.playerName }}</span>
+            <button class="edit-name-btn" @click="startEditingName">Modifier</button>
+          </div>
+          <p v-if="nameError" class="name-error">{{ nameError }}</p>
+        </div>
+      </section>
+
       <!-- Main menu buttons -->
       <div class="menu-buttons" v-if="!showMultiplayer">
-        <button class="menu-btn btn-primary" @click="startBot">
+        <button class="menu-btn btn-primary" @click="startBot" :disabled="!netStore.playerName">
           <span class="btn-icon">🤖</span>
           <span class="btn-text">
             <span class="btn-title">Jouer vs Bot</span>
@@ -29,7 +53,7 @@
           </span>
         </button>
 
-        <button class="menu-btn btn-secondary" @click="showMultiplayer = true">
+        <button class="menu-btn btn-secondary" @click="showMultiplayer = true" :disabled="!netStore.playerName">
           <span class="btn-icon">👥</span>
           <span class="btn-text">
             <span class="btn-title">Multijoueur</span>
@@ -45,22 +69,6 @@
         </button>
 
         <h2 class="panel-title">Multijoueur</h2>
-
-        <!-- Player name input -->
-        <div v-if="!netStore.playerName" class="name-input-section">
-          <label class="name-label">Entrez votre nom</label>
-          <input
-            v-model="playerNameInput"
-            type="text"
-            class="name-input"
-            placeholder="Votre nom"
-            maxlength="12"
-            @keyup.enter="setPlayerName"
-          />
-          <button class="name-btn" @click="setPlayerName" :disabled="!playerNameInput.trim()">
-            Valider
-          </button>
-        </div>
 
         <!-- Connection status -->
         <div v-if="netStore.playerName" class="connection-status" :class="{ connected: netStore.connected }">
@@ -171,16 +179,23 @@ const netStore = useNetStore();
 const showMultiplayer = ref(false);
 const roomInput = ref('');
 const playerNameInput = ref('');
+const editingName = ref(!netStore.playerName);
+const nameError = ref('');
 
 const startBot = () => {
+  if (!netStore.playerName) {
+    nameError.value = 'Veuillez renseigner un nom pour jouer.';
+    editingName.value = true;
+    return;
+  }
   gameStore.initGame('bot');
+  gameStore.players.player.name = netStore.playerName;
   router.push('/game');
 };
 
 const goBack = () => {
   showMultiplayer.value = false;
-  playerNameInput.value = '';
-  netStore.playerName = null;
+  editingName.value = false;
   netStore.leaveRoom();
 };
 
@@ -188,6 +203,14 @@ const setPlayerName = () => {
   const name = playerNameInput.value.trim();
   if (!name) return;
   netStore.playerName = name;
+  nameError.value = '';
+  editingName.value = false;
+};
+
+const startEditingName = () => {
+  editingName.value = true;
+  playerNameInput.value = netStore.playerName || '';
+  nameError.value = '';
 };
 
 const createRoom = async () => {
@@ -255,6 +278,16 @@ onMounted(() => {
   
   // Setup listener immediately
   setupGameStateListener();
+});
+
+watch(() => netStore.playerName, (value) => {
+  if (!editingName.value) {
+    playerNameInput.value = value || '';
+  }
+});
+
+watch(playerNameInput, () => {
+  nameError.value = '';
 });
 
 // Setup the listener
@@ -370,6 +403,66 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.menu-header,
+.name-panel,
+.menu-buttons,
+.multiplayer-panel {
+  text-align: center;
+}
+
+.name-panel {
+  width: 100%;
+  max-width: 360px;
+}
+
+.name-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 14, 12, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+.name-confirmed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.name-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fef3c7;
+}
+
+.edit-name-btn {
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+  color: #fef3c7;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-name-btn:hover {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.name-error {
+  margin: 0;
+  font-size: 12px;
+  color: #fca5a5;
+}
+
 .logo-icon {
   font-size: 40px;
   margin-bottom: 10px;
@@ -411,6 +504,55 @@ onUnmounted(() => {
   letter-spacing: 0.06em;
 }
 
+@media (min-width: 1024px) {
+  .menu-content {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 40px;
+    gap: 24px;
+    display: grid;
+    grid-template-columns: minmax(300px, 360px) minmax(420px, 520px);
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "header panel"
+      "name panel";
+    align-items: center;
+    justify-content: center;
+    justify-items: center;
+  }
+
+  .menu-header {
+    grid-area: header;
+    text-align: center;
+    justify-self: center;
+  }
+
+  .menu-header,
+  .name-panel,
+  .menu-buttons,
+  .multiplayer-panel {
+    width: 100%;
+  }
+
+  .name-panel {
+    grid-area: name;
+    max-width: 340px;
+    justify-self: center;
+  }
+
+  .menu-buttons,
+  .multiplayer-panel {
+    grid-area: panel;
+    max-width: 520px;
+    justify-self: center;
+  }
+
+  .menu-footer {
+    grid-area: footer;
+    text-align: center;
+  }
+}
+
 /* Menu buttons */
 .menu-buttons {
   display: flex;
@@ -418,6 +560,7 @@ onUnmounted(() => {
   gap: 16px;
   width: 100%;
   max-width: 360px;
+  align-items: center;
 }
 
 .menu-btn {
@@ -430,6 +573,14 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: left;
+  width: 100%;
+}
+
+.menu-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-primary {
@@ -485,6 +636,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
   flex-shrink: 0;
+  align-items: center;
 }
 
 .back-btn {
@@ -621,6 +773,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
 .action-btn {
@@ -720,6 +873,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
 .room-code-display {

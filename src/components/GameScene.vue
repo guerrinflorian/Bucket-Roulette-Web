@@ -41,6 +41,9 @@
         <div class="turn-indicator" :class="turnClass">
           {{ phaseLabel }}
         </div>
+        <div v-if="turnTimeLeft !== null" class="turn-timer">
+          ⏱ {{ turnTimeLeft }}s
+        </div>
         
         <!-- Barrel -->
         <div class="barrel-zone">
@@ -219,6 +222,10 @@ const props = defineProps({
   lastResult: Object,
   lastAction: Object,
   isAnimating: Boolean,
+  turnTimeLeft: {
+    type: Number,
+    default: null
+  },
   canActOverride: {
     type: Boolean,
     default: null
@@ -411,7 +418,7 @@ async function showShotResult(actionData) {
   } else if (isYou) {
     revealSubtitle.value = `Vous avez tiré sur ${targetName}`;
   } else if (targetIsYou) {
-    revealSubtitle.value = `Vous vous êtes fait tirer dessus par ${actorName}`;
+    revealSubtitle.value = `${actorName} vous a tiré dessus`;
   } else {
     revealSubtitle.value = `${actorName} a tiré sur ${targetName}`;
   }
@@ -637,6 +644,16 @@ defineExpose({
   letter-spacing: 0.1em;
   text-transform: uppercase;
   border: 2px solid;
+}
+
+.turn-timer {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fef3c7;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
 }
 
 .turn-player {
