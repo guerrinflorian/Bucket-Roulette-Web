@@ -110,7 +110,9 @@ function isSpent(index) {
 function getSlotClass(index) {
   return {
     'chamber-spent': isSpent(index),
-    'chamber-reveal': showRevealBullet.value && index === currentRevealIndex.value
+    'chamber-reveal': showRevealBullet.value && index === currentRevealIndex.value,
+    'chamber-reveal-real': showRevealBullet.value && index === currentRevealIndex.value && revealIsReal.value,
+    'chamber-reveal-blank': showRevealBullet.value && index === currentRevealIndex.value && !revealIsReal.value
   };
 }
 
@@ -381,22 +383,22 @@ defineExpose({
     0 0 12px rgba(220, 38, 38, 0.8),
     0 0 24px rgba(220, 38, 38, 0.4),
     inset 0 -2px 4px rgba(0,0,0,0.3);
-  animation: bullet-pulse 0.5s ease-in-out infinite alternate;
+  animation: bullet-pulse-real 0.5s ease-in-out infinite alternate;
 }
 
 .bullet-blank {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #f1f5f9, #cbd5f5, #94a3b8);
+  background: radial-gradient(circle at 30% 30%, #ffffff, #f8fafc, #e2e8f0);
   box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.6),
-    0 0 20px rgba(148, 163, 184, 0.4),
+    0 0 10px rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(255, 255, 255, 0.6),
     inset 0 -2px 4px rgba(0,0,0,0.25);
-  animation: bullet-pulse 0.5s ease-in-out infinite alternate;
+  animation: bullet-pulse-blank 0.5s ease-in-out infinite alternate;
 }
 
-@keyframes bullet-pulse {
+@keyframes bullet-pulse-real {
   from { 
     box-shadow: 
       0 0 12px rgba(220, 38, 38, 0.8),
@@ -411,12 +413,40 @@ defineExpose({
   }
 }
 
+@keyframes bullet-pulse-blank {
+  from { 
+    box-shadow: 
+      0 0 10px rgba(255, 255, 255, 0.7),
+      0 0 20px rgba(255, 255, 255, 0.5),
+      inset 0 -2px 4px rgba(0,0,0,0.25);
+  }
+  to { 
+    box-shadow: 
+      0 0 16px rgba(255, 255, 255, 1),
+      0 0 28px rgba(255, 255, 255, 0.7),
+      inset 0 -2px 4px rgba(0,0,0,0.25);
+  }
+}
+
 .chamber-reveal {
+  background: linear-gradient(145deg, #1a1512, #0d0a07) !important;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+}
+
+.chamber-reveal-real {
   background: linear-gradient(145deg, #2a1a1a, #1a0a0a) !important;
   border-color: #dc2626 !important;
   box-shadow: 
     inset 0 2px 5px rgba(0,0,0,0.6),
     0 0 15px rgba(220, 38, 38, 0.5) !important;
+}
+
+.chamber-reveal-blank {
+  background: linear-gradient(145deg, #ffffff, #e2e8f0) !important;
+  border-color: #f8fafc !important;
+  box-shadow: 
+    inset 0 2px 5px rgba(0,0,0,0.6),
+    0 0 15px rgba(255, 255, 255, 0.6) !important;
 }
 
 .chamber-spent {

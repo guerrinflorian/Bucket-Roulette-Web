@@ -26,6 +26,10 @@ io.on('connection', (socket) => {
 
   // Create a new room
   socket.on('room:create', ({ playerName }) => {
+    if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
+      socket.emit('room:error', { message: 'Nom de joueur requis' });
+      return;
+    }
     let roomId = generateRoomCode();
     // Ensure unique
     while (rooms.has(roomId)) {
@@ -52,7 +56,16 @@ io.on('connection', (socket) => {
 
   // Join an existing room
   socket.on('room:join', ({ roomId, playerName }) => {
-    const room = rooms.get(roomId);
+    if (!roomId || typeof roomId !== 'string' || roomId.trim().length < 4) {
+      socket.emit('room:error', { message: 'Code de room invalide' });
+      return;
+    }
+    if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
+      socket.emit('room:error', { message: 'Nom de joueur requis' });
+      return;
+    }
+    const normalizedRoomId = roomId.trim().toUpperCase();
+    const room = rooms.get(normalizedRoomId);
 
     if (!room) {
       socket.emit('room:error', { message: 'Room introuvable' });
@@ -67,15 +80,15 @@ io.on('connection', (socket) => {
     room.guest = socket.id;
     room.guestName = playerName;
     room.players.push(socket.id);
-    socket.join(roomId);
-    socket.roomId = roomId;
+    socket.join(normalizedRoomId);
+    socket.roomId = normalizedRoomId;
     socket.isHost = false;
     socket.playerName = playerName;
 
-    console.log(`👥 ${playerName} (${socket.id}) joined room ${roomId}`);
+    console.log(`👥 ${playerName} (${socket.id}) joined room ${normalizedRoomId}`);
 
     // Notify the guest they joined
-    socket.emit('room:joined', { roomId, isHost: false });
+    socket.emit('room:joined', { roomId: normalizedRoomId, isHost: false });
 
     // Notify the host that someone joined (with name)
     io.to(room.host).emit('room:player-joined', { 
@@ -85,7 +98,7 @@ io.on('connection', (socket) => {
 
     // If both players are here, notify both that the game can start
     if (room.players.length === 2) {
-      io.to(roomId).emit('room:ready', { 
+      io.to(normalizedRoomId).emit('room:ready', { 
         hostId: room.host,
         hostName: room.hostName,
         guestId: room.guest,
@@ -114,6 +127,7 @@ io.on('connection', (socket) => {
 
   // Player performs an action
   socket.on('game:action', ({ roomId, action }) => {
+    if (!roomId || !action || !action.type) return;
     const room = rooms.get(roomId);
     if (!room) return;
 

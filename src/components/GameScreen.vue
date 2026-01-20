@@ -11,6 +11,7 @@
       :last-action="gameStore.lastAction"
       :is-animating="gameStore.isAnimating"
       :can-act-override="canAct"
+      :turn-time-left="turnCountdown"
       @shoot="handleShoot"
       @use-item="handleUseItem"
     />
@@ -78,6 +79,10 @@ const isOnlineMode = computed(() => gameStore.mode === 'online');
 const showOnlineFlip = ref(false);
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
+const turnCountdown = ref(null);
+const TURN_TIME_LIMIT = 10;
+let turnTimer = null;
+let turnTick = null;
 const isMyTurn = computed(() => {
   if (!isOnlineMode.value) return true;
   // In online mode: host is player, guest is enemy
@@ -177,6 +182,7 @@ watch(() => gameStore.reloadCount, async (count, prev) => {
 
 // Main shoot handler - controls the full animation flow
 const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null) => {
+  clearTurnTimer();
   // In online mode, check if it's our turn (unless receiving from network)
   if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
     console.log('Not your turn!');
@@ -325,6 +331,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
 
 const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = null) => {
   if (gameStore.isAnimating) return;
+  clearTurnTimer();
   
   // In online mode, check if it's our turn (unless receiving from network)
   if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
@@ -398,6 +405,18 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
   }
 };
 
+const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
+  if (gameStore.isAnimating) return;
+  if (!canAct.value && !fromNetwork) return;
+
+  if (isOnlineMode.value && !fromNetwork) {
+    const localActorKey = gameStore.phase === 'player_turn' ? 'player' : 'enemy';
+    netStore.sendAction({ type: 'timeout', actorKey: localActorKey });
+  }
+
+  gameStore.timeoutTurn(actorKeyOverride);
+};
+
 const onCoinFlip = async (starts) => {
   // Add delay after coin flip before starting
   await sleep(500);
@@ -460,6 +479,8 @@ onMounted(() => {
         await handleShoot(action.target, true, action.actorKey || null);
       } else if (action.type === 'item') {
         await handleUseItem(action.itemId, true, action.actorKey || null);
+      } else if (action.type === 'timeout') {
+        await handleTimeout(true, action.actorKey || null);
       } else if (action.type === 'coinFlip') {
         gameStore.setCoinFlipResult(action.starts);
       }
@@ -491,12 +512,45 @@ onUnmounted(() => {
     netStore.offGameState();
     netStore.offGameAction();
   }
+  clearTurnTimer();
 });
 
 // Sync state after local actions in online mode
 watch(() => gameStore.lastAction, () => {
   if (isOnlineMode.value && netStore.isHost && gameStore.lastAction) {
     netStore.syncState(gameStore.serializeForNetwork());
+  }
+});
+
+const startTurnTimer = () => {
+  clearTurnTimer();
+  turnCountdown.value = TURN_TIME_LIMIT;
+  turnTick = setInterval(() => {
+    if (turnCountdown.value === null) return;
+    turnCountdown.value = Math.max(0, turnCountdown.value - 1);
+  }, 1000);
+  turnTimer = setTimeout(async () => {
+    await handleTimeout();
+  }, TURN_TIME_LIMIT * 1000);
+};
+
+const clearTurnTimer = () => {
+  if (turnTimer) {
+    clearTimeout(turnTimer);
+    turnTimer = null;
+  }
+  if (turnTick) {
+    clearInterval(turnTick);
+    turnTick = null;
+  }
+  turnCountdown.value = null;
+};
+
+watch(canAct, (value) => {
+  if (value) {
+    startTurnTimer();
+  } else {
+    clearTurnTimer();
   }
 });
 </script>
