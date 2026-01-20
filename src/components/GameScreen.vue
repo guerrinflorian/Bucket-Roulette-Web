@@ -7,6 +7,7 @@
       :enemy="uiEnemy"
       :barrel="gameStore.barrel"
       :phase="uiPhase"
+      :is-flip-visible="isFlipVisible"
       :last-result="gameStore.lastResult"
       :last-action="gameStore.lastAction"
       :is-animating="gameStore.isAnimating"
@@ -83,6 +84,7 @@ const gameSceneRef = ref(null);
 const showGameOver = computed(() => gameStore.phase === 'game_over');
 const isOnlineMode = computed(() => gameStore.mode === 'online');
 const showOnlineFlip = ref(false);
+const isFlipVisible = computed(() => gameStore.phase === 'coin_flip' || showOnlineFlip.value);
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
 const initialFlipResolved = ref(false);

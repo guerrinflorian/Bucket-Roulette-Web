@@ -189,6 +189,10 @@ const props = defineProps({
   enemy: Object,
   barrel: Object,
   phase: String,
+  isFlipVisible: {
+    type: Boolean,
+    default: false
+  },
   lastResult: Object,
   lastAction: Object,
   isAnimating: Boolean,
@@ -331,7 +335,7 @@ const counts = computed(() => remainingCounts(props.barrel));
 const realCount = computed(() => counts.value.real);
 const blankCount = computed(() => counts.value.blank);
 const totalCount = computed(() => counts.value.remaining);
-const showBarrelInfo = computed(() => !props.barrel?.firstShotFired);
+const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel?.firstShotFired);
 
 const phaseLabel = computed(() => {
   if (props.phase === 'player_turn') return '🎮 VOTRE TOUR';
