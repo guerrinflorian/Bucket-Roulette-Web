@@ -83,7 +83,7 @@ const itemEmoji = {
   double: '⚡',
   peek: '🔍',
   eject: '🔄',
-  invert: '🔀'
+  handcuffs: '⛓️'
 };
 
 function getItemEmoji(id) {
@@ -156,9 +156,17 @@ function getItemEmoji(id) {
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 18px;
+  padding: 6px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 56px;
+  max-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
   line-height: 1;
+  overflow: hidden;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 

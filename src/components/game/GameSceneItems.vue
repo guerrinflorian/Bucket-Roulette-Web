@@ -47,7 +47,7 @@ const itemData = {
   double: { emoji: '⚡', name: 'Double dégâts', description: 'Le prochain tir consomme l’effet.' },
   peek: { emoji: '🔍', name: 'Voir la balle', description: 'Révèle la prochaine cartouche.' },
   eject: { emoji: '🔄', name: 'Éjecter', description: 'Retire la prochaine cartouche sans tirer.' },
-  invert: { emoji: '🔀', name: 'Inverser cible', description: 'Inverse votre cible au prochain tir.' }
+  handcuffs: { emoji: '⛓️', name: 'Les Menottes', description: "Empêche l'adversaire de jouer au prochain tour." }
 };
 
 function getItemEmoji(id) {

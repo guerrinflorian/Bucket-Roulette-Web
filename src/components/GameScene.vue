@@ -80,7 +80,7 @@
             </div>
           </q-menu>
         </q-btn>
-        <div v-if="!canSendEmoji" class="emoji-cooldown">
+        <div v-if="!canSendEmoji && emojiCooldownLeft > 0" class="emoji-cooldown">
           ⏳ {{ emojiCooldownLeft }}s
         </div>
       </div>
@@ -174,7 +174,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { gsap } from 'gsap';
 import BarrelRevolver from './BarrelRevolver.vue';
 import GameSceneActions from './game/GameSceneActions.vue';
@@ -255,6 +255,22 @@ const revealSubtitle = ref('');
 const revealDamage = ref(0);
 const revealCardClass = computed(() => revealIsReal.value ? 'card-real' : 'card-blank');
 
+const itemData = {
+  heart: { emoji: '❤️', name: '+1 PV' },
+  double: { emoji: '⚡', name: 'Double dégâts' },
+  peek: { emoji: '🔍', name: 'Voir la balle' },
+  eject: { emoji: '🔄', name: 'Éjecter' },
+  handcuffs: { emoji: '⛓️', name: 'Les Menottes' }
+};
+
+function getItemEmoji(id) {
+  return itemData[id]?.emoji || '📦';
+}
+
+function getItemName(id) {
+  return itemData[id]?.name || id;
+}
+
 // Reload modal
 const showReloadModal = ref(false);
 const reloadText = ref('Cartouches mélangées aléatoirement.');
@@ -267,6 +283,19 @@ const onEmojiSelect = (emoji) => {
   emit('send-emoji', emoji.i);
   showEmojiPicker.value = false;
 };
+
+watch(
+  () => [props.turnTimeLeft, props.canSendEmoji, props.isAnimating, props.phase],
+  ([turnLeft, canSend, isAnimating, phase]) => {
+    if (turnLeft !== null && turnLeft <= 1) {
+      showEmojiPicker.value = false;
+      return;
+    }
+    if (!canSend || isAnimating || phase !== 'player_turn') {
+      showEmojiPicker.value = false;
+    }
+  }
+);
 
 const canAct = computed(() => {
   if (props.canActOverride !== null) {

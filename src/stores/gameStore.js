@@ -23,7 +23,7 @@ export const useGameStore = defineStore('game', {
         items: [],
         doubleDamageNextShot: false,
         peekedNext: null,
-        invertTargetNext: false
+        skipNextTurn: false
       },
       enemy: {
         id: 'enemy',
@@ -33,7 +33,7 @@ export const useGameStore = defineStore('game', {
         items: [],
         doubleDamageNextShot: false,
         peekedNext: null,
-        invertTargetNext: false
+        skipNextTurn: false
       }
     },
     lastResult: null,
@@ -73,8 +73,8 @@ export const useGameStore = defineStore('game', {
       this.players.enemy.doubleDamageNextShot = false;
       this.players.player.peekedNext = null;
       this.players.enemy.peekedNext = null;
-      this.players.player.invertTargetNext = false;
-      this.players.enemy.invertTargetNext = false;
+      this.players.player.skipNextTurn = false;
+      this.players.enemy.skipNextTurn = false;
       this.lastResult = null;
       this.lastAction = null;
       this.winner = null;
@@ -145,6 +145,34 @@ export const useGameStore = defineStore('game', {
         this.queueBotAction();
       }
     },
+    resolveNextTurn(nextActorKey) {
+      let nextKey = nextActorKey;
+      const skipped = [];
+
+      for (let i = 0; i < 2; i += 1) {
+        if (this.players[nextKey]?.skipNextTurn) {
+          this.players[nextKey].skipNextTurn = false;
+          skipped.push(nextKey);
+          nextKey = nextKey === 'player' ? 'enemy' : 'player';
+        } else {
+          break;
+        }
+      }
+
+      this.phase = nextKey === 'player' ? PHASES.PLAYER_TURN : PHASES.ENEMY_TURN;
+
+      if (skipped.length) {
+        const skippedNames = skipped.map((key) => this.players[key]?.name || 'Joueur');
+        const message = skippedNames.length === 1
+          ? `⛓️ ${skippedNames[0]} est menotté et passe son tour.`
+          : `⛓️ ${skippedNames.join(' et ')} sont menottés et passent leur tour.`;
+        this.lastResult = { text: message };
+      }
+
+      if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
+        this.queueBotAction();
+      }
+    },
     async useItem(itemId, actorKey = 'player') {
       const actor = this.players[actorKey];
       if (!actor || this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) {
@@ -203,11 +231,6 @@ export const useGameStore = defineStore('game', {
         const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
         let targetKey = target === 'self' ? actorKey : opponentKey;
 
-        if (actor.invertTargetNext) {
-          targetKey = targetKey === actorKey ? opponentKey : actorKey;
-          actor.invertTargetNext = false;
-        }
-
         const shot = this.barrel.chambers[this.barrel.index];
         this.barrel.index += 1;
         this.players.player.peekedNext = null;
@@ -257,13 +280,10 @@ export const useGameStore = defineStore('game', {
         }
 
         if (!isReal && targetKey === actorKey) {
-          this.phase = actorKey === 'player' ? PHASES.PLAYER_TURN : PHASES.ENEMY_TURN;
+          this.resolveNextTurn(actorKey);
         } else {
-          this.phase = actorKey === 'player' ? PHASES.ENEMY_TURN : PHASES.PLAYER_TURN;
-        }
-
-        if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
-          this.queueBotAction();
+          const nextActor = actorKey === 'player' ? 'enemy' : 'player';
+          this.resolveNextTurn(nextActor);
         }
       } catch (error) {
         // Safety: avoid being stuck in animating state
@@ -299,11 +319,8 @@ export const useGameStore = defineStore('game', {
         return;
       }
 
-      this.phase = actorKey === 'player' ? PHASES.ENEMY_TURN : PHASES.PLAYER_TURN;
-
-      if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
-        this.queueBotAction();
-      }
+      const nextActor = actorKey === 'player' ? 'enemy' : 'player';
+      this.resolveNextTurn(nextActor);
     },
     async queueBotAction() {
       if (this.mode !== 'bot') return;

@@ -17,6 +17,10 @@ export function decideBotAction(state) {
     return { type: 'item', itemId: 'double' };
   }
 
+  if (bot.items.includes('handcuffs') && !state.players.player.skipNextTurn && pReal >= 0.45) {
+    return { type: 'item', itemId: 'handcuffs' };
+  }
+
   if (bot.items.includes('heart') && bot.hp <= 3) {
     return { type: 'item', itemId: 'heart' };
   }
