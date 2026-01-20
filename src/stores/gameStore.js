@@ -65,6 +65,8 @@ export const useGameStore = defineStore('game', {
       this.currentTurn = null;
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
+      this.players.player.name = 'Vous';
+      this.players.enemy.name = mode === 'bot' ? 'BOT' : 'Adversaire';
       this.players.player.hp = MAX_HP;
       this.players.enemy.hp = MAX_HP;
       this.players.player.items = [];

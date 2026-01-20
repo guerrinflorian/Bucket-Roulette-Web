@@ -69,7 +69,7 @@ function handleUseItem(itemId) {
 
 <style scoped>
 .items-section {
-  padding: 12px 16px;
+  padding: 10px 14px;
 }
 
 .items-row {
@@ -83,14 +83,14 @@ function handleUseItem(itemId) {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   color: #f8fafc;
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -110,5 +110,27 @@ function handleUseItem(itemId) {
 
 .item-name {
   white-space: nowrap;
+}
+
+@media (max-height: 700px) {
+  .items-section {
+    padding: 6px 12px;
+  }
+
+  .item-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    gap: 6px;
+  }
+
+  .item-icon {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .items-row {
+    gap: 6px;
+  }
 }
 </style>
