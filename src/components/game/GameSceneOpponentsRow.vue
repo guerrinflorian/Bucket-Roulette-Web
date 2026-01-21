@@ -1,7 +1,6 @@
 <template>
   <section
-    class="flex w-full flex-nowrap items-stretch gap-3 overflow-x-auto px-4 pt-4 md:px-6"
-    :class="isSingleOpponent ? 'justify-center' : 'justify-start'"
+    class="flex w-full flex-nowrap items-stretch justify-center gap-0.5 overflow-x-auto px-1 pt-1 sm:gap-2 sm:px-4 sm:pt-3 md:px-6"
   >
     <GameScenePlayerCard
       v-for="opponent in opponents"
@@ -11,8 +10,8 @@
       show-items
       :is-compact="opponents.length > 1"
       :emoji="playerEmojis?.[opponent.id]"
-      class="min-w-[220px] max-w-[360px] flex-1"
-      :class="isSingleOpponent ? 'max-w-xl' : ''"
+      class="min-w-[150px] flex-shrink-0 sm:min-w-[200px]"
+      :class="isSingleOpponent ? 'max-w-xl flex-1' : 'max-w-[180px] sm:max-w-[280px]'"
     />
   </section>
 </template>

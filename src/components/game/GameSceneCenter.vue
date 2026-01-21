@@ -1,58 +1,66 @@
 <template>
   <section class="flex w-full flex-col items-center gap-3">
     <div
-      class="flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 backdrop-blur-md"
+      class="flex w-full max-w-md flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 backdrop-blur-md sm:gap-3 sm:px-4 sm:py-3 lg:max-w-lg"
       :class="turnContainerClass"
     >
-      <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em]">
+      <div class="flex flex-wrap items-center gap-1 text-[0.6rem] font-semibold uppercase tracking-[0.1em] sm:gap-2 sm:text-xs sm:tracking-[0.15em]">
         <span class="text-white/70">Tour de</span>
-        <span v-if="!isMultiTurnOrder" class="text-sm font-extrabold text-emerald-300">
+        <span v-if="!isMultiTurnOrder" class="text-[0.7rem] font-extrabold text-emerald-300 sm:text-sm">
           {{ currentTurnName }}
         </span>
-        <div v-else class="flex flex-wrap items-center gap-1 text-xs">
-          <span
-            v-for="(entry, index) in turnOrderDisplay"
-            :key="entry.key"
-            class="font-bold"
-            :class="entry.isCurrent ? 'text-emerald-300' : 'text-rose-200/80'"
-          >
-            {{ entry.name }}<span v-if="index < turnOrderDisplay.length - 1" class="px-1 text-white/30">/</span>
-          </span>
+        <div v-else class="flex flex-wrap items-center gap-0.5 text-[0.55rem] sm:gap-1 sm:text-xs">
+          <template v-for="(entry, index) in turnOrderDisplay" :key="entry.key">
+            <span
+              class="rounded-md px-1.5 py-0.5 font-bold transition-all sm:px-2"
+              :class="entry.isCurrent 
+                ? 'bg-emerald-500/25 text-emerald-300 shadow-[0_0_8px_rgba(34,197,94,0.4)]' 
+                : 'text-white/50'"
+            >
+              {{ entry.isSelf ? 'Vous' : entry.name }}
+            </span>
+            <span 
+              v-if="index < turnOrderDisplay.length - 1" 
+              class="text-amber-400/70"
+            >
+              →
+            </span>
+          </template>
         </div>
       </div>
-      <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase">
-        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.65rem] tracking-[0.2em] text-white/70">
-          Tour {{ currentChamberNumber }}/{{ totalSlots }}
+      <div class="flex flex-wrap items-center gap-1 text-[0.55rem] font-semibold uppercase sm:gap-2 sm:text-xs">
+        <span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 tracking-[0.15em] text-white/70 sm:px-3 sm:py-1 sm:text-[0.65rem] sm:tracking-[0.2em]">
+          {{ currentChamberNumber }}/{{ totalSlots }}
         </span>
         <span
           v-if="turnTimeLeft !== null"
-          class="rounded-full bg-amber-400/15 px-3 py-1 text-[0.65rem] font-bold tracking-[0.2em] text-amber-300 shadow-[0_0_18px_rgba(245,158,11,0.4)]"
+          class="rounded-full bg-amber-400/15 px-2 py-0.5 font-bold tracking-[0.15em] text-amber-300 shadow-[0_0_18px_rgba(245,158,11,0.4)] sm:px-3 sm:py-1 sm:text-[0.65rem] sm:tracking-[0.2em]"
         >
           ⏱ {{ turnTimeLeft }}s
         </span>
       </div>
     </div>
 
-    <div class="relative flex w-full items-center justify-center pb-8 sm:pb-0">
-      <div class="flex-shrink-0">
-        <BarrelRevolver
-          ref="barrelRef"
-          :barrel-data="barrel"
-          @animation-start="emit('animation-start')"
-          @animation-end="emit('animation-end')"
-        />
-      </div>
+    <div class="relative flex w-full items-center justify-center">
+      <BarrelRevolver
+        ref="barrelRef"
+        :barrel-data="barrel"
+        @animation-start="emit('animation-start')"
+        @animation-end="emit('animation-end')"
+      />
       <div
         v-if="showBarrelInfo"
-        class="absolute left-1/2 top-full mt-3 flex min-w-[140px] -translate-x-1/2 flex-col gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold sm:left-auto sm:right-0 sm:top-1/2 sm:mt-0 sm:-translate-x-0 sm:-translate-y-1/2"
+        class="absolute left-1/2 ml-[85px] flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-2 sm:ml-[100px] sm:px-3"
       >
-        <div class="flex items-center gap-2 text-white/80">
-          <span class="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]"></span>
-          <span>{{ realCount }} réelles</span>
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <span class="h-3 w-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)] sm:h-2.5 sm:w-2.5"></span>
+          <span class="text-sm font-bold text-white/90 sm:text-xs sm:font-semibold">{{ realCount }}</span>
+          <span class="hidden text-xs text-white/60 sm:inline">réelles</span>
         </div>
-        <div class="flex items-center gap-2 text-white/80">
-          <span class="h-2 w-2 rounded-full bg-zinc-100 shadow-[0_0_10px_rgba(244,244,245,0.6)]"></span>
-          <span>{{ blankCount }} blanches</span>
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <span class="h-3 w-3 rounded-full bg-zinc-100 shadow-[0_0_10px_rgba(244,244,245,0.6)] sm:h-2.5 sm:w-2.5"></span>
+          <span class="text-sm font-bold text-white/90 sm:text-xs sm:font-semibold">{{ blankCount }}</span>
+          <span class="hidden text-xs text-white/60 sm:inline">blanches</span>
         </div>
       </div>
     </div>

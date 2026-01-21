@@ -1,24 +1,24 @@
 <template>
   <section
-    class="w-full flex-shrink-0 px-3 py-2"
+    class="w-full flex-shrink-0 px-2 py-1 sm:px-3 sm:py-2"
     :class="{
       'pb-4': isBottom,
-      'px-2 py-1': isCompact
+      'px-1 py-0.5 sm:px-2 sm:py-1': isCompact
     }"
   >
     <div
-      class="mx-auto flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-lg shadow-black/30 backdrop-blur"
+      class="mx-auto flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2 shadow-lg shadow-black/30 backdrop-blur sm:gap-3 sm:rounded-2xl sm:p-3"
       :class="{
         'flex-row-reverse': isReversed,
-        'gap-2 px-2 py-2': isCompact
+        'gap-1.5 px-1.5 py-1.5 sm:gap-2 sm:px-2 sm:py-2': isCompact
       }"
     >
-      <div class="relative flex items-center justify-center">
-        <q-avatar :size="isCompact ? '44px' : '56px'" class="rounded-full border border-white/10">
+      <div class="relative flex flex-shrink-0 items-center justify-center">
+        <q-avatar :size="isCompact ? '32px' : '44px'" class="rounded-full border border-white/10 sm:!w-[44px] sm:!h-[44px]" :class="{ 'sm:!w-[44px] sm:!h-[44px]': isCompact, 'sm:!w-[56px] sm:!h-[56px]': !isCompact }">
           <Avatar
             :name="firstName"
             variant="beam"
-            :size="isCompact ? 44 : 56"
+            :size="isCompact ? 32 : 44"
             :colors="avatarColors"
           />
         </q-avatar>
@@ -34,31 +34,31 @@
       </div>
 
       <div class="flex min-w-0 flex-1 flex-col">
-        <div class="mb-2 flex items-center justify-between">
-          <span class="truncate text-sm font-bold text-white">
+        <div class="mb-1 flex items-center justify-between sm:mb-2">
+          <span class="truncate text-xs font-bold text-white sm:text-sm">
             {{ displayName }}
           </span>
-          <span class="text-xs font-semibold text-white/60">
+          <span class="text-[0.6rem] font-semibold text-white/60 sm:text-xs">
             {{ player.hp }}/{{ player.maxHp }}
           </span>
         </div>
-        <div class="h-3 rounded-full bg-white/10 shadow-inner">
+        <div class="h-2 rounded-full bg-white/10 shadow-inner sm:h-3">
           <div
-            class="h-3 rounded-full transition-all"
+            class="h-2 rounded-full transition-all sm:h-3"
             :class="isEnemy ? 'bg-gradient-to-r from-red-700 to-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'bg-gradient-to-r from-emerald-700 to-emerald-400 shadow-[0_0_12px_rgba(34,197,94,0.4)]'"
             :style="{ width: hpPercent + '%' }"
           ></div>
         </div>
         <div
           v-if="showItems && player.items?.length && isEnemy"
-          class="mt-2 flex flex-wrap gap-1"
+          class="mt-1 flex flex-wrap gap-0.5 sm:mt-2 sm:gap-1"
         >
           <span
             v-for="(itemId, index) in player.items"
             :key="index"
-            class="flex h-6 w-6 items-center justify-center rounded-md border border-white/10 bg-white/5"
+            class="flex h-5 w-5 items-center justify-center rounded border border-white/10 bg-white/5 sm:h-6 sm:w-6 sm:rounded-md"
           >
-            <img :src="getItemImage(itemId)" :alt="itemId" class="h-4 w-4 object-contain" />
+            <img :src="getItemImage(itemId)" :alt="itemId" class="h-3 w-3 object-contain sm:h-4 sm:w-4" />
           </span>
         </div>
       </div>

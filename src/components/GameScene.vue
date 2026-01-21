@@ -42,7 +42,7 @@
       </section>
 
       <section class="w-full px-4 pb-2 md:px-6">
-        <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div class="flex flex-col items-center gap-3">
           <GameSceneActions
             :can-act="canAct"
             :targets="shootTargets"

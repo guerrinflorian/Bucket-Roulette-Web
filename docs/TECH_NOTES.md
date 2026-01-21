@@ -50,5 +50,12 @@ Le bot calcule :
 - Anti-triche côté serveur.
 - Synchronisation fine des animations et des tours en multijoueur.
 
+## Auth (client)
+Variables d’environnement (Vite) :
+```
+VITE_API_BASE=http://localhost:3001
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+```
+
 ## Assets placeholders
 Les assets visuels sont des SVG texte pour éviter les binaires dans le repo. Le son utilise un WAV silencieux en data URI dans `AudioManager`.

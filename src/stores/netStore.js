@@ -186,7 +186,7 @@ export const useNetStore = defineStore('net', {
         setTimeout(() => {
           if (this.connecting) {
             this.connecting = false;
-            this.error = 'Connexion timeout';
+            this.error = '⏳ Connexion au serveur impossible. Vérifiez votre connexion internet.';
             reject(new Error('Connection timeout'));
           }
         }, 10000);

@@ -1,17 +1,17 @@
 <template>
-  <section v-if="items?.length" class="px-4 pb-4">
-    <div class="flex max-h-32 flex-wrap justify-center gap-2 overflow-y-auto">
+  <section v-if="items?.length" class="w-full overflow-hidden">
+    <div class="flex flex-nowrap justify-start gap-1.5 overflow-x-auto px-2 pb-2 sm:justify-center sm:gap-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
       <button
         v-for="(itemId, index) in items"
         :key="`${itemId}-${index}`"
-        class="group relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-black/20 backdrop-blur transition hover:-translate-y-0.5 hover:border-amber-400/40 hover:bg-amber-400/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+        class="group relative flex flex-shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[0.6rem] font-semibold text-white shadow-md shadow-black/20 backdrop-blur transition hover:-translate-y-0.5 hover:border-amber-400/40 hover:bg-amber-400/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs"
         :disabled="!canUseItems"
         @click="handleUseItem(itemId)"
       >
         <img
           :src="getItemImage(itemId)"
           :alt="getItemName(itemId)"
-          class="h-6 w-6 object-contain drop-shadow"
+          class="h-4 w-4 object-contain drop-shadow sm:h-6 sm:w-6"
         />
         <span class="whitespace-nowrap">{{ getItemName(itemId) }}</span>
         <q-tooltip>{{ getItemName(itemId) }} — {{ getItemDescription(itemId) }}</q-tooltip>

@@ -94,7 +94,9 @@ export const useGameStore = defineStore('game', {
       player: 0,
       enemy: 0,
       enemy2: 0
-    }
+    },
+    // Flag to prevent reload modal during network hydration
+    isHydratingFromNetwork: false
   }),
   getters: {
     isPlayerTurn: (state) => state.phase === PHASES.PLAYER_TURN,
@@ -172,6 +174,7 @@ export const useGameStore = defineStore('game', {
     },
     // Hydrate state from network (for multiplayer sync)
     hydrateFromNetwork(state) {
+      this.isHydratingFromNetwork = true;
       this.sessionActive = true;
       if (state.phase) this.phase = state.phase;
       if (state.currentTurn) this.currentTurn = state.currentTurn;
@@ -185,7 +188,8 @@ export const useGameStore = defineStore('game', {
       if (state.lastResult !== undefined) this.lastResult = state.lastResult;
       if (state.lastAction !== undefined) this.lastAction = state.lastAction;
       if (state.winner !== undefined) this.winner = state.winner;
-      if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
+      // Don't update reloadCount from network to avoid false reload modals
+      // if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
       if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
       if (state.turnTimer) {
         if ('remaining' in state.turnTimer) {
@@ -206,6 +210,10 @@ export const useGameStore = defineStore('game', {
         this.timeoutStreak.enemy = state.timeoutStreak.enemy ?? this.timeoutStreak.enemy;
         this.timeoutStreak.enemy2 = state.timeoutStreak.enemy2 ?? this.timeoutStreak.enemy2;
       }
+      // Reset hydration flag after a microtask to allow reactive updates to settle
+      queueMicrotask(() => {
+        this.isHydratingFromNetwork = false;
+      });
     },
     // Serialize state for network sync
     serializeForNetwork() {
@@ -496,12 +504,13 @@ export const useGameStore = defineStore('game', {
           this.winner = activePlayers[0] || null;
           this.phase = PHASES.GAME_OVER;
           this.lastResult = {
-            text: `🏳️ ${actorName} est AFK. Victoire par abandon de l'adversaire.`
+            text: `🏳️ ${actorName} a été éliminé pour inactivité.`,
+            afkPlayer: actorKey
           };
           return;
         }
         this.lastResult = {
-          text: `🏳️ ${actorName} est AFK.`
+          text: `🏳️ ${actorName} est AFK et passe son tour.`
         };
       }
 

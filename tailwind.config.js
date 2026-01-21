@@ -3,6 +3,9 @@ export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Arial Narrow"', 'Arial', 'sans-serif']
+      },
       colors: {
         tavern: {
           900: '#0d0a07',

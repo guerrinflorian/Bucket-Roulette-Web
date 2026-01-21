@@ -1,29 +1,35 @@
 <template>
-  <section class="flex w-full flex-col items-center gap-3 px-4 pb-4">
-    <div v-if="isTwoTargetMode" class="flex w-full flex-nowrap items-center justify-center gap-3 overflow-x-auto">
+  <section class="flex w-full flex-col items-center gap-3">
+    <div v-if="isTwoTargetMode" class="flex w-full flex-wrap items-center justify-center gap-2 px-2">
       <q-btn
-        class="min-w-[200px] rounded-xl text-[0.7rem] font-semibold leading-tight shadow-lg shadow-red-500/20 whitespace-nowrap"
+        class="flex-1 min-w-[120px] max-w-[180px] rounded-xl text-[0.6rem] sm:text-[0.7rem] font-semibold leading-tight shadow-lg shadow-red-500/20 py-2"
         color="negative"
         unelevated
         :disable="!canAct || !opponentTargets.length"
         @click="emit('shoot', opponentTargets[0]?.key)"
       >
-        🎯 Tirer sur l'adversaire
+        <span class="flex flex-col items-center gap-0.5">
+          <span>🎯 TIRER SUR</span>
+          <span class="text-[0.7rem] sm:text-xs font-bold">ADVERSAIRE</span>
+        </span>
       </q-btn>
       <q-btn
-        class="min-w-[180px] rounded-xl text-[0.7rem] font-semibold leading-tight shadow-lg shadow-red-500/20 whitespace-nowrap"
+        class="flex-1 min-w-[120px] max-w-[180px] rounded-xl text-[0.6rem] sm:text-[0.7rem] font-semibold leading-tight shadow-lg shadow-red-500/20 py-2"
         color="negative"
         unelevated
         :disable="!canAct || !selfTarget"
         @click="emit('shoot', selfTarget?.key)"
       >
-        🎯 Tirer sur moi
+        <span class="flex flex-col items-center gap-0.5">
+          <span>🎯 TIRER SUR</span>
+          <span class="text-[0.7rem] sm:text-xs font-bold">SOI-MÊME</span>
+        </span>
       </q-btn>
     </div>
 
-    <div v-else-if="!isMultiTargetMode" class="flex w-full flex-wrap items-center justify-center gap-3">
-      <div class="flex w-full max-w-2xl flex-col gap-2">
-        <div class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-white/60">Cible</div>
+    <div v-else-if="!isMultiTargetMode" class="flex w-full flex-wrap items-center justify-center gap-2 px-2">
+      <div class="flex w-full max-w-md flex-col gap-2">
+        <div class="text-[0.6rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.15em] text-white/60 text-center">Cible</div>
         <q-btn-toggle
           v-model="selectedTarget"
           :options="targetOptions"
@@ -36,7 +42,7 @@
         />
       </div>
       <q-btn
-        class="min-w-[180px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
+        class="min-w-[140px] max-w-[180px] rounded-xl text-[0.65rem] sm:text-xs font-semibold shadow-lg shadow-red-500/20"
         color="negative"
         unelevated
         :disable="!canAct || !selectedTarget"
@@ -47,37 +53,50 @@
       </q-btn>
     </div>
 
-    <div v-else class="flex w-full flex-nowrap items-center justify-center gap-3 overflow-x-auto">
+    <div v-else class="flex w-full flex-wrap items-center justify-center gap-2 px-2">
       <q-btn-dropdown
-        class="min-w-[240px] rounded-xl text-xs font-semibold"
+        class="shoot-dropdown flex-1 min-w-[120px] max-w-[180px] rounded-xl text-[0.6rem] sm:text-xs font-semibold py-2 shadow-lg shadow-orange-500/20"
         color="deep-orange"
         unelevated
         :disable="!canAct || !opponentTargets.length"
-        label="Tirer sur un adversaire"
         dropdown-icon="arrow_drop_down"
+        :content-style="dropdownMenuStyle"
       >
-        <q-list class="min-w-[220px]">
+        <template #label>
+          <span class="flex flex-col items-center gap-0.5">
+            <span>🎯 TIRER SUR</span>
+            <span class="text-[0.7rem] sm:text-xs font-bold">ADVERSAIRE</span>
+          </span>
+        </template>
+        <q-list class="min-w-[180px]" style="background: transparent; padding: 4px;">
           <q-item
             v-for="target in opponentTargets"
             :key="target.key"
             clickable
             v-close-popup
+            style="background: transparent; border-radius: 8px; margin: 2px 0;"
+            class="dropdown-item-hover"
             @click="emit('shoot', target.key)"
           >
-            <q-item-section>{{ target.label }}</q-item-section>
+            <q-item-section style="color: #fef3c7; font-weight: 600;">
+              🎯 {{ target.label }}
+            </q-item-section>
           </q-item>
         </q-list>
       </q-btn-dropdown>
 
       <q-btn
-        class="min-w-[180px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
+        class="flex-1 min-w-[120px] max-w-[180px] rounded-xl text-[0.6rem] sm:text-xs font-semibold shadow-lg shadow-red-500/20 py-2"
         color="negative"
         unelevated
         :disable="!canAct || !selfTarget"
         @click="emit('shoot', selfTarget?.key)"
       >
-        🎯 Tirer sur soi
-        <q-tooltip>Choisissez la cible avant de tirer.</q-tooltip>
+        <span class="flex flex-col items-center gap-0.5">
+          <span>🎯 TIRER SUR</span>
+          <span class="text-[0.7rem] sm:text-xs font-bold">SOI-MÊME</span>
+        </span>
+        <q-tooltip>Tirer sur soi-même.</q-tooltip>
       </q-btn>
     </div>
 
@@ -115,6 +134,16 @@ const targetOptions = computed(() => props.targets.map((target) => ({
 const selfTarget = computed(() => props.targets.find((target) => target.isSelf));
 const opponentTargets = computed(() => props.targets.filter((target) => !target.isSelf));
 
+// Style for the dropdown menu content
+const dropdownMenuStyle = {
+  background: 'linear-gradient(135deg, rgba(30, 20, 15, 0.98) 0%, rgba(15, 10, 5, 0.98) 100%)',
+  border: '1px solid rgba(234, 88, 12, 0.5)',
+  borderRadius: '12px',
+  backdropFilter: 'blur(12px)',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(234, 88, 12, 0.2)',
+  overflow: 'hidden'
+};
+
 watch(
   () => props.targets,
   (targets) => {
@@ -130,3 +159,14 @@ watch(
   { immediate: true, deep: true }
 );
 </script>
+
+<style>
+/* Dropdown item hover effect */
+.dropdown-item-hover:hover {
+  background: rgba(234, 88, 12, 0.3) !important;
+}
+
+.dropdown-item-hover:hover .q-item__section {
+  color: #fff !important;
+}
+</style>

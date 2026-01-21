@@ -239,9 +239,22 @@ const isLocalWinner = computed(() => {
 
 const gameOverSubtitle = computed(() => {
   const lastText = gameStore.lastResult?.text || '';
-  if (/abandon|afk/i.test(lastText)) {
-    return lastText;
+  const afkPlayer = gameStore.lastResult?.afkPlayer;
+  
+  // Check if game ended due to AFK
+  if (afkPlayer) {
+    const isLocalPlayerAfk = afkPlayer === localPlayerKey.value;
+    if (isLocalPlayerAfk) {
+      return '⏳ Vous avez été éliminé pour inactivité.';
+    }
+    return `🏆 ${lastText.replace('🏳️ ', '')}`;
   }
+  
+  // Check if game ended due to abandonment
+  if (/abandon/i.test(lastText)) {
+    return isLocalWinner.value ? `🏆 ${lastText.replace('🏳️ ', '')}` : lastText;
+  }
+  
   return isLocalWinner.value ? 'Vous avez survécu !' : 'Vous êtes mort...';
 });
 
@@ -417,7 +430,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // Reveal the current bullet before showing the result (even on blanks)
       if (gameSceneRef.value?.revealBullet) {
         gameSceneRef.value.revealBullet(isReal);
-        setTimeout(() => audioManager.play(isReal ? 'shot' : 'blank'), 700);
+        setTimeout(() => audioManager.play(isReal ? 'shot' : 'blank'), 200);
       }
       
       // Quick result (just after reveal)
@@ -455,7 +468,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // 6. Reveal what's in the chamber
       if (gameSceneRef.value?.revealBullet) {
         gameSceneRef.value.revealBullet(isReal);
-        setTimeout(() => audioManager.play(isReal ? 'shot' : 'blank'), 700);
+        setTimeout(() => audioManager.play(isReal ? 'shot' : 'blank'), 200);
       }
       
       // 7. Show result modal (just after reveal)
@@ -794,28 +807,51 @@ watch(
       netStore.clearOpponentLeft();
       return;
     }
-    const leftPlayerEntry = Object.entries(gameStore.players).find(([, player]) => (
-      player?.socketId === opponentLeft.playerId
-    ));
+    
+    // Find the player who left - by playerId or by wasHost flag
+    let leftPlayerEntry = null;
+    if (opponentLeft.playerId) {
+      leftPlayerEntry = Object.entries(gameStore.players).find(([, player]) => (
+        player?.socketId === opponentLeft.playerId
+      ));
+    }
+    
+    // If wasHost and no playerId, find the first active opponent (likely the host)
+    if (!leftPlayerEntry && opponentLeft.wasHost) {
+      leftPlayerEntry = Object.entries(gameStore.players).find(([key, player]) => (
+        key !== localPlayerKey.value && player?.isActive && player?.hp > 0
+      ));
+    }
+    
     const leftKey = leftPlayerEntry?.[0];
     const leftName = leftPlayerEntry?.[1]?.name || opponentLeft.playerName || 'Un joueur';
 
+    // Mark ONLY the player who left as inactive
     if (leftKey && gameStore.players[leftKey]) {
       gameStore.players[leftKey].hp = 0;
       gameStore.players[leftKey].isActive = false;
     }
 
+    // Get remaining active players (excluding those who left)
     const activePlayers = gameStore.getActivePlayerKeys();
+    
+    // Count how many opponents are still active (not the local player)
+    const activeOpponents = activePlayers.filter(key => key !== localPlayerKey.value);
+    
+    // Game ends ONLY if there's 1 or fewer players left (regardless of who was host)
     if (activePlayers.length <= 1) {
-      gameStore.winner = activePlayers[0] || null;
+      // Victory by abandonment
+      gameStore.winner = activePlayers[0] || localPlayerKey.value;
       gameStore.phase = 'game_over';
       gameStore.lastResult = {
-        text: `🏳️ ${leftName} a quitté la partie. Victoire par abandon.`
+        text: `🏳️ ${leftName} a quitté la partie. Victoire par abandon !`
       };
     } else {
+      // Multiple players still active, game continues
       gameStore.lastResult = {
         text: `🏳️ ${leftName} a quitté la partie.`
       };
+      // If it was the leaving player's turn, advance to next player
       if (leftKey && gameStore.currentTurn === leftKey) {
         const nextKey = gameStore.getNextTurnKey(activePlayers, leftKey);
         gameStore.resolveNextTurn(nextKey);

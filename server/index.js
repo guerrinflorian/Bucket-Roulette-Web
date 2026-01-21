@@ -1,10 +1,39 @@
-import { createServer } from 'http';
+import 'dotenv/config';
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import jwt from '@fastify/jwt';
 import { Server } from 'socket.io';
+import authRoutes from './routes/auth.js';
 
-const httpServer = createServer();
+const fastify = Fastify({ logger: true });
+
+await fastify.register(cors, {
+  origin: true,
+  credentials: true
+});
+
+await fastify.register(jwt, {
+  secret: process.env.JWT_SECRET || 'dev-secret',
+  sign: { expiresIn: '48h' }
+});
+
+fastify.decorate('authenticate', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    reply.code(401).send({ error: 'Non autorisé.' });
+  }
+});
+
+fastify.get('/api/health', async () => ({ status: 'ok' }));
+await fastify.register(authRoutes, { prefix: '/api/auth' });
+
+await fastify.ready();
+
+const httpServer = fastify.server;
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
@@ -355,6 +384,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Socket.IO server running on port ${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Fastify + Socket.IO running on port ${PORT}`);
 });
