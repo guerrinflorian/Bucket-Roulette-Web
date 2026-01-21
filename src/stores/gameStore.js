@@ -205,14 +205,17 @@ export const useGameStore = defineStore('game', {
         this.botMemory.realRemaining += 1;
       }
     },
-    updateScannerHintAfterAdvance(actorKey) {
-      const actor = this.players[actorKey];
-      if (!actor?.scannerHint) return;
-      if (actor.scannerHint <= 1) {
-        actor.scannerHint = null;
-      } else {
-        actor.scannerHint -= 1;
-      }
+    updateScannerHintsAfterAdvance() {
+      const updateHint = (actor) => {
+        if (!actor?.scannerHint) return;
+        if (actor.scannerHint <= 1) {
+          actor.scannerHint = null;
+        } else {
+          actor.scannerHint -= 1;
+        }
+      };
+      updateHint(this.players.player);
+      updateHint(this.players.enemy);
     },
     setCoinFlipResult(starts) {
       this.currentTurn = starts;
@@ -281,7 +284,7 @@ export const useGameStore = defineStore('game', {
       }
       if (itemId === 'eject' && currentBullet) {
         this.updateBotMemoryAfterEject(currentBullet);
-        this.updateScannerHintAfterAdvance(actorKey);
+        this.updateScannerHintsAfterAdvance();
       }
       if (itemId === 'inverter' && currentBullet) {
         const flipped = currentBullet === 'real' ? 'blank' : 'real';
@@ -330,7 +333,7 @@ export const useGameStore = defineStore('game', {
         this.players.player.peekedNext = null;
         this.players.enemy.peekedNext = null;
         this.updateBotMemoryAfterShot(shot);
-        this.updateScannerHintAfterAdvance(actorKey);
+        this.updateScannerHintsAfterAdvance();
 
         const isReal = shot === 'real';
         const hadDouble = actor.doubleDamageNextShot;

@@ -121,6 +121,13 @@ function decideShootTarget(state, level, counts) {
     return 'self';
   }
 
+  if (bot.scannerHint !== null && bot.scannerHint !== undefined) {
+    if (bot.scannerHint <= 1) {
+      return 'enemy';
+    }
+    return 'self';
+  }
+
   if (bot.doubleDamageNextShot) {
     return 'enemy';
   }

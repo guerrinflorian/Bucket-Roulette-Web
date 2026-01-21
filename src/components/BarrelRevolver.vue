@@ -24,6 +24,7 @@
           :class="getSlotClass(i)"
           :style="getSlotPosition(i)"
         >
+          <span class="chamber-number" aria-hidden="true">{{ i + 1 }}</span>
           <div class="chamber-inner">
             <!-- Revealed bullet (real or blank) -->
             <span
@@ -366,6 +367,18 @@ defineExpose({
   justify-content: center;
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.7);
   transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+.chamber-number {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  line-height: 1;
 }
 
 .chamber-inner {

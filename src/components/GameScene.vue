@@ -50,6 +50,8 @@
           <span>⚪ {{ blankCount }} blanches</span>
           <span class="separator">•</span>
           <span>🎲 {{ totalCount }} cartouches</span>
+          <span class="separator">•</span>
+          <span>🔢 Chambre {{ currentChamberNumber }}/{{ totalSlots }}</span>
         </div>
       </section>
 
@@ -355,6 +357,8 @@ const counts = computed(() => remainingCounts(props.barrel));
 const realCount = computed(() => counts.value.real);
 const blankCount = computed(() => counts.value.blank);
 const totalCount = computed(() => counts.value.remaining);
+const totalSlots = computed(() => props.barrel?.chambers?.length ?? 6);
+const currentChamberNumber = computed(() => Math.min((props.barrel?.index ?? 0) + 1, totalSlots.value));
 const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel.firstShotFired);
 
 const phaseLabel = computed(() => {
