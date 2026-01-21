@@ -49,13 +49,12 @@ export const ITEM_DEFS = [
   {
     id: 'handcuffs',
     name: 'Les Menottes',
-    description: "Empêche l'adversaire de jouer au prochain tour.",
-    canUse: (state, actorKey) => {
-      const targetKey = actorKey === 'player' ? 'enemy' : 'player';
+    description: 'Choisissez un adversaire à bloquer au prochain tour.',
+    canUse: (state, actorKey, targetKey) => {
+      if (!targetKey || targetKey === actorKey) return false;
       return !state.players[targetKey].skipNextTurn;
     },
-    apply: (state, actorKey) => {
-      const targetKey = actorKey === 'player' ? 'enemy' : 'player';
+    apply: (state, actorKey, targetKey) => {
       state.players[targetKey].skipNextTurn = true;
       return { message: `⛓️ ${state.players[targetKey].name} sera menotté au prochain tour.` };
     }
@@ -76,8 +75,11 @@ export const ITEM_DEFS = [
       if (state.players[actorKey].peekedNext) {
         state.players[actorKey].peekedNext = flipped;
       }
-      const otherKey = actorKey === 'player' ? 'enemy' : 'player';
-      state.players[otherKey].peekedNext = null;
+      Object.entries(state.players).forEach(([key, player]) => {
+        if (key !== actorKey && player) {
+          player.peekedNext = null;
+        }
+      });
       return { message: `${state.players[actorKey].name} inverse la balle.` };
     }
   },
@@ -145,10 +147,10 @@ export function rollRandomItems(count) {
   return items;
 }
 
-export function applyItem(state, actorKey, itemId) {
+export function applyItem(state, actorKey, itemId, targetKey = null) {
   const item = getItemById(itemId);
-  if (!item || !item.canUse(state, actorKey)) {
+  if (!item || !item.canUse(state, actorKey, targetKey)) {
     return { message: 'Objet inutilisable.', success: false };
   }
-  return { ...item.apply(state, actorKey), success: true };
+  return { ...item.apply(state, actorKey, targetKey), success: true };
 }

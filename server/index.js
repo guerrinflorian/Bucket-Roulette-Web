@@ -21,12 +21,19 @@ function generateRoomCode() {
   return code;
 }
 
+function serializePlayers(room) {
+  return room.players.map((player) => ({
+    id: player.id,
+    name: player.name,
+    isHost: player.id === room.host
+  }));
+}
+
 function getRoomInfo(room) {
   return {
     hostId: room.host,
     hostName: room.hostName,
-    guestId: room.guest,
-    guestName: room.guestName,
+    players: serializePlayers(room),
     gameStarted: room.gameStarted,
     gameEnded: room.gameEnded
   };
@@ -50,10 +57,8 @@ io.on('connection', (socket) => {
     rooms.set(roomId, {
       host: socket.id,
       hostName: playerName,
-      guest: null,
-      guestName: null,
       gameState: null,
-      players: [socket.id],
+      players: [{ id: socket.id, name: playerName }],
       gameStarted: false,
       gameEnded: false
     });
@@ -64,7 +69,12 @@ io.on('connection', (socket) => {
     socket.playerName = playerName;
 
     console.log(`🏠 Room created: ${roomId} by ${playerName} (${socket.id})`);
-    socket.emit('room:created', { roomId, isHost: true, hostName: playerName });
+    socket.emit('room:created', {
+      roomId,
+      isHost: true,
+      hostName: playerName,
+      ...getRoomInfo(rooms.get(roomId))
+    });
   });
 
   // Join an existing room
@@ -95,14 +105,12 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.players.length >= 2) {
+    if (room.players.length >= 3) {
       socket.emit('room:error', { message: 'Room pleine' });
       return;
     }
 
-    room.guest = socket.id;
-    room.guestName = playerName;
-    room.players.push(socket.id);
+    room.players.push({ id: socket.id, name: playerName });
     socket.join(normalizedRoomId);
     socket.roomId = normalizedRoomId;
     socket.isHost = false;
@@ -111,20 +119,21 @@ io.on('connection', (socket) => {
     console.log(`👥 ${playerName} (${socket.id}) joined room ${normalizedRoomId}`);
 
     // Notify the guest they joined with full room info
-    socket.emit('room:joined', { 
-      roomId: normalizedRoomId, 
+    socket.emit('room:joined', {
+      roomId: normalizedRoomId,
       isHost: false,
       ...getRoomInfo(room)
     });
 
     // Notify the host that someone joined (with name)
-    io.to(room.host).emit('room:player-joined', { 
+    socket.to(normalizedRoomId).emit('room:player-joined', {
       playerId: socket.id,
-      playerName: playerName
+      playerName: playerName,
+      ...getRoomInfo(room)
     });
 
-    // If both players are here, notify both that the game can start
-    if (room.players.length === 2) {
+    // If all players are here, notify both that the game can start
+    if (room.players.length === 3) {
       io.to(normalizedRoomId).emit('room:ready', getRoomInfo(room));
     }
   });
@@ -184,10 +193,8 @@ io.on('connection', (socket) => {
       console.log(`🏆 Game ended in room ${roomId}, winner: ${gameState.winner}`);
     }
 
-    // Send to guest only
-    if (room.guest) {
-      io.to(room.guest).emit('game:state', gameState);
-    }
+    // Send to everyone except host
+    socket.to(roomId).emit('game:state', gameState);
   });
 
   // Game ended
@@ -202,6 +209,37 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('room:game-ended', { roomId });
   });
 
+  // Host kicks a player
+  socket.on('room:kick', ({ roomId, playerId }) => {
+    const room = rooms.get(roomId);
+    if (!room || room.host !== socket.id) return;
+    if (!playerId || playerId === room.host) return;
+
+    const targetIndex = room.players.findIndex((player) => player.id === playerId);
+    if (targetIndex === -1) return;
+
+    const [removed] = room.players.splice(targetIndex, 1);
+    const targetSocket = io.sockets.sockets.get(playerId);
+
+    if (targetSocket) {
+      targetSocket.leave(roomId);
+      targetSocket.roomId = null;
+      targetSocket.isHost = false;
+      targetSocket.emit('room:kicked', {
+        roomId,
+        message: "Vous avez été éjecté par l'hôte."
+      });
+    }
+
+    io.to(roomId).emit('room:player-left', {
+      playerId,
+      playerName: removed?.name,
+      wasHost: false,
+      ...getRoomInfo(room)
+    });
+
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`❌ Client disconnected: ${socket.id}`);
@@ -213,14 +251,15 @@ io.on('connection', (socket) => {
         const playerName = socket.playerName;
 
         // Notify other player immediately
-        socket.to(socket.roomId).emit('room:player-left', { 
+        socket.to(socket.roomId).emit('room:player-left', {
           playerId: socket.id,
           playerName: playerName,
-          wasHost: wasHost
+          wasHost: wasHost,
+          ...getRoomInfo(room)
         });
 
         // Remove player from room
-        room.players = room.players.filter(id => id !== socket.id);
+        room.players = room.players.filter((player) => player.id !== socket.id);
 
         // If room is empty or game hasn't started, delete room
         if (room.players.length === 0) {
@@ -236,34 +275,28 @@ io.on('connection', (socket) => {
             });
             console.log(`🚪 Host left during game in room ${socket.roomId}`);
           } else if (!room.gameStarted) {
-            // Game not started yet, promote guest
-            room.host = room.guest;
-            room.hostName = room.guestName;
-            room.guest = null;
-            room.guestName = null;
-            
-            // Update socket data for promoted player
-            const promotedSocket = io.sockets.sockets.get(room.host);
-            if (promotedSocket) {
-              promotedSocket.isHost = true;
+            // Game not started yet, promote first remaining player
+            const nextHost = room.players[0];
+            if (nextHost) {
+              room.host = nextHost.id;
+              room.hostName = nextHost.name;
+
+              const promotedSocket = io.sockets.sockets.get(room.host);
+              if (promotedSocket) {
+                promotedSocket.isHost = true;
+              }
+
+              io.to(room.host).emit('room:promoted-host', {
+                hostName: room.hostName,
+                ...getRoomInfo(room)
+              });
+              console.log(`👑 ${room.hostName} promoted to host in room ${socket.roomId}`);
             }
-            
-            io.to(room.host).emit('room:promoted-host', {
-              hostName: room.hostName
-            });
-            console.log(`👑 ${room.hostName} promoted to host in room ${socket.roomId}`);
           }
-        } else {
-          // Guest left
-          room.guest = null;
-          room.guestName = null;
-          
-          if (room.gameStarted && !room.gameEnded) {
-            // Game in progress, notify host
-            io.to(room.host).emit('room:guest-left', { 
-              message: "L'adversaire a quitté la partie" 
-            });
-          }
+        } else if (room.gameStarted && !room.gameEnded) {
+          io.to(room.host).emit('room:guest-left', {
+            message: "Un joueur a quitté la partie"
+          });
         }
       }
     }
@@ -277,36 +310,36 @@ io.on('connection', (socket) => {
         const wasHost = socket.isHost;
         
         // Notify other player
-        socket.to(socket.roomId).emit('room:player-left', { 
+        socket.to(socket.roomId).emit('room:player-left', {
           playerId: socket.id,
           playerName: socket.playerName,
-          wasHost: wasHost
+          wasHost: wasHost,
+          ...getRoomInfo(room)
         });
 
         // Remove player from room
-        room.players = room.players.filter(id => id !== socket.id);
+        room.players = room.players.filter((player) => player.id !== socket.id);
         socket.leave(socket.roomId);
 
         if (room.players.length === 0) {
           rooms.delete(socket.roomId);
           console.log(`🗑️ Room ${socket.roomId} deleted`);
         } else if (wasHost) {
-          room.host = room.guest;
-          room.hostName = room.guestName;
-          room.guest = null;
-          room.guestName = null;
-          
-          const promotedSocket = io.sockets.sockets.get(room.host);
-          if (promotedSocket) {
-            promotedSocket.isHost = true;
+          const nextHost = room.players[0];
+          if (nextHost) {
+            room.host = nextHost.id;
+            room.hostName = nextHost.name;
+
+            const promotedSocket = io.sockets.sockets.get(room.host);
+            if (promotedSocket) {
+              promotedSocket.isHost = true;
+            }
+
+            io.to(room.host).emit('room:promoted-host', {
+              hostName: room.hostName,
+              ...getRoomInfo(room)
+            });
           }
-          
-          io.to(room.host).emit('room:promoted-host', {
-            hostName: room.hostName
-          });
-        } else {
-          room.guest = null;
-          room.guestName = null;
         }
       }
       

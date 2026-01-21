@@ -164,44 +164,35 @@
           </div>
 
           <div class="players-list">
-            <!-- Host player -->
-            <div class="player-row" :class="{ 'is-you': netStore.isHost }">
-              <div class="player-badge host">
-                <span class="badge-crown">👑</span>
-                <span class="badge-label">HÔTE</span>
+            <div
+              v-for="(slot, index) in lobbySlots"
+              :key="slot.id || `slot-${index}`"
+              class="player-row"
+              :class="{ 'is-you': slot.isSelf, waiting: slot.isEmpty }"
+            >
+              <div class="player-badge" :class="slot.isHost ? 'host' : 'guest'">
+                <span class="badge-crown" v-if="slot.isHost">👑</span>
+                <span class="badge-icon" v-else>👤</span>
+                <span class="badge-label">{{ slot.isHost ? 'HÔTE' : 'JOUEUR' }}</span>
               </div>
               <div class="player-details">
                 <span class="player-row-name">
-                  {{ netStore.isHost ? netStore.playerName : netStore.opponentName || '...' }}
+                  {{ slot.name }}
                 </span>
-                <span v-if="netStore.isHost" class="you-tag">(vous)</span>
+                <span v-if="slot.isSelf" class="you-tag">(vous)</span>
+                <span v-if="slot.isEmpty" class="waiting-text">En attente d'un joueur...</span>
               </div>
-              <div class="player-status ready">
+              <div class="player-status" :class="{ ready: !slot.isEmpty }">
                 <span class="status-dot"></span>
-                <span>Prêt</span>
+                <span>{{ slot.isEmpty ? 'Attente' : 'Prêt' }}</span>
               </div>
-            </div>
-
-            <!-- Guest player -->
-            <div class="player-row" :class="{ 'is-you': !netStore.isHost, 'waiting': !netStore.opponentConnected && netStore.isHost }">
-              <div class="player-badge guest">
-                <span class="badge-icon">👤</span>
-                <span class="badge-label">INVITÉ</span>
-              </div>
-              <div class="player-details">
-                <template v-if="netStore.isHost">
-                  <span class="player-row-name" v-if="netStore.opponentConnected">{{ netStore.opponentName }}</span>
-                  <span class="waiting-text" v-else>En attente d'un joueur...</span>
-                </template>
-                <template v-else>
-                  <span class="player-row-name">{{ netStore.playerName }}</span>
-                  <span class="you-tag">(vous)</span>
-                </template>
-              </div>
-              <div class="player-status" :class="{ ready: !netStore.isHost || netStore.opponentConnected }">
-                <span class="status-dot"></span>
-                <span>{{ (!netStore.isHost || netStore.opponentConnected) ? 'Prêt' : 'Attente' }}</span>
-              </div>
+              <button
+                v-if="netStore.isHost && slot.id && !slot.isSelf"
+                class="kick-btn"
+                @click="kickPlayer(slot.id)"
+              >
+                Éjecter
+              </button>
             </div>
           </div>
 
@@ -216,7 +207,7 @@
 
           <p v-else-if="netStore.isHost" class="waiting-message">
             <span class="pulse-dot"></span>
-            En attente d'un adversaire...
+            En attente de {{ missingPlayerCount }} joueur{{ missingPlayerCount > 1 ? 's' : '' }}...
           </p>
           <p v-else class="waiting-message">
             <span class="pulse-dot"></span>
@@ -270,7 +261,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
@@ -305,6 +296,26 @@ const botLevels = [
   { id: 3, name: 'Bot Tsar', stars: '⭐⭐⭐', tag: 'Difficile' },
   { id: 4, name: 'Empereur', stars: '⭐⭐⭐⭐', tag: 'Difficile ++' }
 ];
+
+const lobbySlots = computed(() => {
+  const slots = netStore.roomPlayers.map((player) => ({
+    ...player,
+    isSelf: player.id === netStore.socketId,
+    isEmpty: false
+  }));
+  while (slots.length < 3) {
+    slots.push({
+      id: null,
+      name: 'Emplacement libre',
+      isHost: false,
+      isSelf: false,
+      isEmpty: true
+    });
+  }
+  return slots;
+});
+
+const missingPlayerCount = computed(() => Math.max(0, 3 - netStore.roomPlayers.length));
 
 const selectBotDifficulty = (levelId) => {
   botDifficulty.value = levelId;
@@ -369,6 +380,10 @@ const leaveRoom = () => {
   roomInput.value = '';
 };
 
+const kickPlayer = (playerId) => {
+  netStore.kickPlayer(playerId);
+};
+
 const copyCode = () => {
   if (netStore.roomId) {
     navigator.clipboard.writeText(netStore.roomId);
@@ -377,15 +392,25 @@ const copyCode = () => {
 
 const startMultiplayer = async () => {
   console.log('🎮 Host starting game...');
-  gameStore.initGame('online');
-  
-  // Set player names based on host/guest
-  gameStore.players.player.name = netStore.playerName;
-  gameStore.players.enemy.name = netStore.opponentName || 'Adversaire';
-  
-  // Host decides who starts (sync to both players)
-  const starts = Math.random() > 0.5 ? 'player' : 'enemy';
-  gameStore.setCoinFlipResult(starts);
+  const roster = netStore.roomPlayers;
+  if (roster.length < 3) {
+    return;
+  }
+
+  const playerKeys = ['player', 'enemy', 'enemy2'];
+  gameStore.initGame('online', { playerKeys });
+
+  playerKeys.forEach((key, index) => {
+    const playerInfo = roster[index];
+    if (!playerInfo) return;
+    gameStore.players[key].name = playerInfo.name;
+    gameStore.players[key].socketId = playerInfo.id;
+    gameStore.players[key].isActive = true;
+  });
+
+  const shuffled = [...playerKeys].sort(() => Math.random() - 0.5);
+  gameStore.turnOrder = shuffled;
+  gameStore.setCoinFlipResult(shuffled[0]);
 
   // Wait a bit to ensure guest is ready
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -394,6 +419,7 @@ const startMultiplayer = async () => {
   const state = {
     phase: gameStore.phase,
     currentTurn: gameStore.currentTurn,
+    turnOrder: gameStore.turnOrder,
     barrel: gameStore.barrel,
     players: gameStore.players,
     lastResult: gameStore.lastResult,
@@ -402,8 +428,7 @@ const startMultiplayer = async () => {
     reloadCount: gameStore.reloadCount,
     lastReloadInfo: gameStore.lastReloadInfo,
     hostName: netStore.playerName,
-    guestName: netStore.opponentName,
-    onlineFlipResult: starts
+    onlineFlipResult: gameStore.currentTurn
   };
   
   console.log('📤 Sending game state to all players:', state);
@@ -450,12 +475,8 @@ const setupGameStateListener = () => {
     // Guest receives state and starts game
     if (!netStore.isHost && state && netStore.roomId) {
       console.log('🚀 Guest redirecting to game!');
-      gameStore.initGame('online');
-      
-      // Set player names for guest (inverted)
-      gameStore.players.player.name = netStore.playerName;
-      gameStore.players.enemy.name = netStore.opponentName || 'Adversaire';
-      
+      const playerKeys = state.turnOrder ?? Object.keys(state.players ?? {});
+      gameStore.initGame('online', { playerKeys });
       gameStore.hydrateFromNetwork(state);
       router.push('/game');
     } else {
@@ -1421,6 +1442,25 @@ const cleanupMenuModel = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.kick-btn {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.kick-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
 }
 
 .player-row-name {

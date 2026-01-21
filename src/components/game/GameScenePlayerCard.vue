@@ -1,12 +1,12 @@
 <template>
-  <section class="player-section" :class="{ 'player-section-bottom': isBottom }">
-    <div class="player-card" :class="{ 'player-card-reverse': isReversed }">
+  <section class="player-section" :class="{ 'player-section-bottom': isBottom, 'player-section-compact': isCompact }">
+    <div class="player-card" :class="{ 'player-card-reverse': isReversed, 'player-card-compact': isCompact }">
       <div class="avatar-stack">
-       <q-avatar size="56px" class="player-avatar">
+       <q-avatar :size="isCompact ? '44px' : '56px'" class="player-avatar">
           <Avatar 
             :name="firstName" 
             variant="beam" 
-            :size="56" 
+            :size="isCompact ? 44 : 56" 
             :colors="avatarColors"
           />
         </q-avatar>
@@ -70,6 +70,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  isCompact: {
+    type: Boolean,
+    default: false
+  },
   showItems: {
     type: Boolean,
     default: false
@@ -110,6 +114,10 @@ function getItemImage(id) {
   padding-bottom: 16px;
 }
 
+.player-section-compact {
+  padding: 8px 10px;
+}
+
 .player-card {
   max-width: 500px;
   margin: 0 auto;
@@ -126,6 +134,24 @@ function getItemImage(id) {
 
 .player-card-reverse {
   flex-direction: row-reverse;
+}
+
+.player-card-compact {
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.player-card-compact .player-avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.player-card-compact .player-name {
+  font-size: 12px;
+}
+
+.player-card-compact .player-hp-text {
+  font-size: 11px;
 }
 
 .avatar-stack {

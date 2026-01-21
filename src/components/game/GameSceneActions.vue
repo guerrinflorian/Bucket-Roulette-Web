@@ -1,106 +1,107 @@
 <template>
   <section class="actions-section">
-    <button
-      class="shoot-btn shoot-enemy"
-      :disabled="!canAct"
-      @click="emit('shoot', 'enemy')"
+    <div class="target-picker">
+      <div class="target-label">Cible</div>
+      <q-btn-toggle
+        v-model="selectedTarget"
+        :options="targetOptions"
+        class="target-toggle"
+        color="deep-orange"
+        text-color="white"
+        unelevated
+        spread
+        :disable="!canAct"
+      />
+    </div>
+    <q-btn
+      class="shoot-btn"
+      color="negative"
+      unelevated
+      :disable="!canAct || !selectedTarget"
+      @click="emit('shoot', selectedTarget)"
     >
-      🎯 Tirer sur l'ennemi
-      <q-tooltip>Tirer sur l'ennemi. Si balle réelle, tour change.</q-tooltip>
-    </button>
-    <button
-      class="shoot-btn shoot-self"
-      :disabled="!canAct"
-      @click="emit('shoot', 'self')"
-    >
-      🔫 Se tirer dessus
-      <q-tooltip>À blanc, vous rejouez. Réelle = dégâts.</q-tooltip>
-    </button>
+      🎯 Tirer
+      <q-tooltip>Choisissez la cible avant de tirer.</q-tooltip>
+    </q-btn>
   </section>
 </template>
 
 <script setup>
-defineProps({
+import { computed, ref, watch } from 'vue';
+
+const props = defineProps({
   canAct: {
     type: Boolean,
     default: false
+  },
+  targets: {
+    type: Array,
+    default: () => []
   }
 });
 
 const emit = defineEmits(['shoot']);
+const selectedTarget = ref(null);
+
+const targetOptions = computed(() => props.targets.map((target) => ({
+  label: target.label,
+  value: target.key
+})));
+
+watch(
+  () => props.targets,
+  (targets) => {
+    if (!targets.length) {
+      selectedTarget.value = null;
+      return;
+    }
+    const stillAvailable = targets.some((target) => target.key === selectedTarget.value);
+    if (!stillAvailable) {
+      selectedTarget.value = targets[0]?.key || null;
+    }
+  },
+  { immediate: true, deep: true }
+);
 </script>
 
 <style scoped>
 .actions-section {
-  display: flex;
+  display: grid;
   gap: 14px;
-  justify-content: center;
+  justify-items: center;
   padding: 12px 18px 18px;
 }
 
+.target-picker {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 8px;
+}
+
+.target-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(244, 244, 245, 0.7);
+  font-weight: 700;
+}
+
+.target-toggle {
+  width: 100%;
+  background: rgba(24, 24, 27, 0.6);
+  border-radius: 14px;
+  padding: 4px;
+}
+
 .shoot-btn {
-  flex: 1;
-  max-width: 200px;
-  border: 2px solid;
+  width: min(260px, 100%);
   border-radius: 16px;
   padding: 14px 18px;
   font-size: 13px;
   font-weight: 700;
   color: #f4f4f5;
-  cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.shoot-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
-  opacity: 0;
-  transition: opacity 0.25s;
-}
-
-.shoot-btn:hover:not(:disabled)::before {
-  opacity: 1;
-}
-
-.shoot-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.shoot-btn:hover:not(:disabled) {
-  transform: translateY(-4px);
-}
-
-.shoot-btn:active:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.shoot-enemy {
-  background: linear-gradient(145deg, #7f1d1d, #450a0a);
-  border-color: rgba(239, 68, 68, 0.5);
-  box-shadow: 0 6px 24px rgba(239, 68, 68, 0.25);
-}
-
-.shoot-enemy:hover:not(:disabled) {
-  border-color: #ef4444;
-  box-shadow: 0 12px 36px rgba(239, 68, 68, 0.35), 0 0 30px rgba(239, 68, 68, 0.15);
-}
-
-.shoot-self {
-  background: linear-gradient(145deg, rgba(63, 63, 70, 0.8), rgba(39, 39, 42, 0.9));
-  border-color: rgba(161, 161, 170, 0.3);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
-}
-
-.shoot-self:hover:not(:disabled) {
-  border-color: rgba(161, 161, 170, 0.5);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 20px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.25);
 }
 
 @media (max-height: 700px) {

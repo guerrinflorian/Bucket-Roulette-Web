@@ -4,7 +4,10 @@
       ref="gameSceneRef"
       v-if="gameStore.players.player"
       :player="uiPlayer"
-      :enemy="uiEnemy"
+      :opponents="uiOpponents"
+      :players-by-key="gameStore.players"
+      :current-turn-key="gameStore.currentTurn"
+      :local-player-key="localPlayerKey"
       :barrel="gameStore.barrel"
       :phase="uiPhase"
       :is-flip-visible="isFlipVisible"
@@ -16,8 +19,7 @@
       :turn-time-left="turnCountdown"
       :can-send-emoji="canSendEmoji"
       :emoji-cooldown-left="emojiCooldownLeft"
-      :player-emoji="playerEmoji"
-      :enemy-emoji="enemyEmoji"
+      :player-emojis="playerEmojis"
       @shoot="handleShoot"
       @use-item="handleUseItem"
       @send-emoji="handleSendEmoji"
@@ -108,35 +110,30 @@ let turnTimer = null;
 let turnTick = null;
 let emojiTick = null;
 const emojiNow = ref(Date.now());
-const playerEmoji = ref('');
-const enemyEmoji = ref('');
-const emojiLastSentAt = ref({
-  player: 0,
-  enemy: 0
-});
-const emojiTimeouts = {
-  player: null,
-  enemy: null
-};
+const playerEmojis = ref({});
+const emojiLastSentAt = ref({});
+const emojiTimeouts = {};
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-const isMyTurn = computed(() => {
-  if (!isOnlineMode.value) return true;
-  // In online mode: host is player, guest is enemy
-  const myRole = netStore.isHost ? 'player' : 'enemy';
-  return (gameStore.phase === 'player_turn' && myRole === 'player') ||
-         (gameStore.phase === 'enemy_turn' && myRole === 'enemy');
+const turnTimeLimit = computed(() => {
+  if (isOnlineMode.value && gameStore.turnOrder.length >= 3) {
+    return 20;
+  }
+  return TURN_TIME_LIMIT;
+});
+const localPlayerKey = computed(() => {
+  if (!isOnlineMode.value) return 'player';
+  const socketId = netStore.socketId;
+  const entries = Object.entries(gameStore.players);
+  const match = entries.find(([, player]) => player?.socketId === socketId);
+  return match?.[0] || 'player';
 });
 
-const uiPhase = computed(() => {
-  if (!isOnlineMode.value) return gameStore.phase;
-  if (gameStore.phase === 'player_turn') {
-    return netStore.isHost ? 'player_turn' : 'enemy_turn';
-  }
-  if (gameStore.phase === 'enemy_turn') {
-    return netStore.isHost ? 'enemy_turn' : 'player_turn';
-  }
-  return gameStore.phase;
+const isMyTurn = computed(() => {
+  if (!isOnlineMode.value) return gameStore.phase === 'player_turn';
+  return gameStore.currentTurn === localPlayerKey.value;
 });
+
+const uiPhase = computed(() => gameStore.phase);
 
 const mapOnlineFlipResult = (result) => {
   if (!isOnlineMode.value || !result) return result;
@@ -150,13 +147,12 @@ const isInitialOnlineFlip = (state = null) => {
 };
 
 const uiNameForStoreKey = (key) => {
-  if (uiPlayer.value?.id === key) return uiPlayer.value?.name;
-  return uiEnemy.value?.name;
+  return gameStore.players[key]?.name || 'Joueur';
 };
 
 const canAct = computed(() => {
   if (gameStore.isAnimating) return false;
-  if (gameStore.phase !== 'player_turn' && gameStore.phase !== 'enemy_turn') return false;
+  if (!gameStore.isTurnPhase()) return false;
   if (!isOnlineMode.value) {
     return gameStore.phase === 'player_turn';
   }
@@ -170,7 +166,8 @@ const canUseItems = computed(() => {
 });
 
 const isEmojiCooldownActive = computed(() => {
-  return emojiNow.value - emojiLastSentAt.value.player < EMOJI_COOLDOWN_MS;
+  const lastSent = emojiLastSentAt.value[localPlayerKey.value] || 0;
+  return emojiNow.value - lastSent < EMOJI_COOLDOWN_MS;
 });
 
 const isEmojiDisabledByTimer = computed(() => {
@@ -182,25 +179,28 @@ const canSendEmoji = computed(() => {
 });
 
 const emojiCooldownLeft = computed(() => {
-  const remaining = EMOJI_COOLDOWN_MS - (emojiNow.value - emojiLastSentAt.value.player);
+  const lastSent = emojiLastSentAt.value[localPlayerKey.value] || 0;
+  const remaining = EMOJI_COOLDOWN_MS - (emojiNow.value - lastSent);
   return Math.max(0, Math.ceil(remaining / 1000));
 });
 
 // UI mapping: local player is always shown at the bottom
 const uiPlayer = computed(() => {
-  if (!isOnlineMode.value) return gameStore.players.player;
-  return netStore.isHost ? gameStore.players.player : gameStore.players.enemy;
+  const key = localPlayerKey.value;
+  return gameStore.players[key] || gameStore.players.player;
 });
 
-const uiEnemy = computed(() => {
-  if (!isOnlineMode.value) return gameStore.players.enemy;
-  return netStore.isHost ? gameStore.players.enemy : gameStore.players.player;
+const uiOpponents = computed(() => {
+  return gameStore.turnOrder
+    .filter((key) => key !== localPlayerKey.value)
+    .map((key) => gameStore.players[key])
+    .filter((player) => player?.isActive && player.hp > 0);
 });
 
 const isLocalWinner = computed(() => {
   if (!gameStore.winner) return false;
   if (!isOnlineMode.value) return gameStore.winner === 'player';
-  return gameStore.winner === (netStore.isHost ? 'player' : 'enemy');
+  return gameStore.winner === localPlayerKey.value;
 });
 
 const gameOverSubtitle = computed(() => {
@@ -216,7 +216,7 @@ const shouldAutoTimeout = computed(() => {
   return isMyTurn.value;
 });
 
-const onlineActorKey = computed(() => (netStore.isHost ? 'player' : 'enemy'));
+const onlineActorKey = computed(() => localPlayerKey.value);
 
 // Watch for pending bot shoot action
 watch(() => gameStore.pendingBotAction, async (action) => {
@@ -266,7 +266,7 @@ const waitForInitialFlip = () => {
 };
 
 const resetTurnTimerAfterAction = () => {
-  if (gameStore.phase !== 'player_turn' && gameStore.phase !== 'enemy_turn') return;
+  if (!gameStore.isTurnPhase()) return;
   if (isOnlineMode.value && !netStore.isHost) return;
   startTurnTimer();
 };
@@ -328,10 +328,12 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
 
   try {
     // 2. Determine outcome BEFORE anything changes
-    const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
+    const actorKey = actorKeyOverride || gameStore.currentTurn;
     const actor = gameStore.players[actorKey];
-    const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
-    let targetKey = target === 'self' ? actorKey : opponentKey;
+    let targetKey = target || actorKey;
+    if (!gameStore.players[targetKey]) {
+      targetKey = actorKey;
+    }
     
     const shot = gameStore.barrel.chambers[gameStore.barrel.index];
     const isReal = shot === 'real';
@@ -386,7 +388,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       }
       
       // Apply game logic
-      await gameStore.shoot(target, actorKey);
+      await gameStore.shoot(targetKey, actorKey);
       shotResolved = true;
       resetTurnTimerAfterAction();
       await sleep(200);
@@ -433,7 +435,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       }
       
       // 10. Apply game logic
-      await gameStore.shoot(target, actorKey);
+      await gameStore.shoot(targetKey, actorKey);
       shotResolved = true;
       resetTurnTimerAfterAction();
       
@@ -458,7 +460,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
   }
 };
 
-const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = null) => {
+const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, actorKeyOverride = null) => {
   if (gameStore.isAnimating) return;
   
   // In online mode, check if it's our turn (unless receiving from network)
@@ -470,15 +472,15 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
   const runItemAction = async () => {
     // Send action to network (if not already from network)
     if (isOnlineMode.value && !fromNetwork) {
-      netStore.sendAction({ type: 'item', itemId, actorKey: onlineActorKey.value });
+      netStore.sendAction({ type: 'item', itemId, targetKey, actorKey: onlineActorKey.value });
     }
 
-    const actorKey = actorKeyOverride || (gameStore.phase === 'player_turn' ? 'player' : 'enemy');
+    const actorKey = actorKeyOverride || gameStore.currentTurn;
     
     // For peek, we need to show the result
     if (itemId === 'peek') {
       const nextBullet = gameStore.barrel.chambers[gameStore.barrel.index];
-      await gameStore.useItem(itemId, actorKey);
+      await gameStore.useItem(itemId, actorKey, targetKey);
       syncStateIfHost(fromNetwork);
       
       // Show peek result modal
@@ -524,7 +526,7 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
         }
         
         // Now apply the item (increments barrel index)
-        await gameStore.useItem(itemId, actorKey);
+        await gameStore.useItem(itemId, actorKey, targetKey);
         syncStateIfHost(fromNetwork);
         
         await sleep(300);
@@ -534,7 +536,7 @@ const handleUseItem = async (itemId, fromNetwork = false, actorKeyOverride = nul
       return;
     }
 
-    await gameStore.useItem(itemId, actorKey);
+    await gameStore.useItem(itemId, actorKey, targetKey);
     syncStateIfHost(fromNetwork);
   };
 
@@ -560,40 +562,36 @@ const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
   syncStateIfHost(fromNetwork);
 };
 
-const showEmoji = (target, emoji) => {
-  if (target === 'player') {
-    playerEmoji.value = emoji;
-    clearTimeout(emojiTimeouts.player);
-    emojiTimeouts.player = setTimeout(() => {
-      playerEmoji.value = '';
-    }, EMOJI_DISPLAY_MS);
-    return;
-  }
-
-  enemyEmoji.value = emoji;
-  clearTimeout(emojiTimeouts.enemy);
-  emojiTimeouts.enemy = setTimeout(() => {
-    enemyEmoji.value = '';
+const showEmoji = (playerKey, emoji) => {
+  if (!playerKey) return;
+  playerEmojis.value = { ...playerEmojis.value, [playerKey]: emoji };
+  clearTimeout(emojiTimeouts[playerKey]);
+  emojiTimeouts[playerKey] = setTimeout(() => {
+    const next = { ...playerEmojis.value };
+    delete next[playerKey];
+    playerEmojis.value = next;
   }, EMOJI_DISPLAY_MS);
 };
 
 const handleSendEmoji = (emoji) => {
   if (!emoji || !canSendEmoji.value) return;
   const now = Date.now();
-  emojiLastSentAt.value = { ...emojiLastSentAt.value, player: now };
-  showEmoji('player', emoji);
+  const key = localPlayerKey.value;
+  emojiLastSentAt.value = { ...emojiLastSentAt.value, [key]: now };
+  showEmoji(key, emoji);
 
   if (isOnlineMode.value) {
-    netStore.sendAction({ type: 'emoji', emoji });
+    netStore.sendAction({ type: 'emoji', emoji, actorKey: key });
   }
 };
 
-const handleReceiveEmoji = (emoji) => {
-  if (!emoji) return;
+const handleReceiveEmoji = (emoji, actorKey) => {
+  if (!emoji || !actorKey) return;
   const now = Date.now();
-  if (now - emojiLastSentAt.value.enemy < EMOJI_COOLDOWN_MS) return;
-  emojiLastSentAt.value = { ...emojiLastSentAt.value, enemy: now };
-  showEmoji('enemy', emoji);
+  const lastSent = emojiLastSentAt.value[actorKey] || 0;
+  if (now - lastSent < EMOJI_COOLDOWN_MS) return;
+  emojiLastSentAt.value = { ...emojiLastSentAt.value, [actorKey]: now };
+  showEmoji(actorKey, emoji);
 };
 
 const onCoinFlip = async (starts) => {
@@ -633,7 +631,12 @@ onMounted(() => {
       if (!netStore.isHost && state) {
         gameStore.hydrateFromNetwork(state);
         // Show forced coin flip once when initial state arrives
-        if (!onlineFlipShown.value && state.onlineFlipResult && isInitialOnlineFlip(state)) {
+        if (
+          !onlineFlipShown.value &&
+          state.onlineFlipResult &&
+          isInitialOnlineFlip(state) &&
+          (state.turnOrder?.length ?? 2) <= 2
+        ) {
           onlineFlipResult.value = mapOnlineFlipResult(state.onlineFlipResult);
           showOnlineFlip.value = true;
           onlineFlipShown.value = true;
@@ -642,10 +645,9 @@ onMounted(() => {
     });
     
     // Listen for actions from opponent
-    netStore.onGameAction(async ({ action, playerId, isHost }) => {
+    netStore.onGameAction(async ({ action }) => {
       // Ignore our own actions
-      const isOurAction = (netStore.isHost && isHost) || (!netStore.isHost && !isHost);
-      if (isOurAction) return;
+      if (action.actorKey && action.actorKey === localPlayerKey.value) return;
       
       console.log('📨 Received action from opponent:', action);
       
@@ -653,7 +655,7 @@ onMounted(() => {
       if (action.type === 'shoot') {
         await handleShoot(action.target, true, action.actorKey || null);
       } else if (action.type === 'item') {
-        await handleUseItem(action.itemId, true, action.actorKey || null);
+        await handleUseItem(action.itemId, action.targetKey || null, true, action.actorKey || null);
       } else if (action.type === 'timeout') {
         await handleTimeout(true, action.actorKey || null);
       } else if (action.type === 'coinFlip') {
@@ -669,7 +671,7 @@ onMounted(() => {
           );
         }
       } else if (action.type === 'emoji') {
-        handleReceiveEmoji(action.emoji);
+        handleReceiveEmoji(action.emoji, action.actorKey);
       }
       
       // Host syncs state after processing
@@ -679,14 +681,26 @@ onMounted(() => {
     });
 
     // Host: show flip once when entering game (forced result)
-    if (netStore.isHost && !onlineFlipShown.value && gameStore.currentTurn && isInitialOnlineFlip()) {
+    if (
+      netStore.isHost &&
+      !onlineFlipShown.value &&
+      gameStore.currentTurn &&
+      isInitialOnlineFlip() &&
+      gameStore.turnOrder.length <= 2
+    ) {
       onlineFlipResult.value = mapOnlineFlipResult(gameStore.currentTurn);
       showOnlineFlip.value = true;
       onlineFlipShown.value = true;
     }
 
     // Guest: show flip once on initial load (state already hydrated in menu)
-    if (!netStore.isHost && !onlineFlipShown.value && gameStore.currentTurn && isInitialOnlineFlip()) {
+    if (
+      !netStore.isHost &&
+      !onlineFlipShown.value &&
+      gameStore.currentTurn &&
+      isInitialOnlineFlip() &&
+      gameStore.turnOrder.length <= 2
+    ) {
       onlineFlipResult.value = mapOnlineFlipResult(gameStore.currentTurn);
       showOnlineFlip.value = true;
       onlineFlipShown.value = true;
@@ -705,8 +719,7 @@ onUnmounted(() => {
   }
   clearTurnTimer();
   if (emojiTick) clearInterval(emojiTick);
-  clearTimeout(emojiTimeouts.player);
-  clearTimeout(emojiTimeouts.enemy);
+  Object.values(emojiTimeouts).forEach((timeoutId) => clearTimeout(timeoutId));
 });
 
 watch(
@@ -717,13 +730,33 @@ watch(
       netStore.clearOpponentLeft();
       return;
     }
-    const winnerKey = opponentLeft.wasHost ? 'enemy' : 'player';
-    const opponentName = netStore.opponentName || 'Adversaire';
-    gameStore.winner = winnerKey;
-    gameStore.phase = 'game_over';
-    gameStore.lastResult = {
-      text: `🏳️ ${opponentName} a quitté la partie. Victoire par abandon de l'adversaire.`
-    };
+    const leftPlayerEntry = Object.entries(gameStore.players).find(([, player]) => (
+      player?.socketId === opponentLeft.playerId
+    ));
+    const leftKey = leftPlayerEntry?.[0];
+    const leftName = leftPlayerEntry?.[1]?.name || opponentLeft.playerName || 'Un joueur';
+
+    if (leftKey && gameStore.players[leftKey]) {
+      gameStore.players[leftKey].hp = 0;
+      gameStore.players[leftKey].isActive = false;
+    }
+
+    const activePlayers = gameStore.getActivePlayerKeys();
+    if (activePlayers.length <= 1) {
+      gameStore.winner = activePlayers[0] || null;
+      gameStore.phase = 'game_over';
+      gameStore.lastResult = {
+        text: `🏳️ ${leftName} a quitté la partie. Victoire par abandon.`
+      };
+    } else {
+      gameStore.lastResult = {
+        text: `🏳️ ${leftName} a quitté la partie.`
+      };
+      if (leftKey && gameStore.currentTurn === leftKey) {
+        const nextKey = gameStore.getNextTurnKey(activePlayers, leftKey);
+        gameStore.resolveNextTurn(nextKey);
+      }
+    }
     netStore.clearOpponentLeft();
   }
 );
@@ -811,7 +844,7 @@ const setTurnTimerState = (remaining, paused, autoTimeout, phase, broadcast = tr
 
 const startTurnTimer = () => {
   const shouldPause = timerBlockCount.value > 0;
-  setTurnTimerState(TURN_TIME_LIMIT, shouldPause, shouldAutoTimeout.value, gameStore.phase);
+  setTurnTimerState(turnTimeLimit.value, shouldPause, shouldAutoTimeout.value, gameStore.phase);
 };
 
 const pauseTurnTimer = () => {
@@ -893,7 +926,7 @@ watch(
 watch(
   () => [gameStore.phase, shouldAutoTimeout.value],
   ([phase, autoTimeout]) => {
-    const isTurnPhase = phase === 'player_turn' || phase === 'enemy_turn';
+    const isTurnPhase = phase === 'player_turn' || phase === 'enemy_turn' || phase === 'enemy_two_turn';
     if (!isTurnPhase) {
       if (phase === 'animating' && turnCountdown.value !== null) {
         setTurnTimerState(turnCountdown.value, true, autoTimeout, currentTimerPhase.value);

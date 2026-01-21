@@ -113,23 +113,25 @@ function decideItemAction(state, level, counts) {
 function decideShootTarget(state, level, counts) {
   const bot = state.players.enemy;
   const next = maybeForgetPeek(bot, level);
+  const opponentKey = 'player';
+  const selfKey = 'enemy';
 
   if (next === 'real') {
-    return 'enemy';
+    return opponentKey;
   }
   if (next === 'blank') {
-    return 'self';
+    return selfKey;
   }
 
   if (bot.scannerHint !== null && bot.scannerHint !== undefined) {
     if (bot.scannerHint <= 1) {
-      return 'enemy';
+      return opponentKey;
     }
-    return 'self';
+    return selfKey;
   }
 
   if (bot.doubleDamageNextShot) {
-    return 'enemy';
+    return opponentKey;
   }
 
   if (level.behavior.randomTarget) {
@@ -141,16 +143,16 @@ function decideShootTarget(state, level, counts) {
   }
 
   if (level.behavior.itemUseStrategy === 'advanced' && counts.blank > counts.real) {
-    return 'self';
+    return selfKey;
   }
 
   if (counts.pReal > 0.5) {
-    return 'enemy';
+    return opponentKey;
   }
 
   if (counts.pReal < 0.5) {
-    return 'self';
-  }
+  return selfKey;
+}
 
   return Math.random() < 0.5 ? 'enemy' : 'self';
 }
