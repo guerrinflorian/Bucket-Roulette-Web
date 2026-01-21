@@ -80,11 +80,12 @@
           round
           dense
           flat
-          icon="emoji_emotions"
           color="white"
           :disable="!canSendEmoji"
           class="emoji-trigger"
+          aria-label="Envoyer un emoji"
         >
+          <span class="emoji-trigger-icon" aria-hidden="true">😊</span>
           <q-tooltip>Envoyer un emoji</q-tooltip>
           <q-menu v-model="showEmojiPicker" anchor="top middle" self="bottom middle">
             <div class="emoji-picker-wrapper">
@@ -180,6 +181,7 @@
             <div class="reveal-icon">{{ revealIsReal ? '💥' : '💨' }}</div>
             <div class="reveal-title">{{ revealIsReal ? 'BALLE RÉELLE !' : 'À BLANC' }}</div>
             <div class="reveal-subtitle">{{ revealSubtitle }}</div>
+            <div v-if="revealInverterText" class="reveal-inverter">{{ revealInverterText }}</div>
             <div v-if="revealDamage > 0" class="reveal-damage">-{{ revealDamage }} PV</div>
           </div>
         </div>
@@ -274,6 +276,7 @@ const showRevealModal = ref(false);
 const revealIsReal = ref(false);
 const revealSubtitle = ref('');
 const revealDamage = ref(0);
+const revealInverterText = ref('');
 const revealCardClass = computed(() => revealIsReal.value ? 'card-real' : 'card-blank');
 
 const itemData = {
@@ -308,13 +311,9 @@ const onEmojiSelect = (emoji) => {
 };
 
 watch(
-  () => [props.turnTimeLeft, props.canSendEmoji, props.isAnimating, props.phase],
-  ([turnLeft, canSend, isAnimating, phase]) => {
-    if (turnLeft !== null && turnLeft <= 3) {
-      showEmojiPicker.value = false;
-      return;
-    }
-    if (!canSend || isAnimating || phase !== 'player_turn') {
+  () => [props.canSendEmoji, props.isAnimating],
+  ([canSend, isAnimating]) => {
+    if (!canSend || isAnimating) {
       showEmojiPicker.value = false;
     }
   }
@@ -471,6 +470,7 @@ async function showShotResult(actionData) {
   const isReal = actionData.shot === 'real';
   revealIsReal.value = isReal;
   revealDamage.value = actionData.damage || 0;
+  revealInverterText.value = '';
   
   // Build subtitle text
   const actorName = actionData.actorName || (actionData.actor === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
@@ -488,6 +488,12 @@ async function showShotResult(actionData) {
     revealSubtitle.value = `${actorName} vous a tiré dessus`;
   } else {
     revealSubtitle.value = `${actorName} a tiré sur ${targetName}`;
+  }
+  if (actionData.inverterInfo?.from && actionData.inverterInfo?.to) {
+    const formatBullet = (bullet) => bullet === 'real' ? '🔴 réelle' : '⚪ blanche';
+    const initial = formatBullet(actionData.inverterInfo.from);
+    const flipped = formatBullet(actionData.inverterInfo.to);
+    revealInverterText.value = `La balle initiale était ${initial}, elle est devenue ${flipped}.`;
   }
   
   // Show modal
@@ -747,6 +753,11 @@ defineExpose({
   transition: all 0.2s;
 }
 
+.emoji-trigger-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .emoji-trigger:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
@@ -885,6 +896,10 @@ defineExpose({
 
   .reveal-subtitle {
     font-size: 13px;
+  }
+
+  .reveal-inverter {
+    font-size: 11px;
   }
 
   .reveal-damage {
@@ -1197,6 +1212,12 @@ defineExpose({
   font-size: 17px;
   color: rgba(255, 255, 255, 0.75);
   margin-bottom: 10px;
+}
+
+.reveal-inverter {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
 }
 
 .reveal-damage {

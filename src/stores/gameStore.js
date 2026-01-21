@@ -341,6 +341,7 @@ export const useGameStore = defineStore('game', {
         const shot = this.barrel.chambers[this.barrel.index];
         this.barrel.index += 1;
         this.barrel.firstShotFired = true;
+        this.barrel.invertedNext = null;
         this.players.player.peekedNext = null;
         this.players.enemy.peekedNext = null;
         this.updateBotMemoryAfterShot(shot);

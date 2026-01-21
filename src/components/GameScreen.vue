@@ -339,6 +339,9 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
     if (isReal && actor.doubleDamageNextShot) {
       damage = 2;
     }
+    const inverterInfo = gameStore.barrel.invertedNext
+      ? { ...gameStore.barrel.invertedNext }
+      : null;
     
     const actionData = {
       type: 'shot',
@@ -346,6 +349,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       target: targetKey,
       shot: shot,
       damage: damage,
+      inverterInfo,
       actorName: uiNameForStoreKey(actorKey),
       targetName: uiNameForStoreKey(targetKey),
       actorIsSelf: actorKey === targetKey
