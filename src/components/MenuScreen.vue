@@ -13,6 +13,10 @@
       </div>
     </div>
 
+    <div class="menu-hero-model" v-if="!showMultiplayer" aria-hidden="true">
+      <div class="menu-hero-canvas" ref="menuModelRef"></div>
+    </div>
+
     <!-- Main content -->
     <div class="menu-content">
       <!-- Logo/Title -->
@@ -270,6 +274,9 @@ import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { gsap } from 'gsap';
 
 const router = useRouter();
 const gameStore = useGameStore();
@@ -283,6 +290,15 @@ const nameError = ref('');
 const nameInputRef = ref(null);
 const showDifficultyModal = ref(false);
 const botDifficulty = ref(gameStore.botDifficulty ?? 1);
+const menuModelRef = ref(null);
+let renderer;
+let scene;
+let camera;
+let gunModel;
+let animationFrameId;
+let resizeObserver;
+let floatingClock;
+let resizeHandler;
 const botLevels = [
   { id: 1, name: 'Bot Paysan', stars: '⭐', tag: 'Facile' },
   { id: 2, name: 'Bot Prince', stars: '⭐⭐', tag: 'Moyen' },
@@ -404,6 +420,11 @@ onMounted(() => {
   
   // Setup listener immediately
   setupGameStateListener();
+  nextTick(() => {
+    if (!showMultiplayer.value) {
+      initMenuModel();
+    }
+  });
 });
 
 watch(() => netStore.playerName, (value) => {
@@ -455,10 +476,159 @@ watch(() => netStore.roomId, (roomId) => {
   }
 });
 
+watch(showMultiplayer, async (value) => {
+  if (value) {
+    cleanupMenuModel();
+    return;
+  }
+  await nextTick();
+  initMenuModel();
+});
+
 onUnmounted(() => {
   console.log('👋 MenuScreen unmounted, removing listeners');
   netStore.offGameState();
+  cleanupMenuModel();
 });
+
+const initMenuModel = async () => {
+  if (!menuModelRef.value || renderer) return;
+
+  const container = menuModelRef.value;
+  const width = container.clientWidth || 1;
+  const height = container.clientHeight || 1;
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
+  camera.position.set(0.2, 0.25, width < 380 ? 5 : 4);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(width, height);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  container.appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+  const keyLight = new THREE.DirectionalLight(0xffedd5, 1.3);
+  keyLight.position.set(3, 4, 2);
+  const fillLight = new THREE.PointLight(0xf59e0b, 0.6, 10);
+  fillLight.position.set(-2, 1, 3);
+  scene.add(ambientLight, keyLight, fillLight);
+
+  floatingClock = new THREE.Clock();
+
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync(new URL('../assets/3d/gun.glb', import.meta.url).href);
+  gunModel = gltf.scene;
+  gunModel.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = false;
+      child.receiveShadow = false;
+    }
+  });
+
+  const startScale = 2.6;
+  const finalScale = 0.9;
+  const startPosition = { x: -0.1, y: -0.35, z: 1.6 };
+  const finalPosition = { x: 0.45, y: 0.15, z: -1.6 };
+  const startRotation = { x: 0.1, y: Math.PI * 0.8, z: 0 };
+  const finalRotation = { x: -0.15, y: Math.PI * 1.35, z: 0.08 };
+
+  gunModel.scale.set(startScale, startScale, startScale);
+  gunModel.position.set(startPosition.x, startPosition.y, startPosition.z);
+  gunModel.rotation.set(startRotation.x, startRotation.y, startRotation.z);
+  gunModel.userData.floatBase = finalPosition.y;
+  gunModel.userData.isSettled = false;
+  scene.add(gunModel);
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) {
+    gunModel.scale.set(finalScale, finalScale, finalScale);
+    gunModel.position.set(finalPosition.x, finalPosition.y, finalPosition.z);
+    gunModel.rotation.set(finalRotation.x, finalRotation.y, finalRotation.z);
+    gunModel.userData.isSettled = true;
+  } else {
+    gsap.timeline({
+      defaults: { duration: 1.8, ease: 'power3.out' },
+      onComplete: () => {
+        if (gunModel) {
+          gunModel.userData.isSettled = true;
+        }
+      }
+    })
+      .to(gunModel.scale, { x: finalScale, y: finalScale, z: finalScale }, 0)
+      .to(gunModel.position, { ...finalPosition }, 0)
+      .to(gunModel.rotation, { ...finalRotation, duration: 2.2, ease: 'power2.out' }, 0);
+  }
+
+  const renderFrame = () => {
+    animationFrameId = window.requestAnimationFrame(renderFrame);
+    if (gunModel) {
+      gunModel.rotation.y += 0.003;
+      if (gunModel.userData.isSettled) {
+        const t = floatingClock.getElapsedTime();
+        gunModel.position.y = gunModel.userData.floatBase + Math.sin(t * 1.4) * 0.05;
+      }
+    }
+    renderer.render(scene, camera);
+  };
+
+  resizeHandler = () => {
+    if (!renderer || !camera || !menuModelRef.value) return;
+    const nextWidth = menuModelRef.value.clientWidth || 1;
+    const nextHeight = menuModelRef.value.clientHeight || 1;
+    renderer.setSize(nextWidth, nextHeight);
+    camera.aspect = nextWidth / nextHeight;
+    camera.position.z = nextWidth < 380 ? 5 : 4;
+    camera.updateProjectionMatrix();
+  };
+
+  resizeObserver = new ResizeObserver(resizeHandler);
+  resizeObserver.observe(menuModelRef.value);
+  window.addEventListener('resize', resizeHandler);
+  renderFrame();
+};
+
+const cleanupMenuModel = () => {
+  if (animationFrameId) {
+    window.cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  if (resizeObserver && menuModelRef.value) {
+    resizeObserver.unobserve(menuModelRef.value);
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+  resizeObserver = null;
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+  }
+  resizeHandler = null;
+  if (renderer) {
+    renderer.dispose();
+    if (renderer.domElement?.parentNode) {
+      renderer.domElement.parentNode.removeChild(renderer.domElement);
+    }
+  }
+  if (scene) {
+    scene.traverse((child) => {
+      if (child.geometry) child.geometry.dispose?.();
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((material) => material.dispose?.());
+        } else {
+          child.material.dispose?.();
+        }
+      }
+    });
+  }
+  renderer = null;
+  scene = null;
+  camera = null;
+  gunModel = null;
+  floatingClock = null;
+};
 </script>
 
 <style scoped>
@@ -498,6 +668,30 @@ onUnmounted(() => {
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 70%);
+}
+
+.menu-hero-model {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: clamp(24px, 7vh, 60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.menu-hero-canvas {
+  width: min(85vw, 520px);
+  height: clamp(220px, 42vh, 420px);
+  filter: drop-shadow(0 18px 30px rgba(15, 23, 42, 0.45));
+  opacity: 0.9;
+}
+
+.menu-hero-canvas canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .floating-bullets {
