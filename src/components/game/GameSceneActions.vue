@@ -5,19 +5,19 @@
         class="shoot-btn"
         color="negative"
         unelevated
-        :disable="!canAct || !selfTarget"
-        @click="emit('shoot', selfTarget?.key)"
-      >
-        🎯 Tirer sur moi
-      </q-btn>
-      <q-btn
-        class="shoot-btn"
-        color="deep-orange"
-        unelevated
         :disable="!canAct || !opponentTargets.length"
         @click="emit('shoot', opponentTargets[0]?.key)"
       >
         🎯 Tirer sur l'adversaire
+      </q-btn>
+      <q-btn
+        class="shoot-btn shoot-btn-self"
+        color="negative"
+        unelevated
+        :disable="!canAct || !selfTarget"
+        @click="emit('shoot', selfTarget?.key)"
+      >
+        🎯 Tirer sur moi
       </q-btn>
     </div>
 
@@ -172,27 +172,32 @@ watch(
 }
 
 .multi-target-actions {
-  width: min(520px, 100%);
-  display: grid;
+  width: min(720px, 100%);
+  display: flex;
   gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .duo-target-actions {
-  width: min(520px, 100%);
-  display: grid;
+  width: min(720px, 100%);
+  display: flex;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .shoot-dropdown {
-  width: 100%;
+  width: min(320px, 100%);
   border-radius: 16px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .shoot-btn-self {
-  width: 100%;
+  width: min(260px, 100%);
 }
 
 .dropdown-list {

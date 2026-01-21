@@ -33,45 +33,56 @@
 
       <!-- CENTER SECTION -->
       <section class="center-section">
-        <!-- Turn indicator -->
-        <div class="turn-indicator" :class="turnClass">
-          {{ phaseLabel }}
-        </div>
-        <div v-if="turnTimeLeft !== null" class="turn-timer">
-          ⏱ {{ turnTimeLeft }}s
-        </div>
-        <div v-if="turnOrderDisplay.length > 2" class="turn-order-chip">
-          <span class="turn-order-label">Ordre</span>
-          <div class="turn-order-list">
+        <div class="turn-row" :class="turnClass">
+          <div class="turn-status">
+            <span class="turn-prefix">Tour de</span>
             <span
-              v-for="(entry, index) in turnOrderDisplay"
-              :key="entry.key"
-              class="turn-order-item"
-              :class="{ active: entry.isCurrent, self: entry.isSelf }"
+              v-if="!isMultiTurnOrder"
+              class="turn-name turn-name-active"
             >
-              <span class="turn-order-index">{{ index + 1 }}</span>
-              <span class="turn-order-name">{{ entry.name }}</span>
+              {{ currentTurnName }}
+            </span>
+            <div v-else class="turn-order-inline">
+              <span
+                v-for="(entry, index) in turnOrderDisplay"
+                :key="entry.key"
+                class="turn-name"
+                :class="{ 'turn-name-active': entry.isCurrent, 'turn-name-inactive': !entry.isCurrent }"
+              >
+                {{ entry.name }}<span v-if="index < turnOrderDisplay.length - 1" class="turn-separator">/</span>
+              </span>
+            </div>
+          </div>
+          <div class="turn-meta">
+            <span class="turn-count">Tour {{ currentChamberNumber }}/{{ totalSlots }}</span>
+            <span v-if="turnTimeLeft !== null" class="turn-timer">
+              ⏱ {{ turnTimeLeft }}s
             </span>
           </div>
         </div>
-        
-        <!-- Barrel -->
-        <div class="barrel-zone">
-          <BarrelRevolver
-            ref="barrelComp"
-            :barrel-data="barrel"
-            @animation-start="onBarrelAnimStart"
-            @animation-end="onBarrelAnimEnd"
-          />
-        </div>
-        
-        <!-- Barrel Info -->
-        <div v-if="showBarrelInfo" class="barrel-info">
-          <span>🔴 {{ realCount }} réelles</span>
-          <span class="separator">•</span>
-          <span>⚪ {{ blankCount }} blanches</span>
-          <span class="separator">•</span>
-          <span>🎲 {{ totalCount }} cartouches</span>
+
+        <div class="barrel-row">
+          <!-- Barrel -->
+          <div class="barrel-zone">
+            <BarrelRevolver
+              ref="barrelComp"
+              :barrel-data="barrel"
+              @animation-start="onBarrelAnimStart"
+              @animation-end="onBarrelAnimEnd"
+            />
+          </div>
+
+          <!-- Barrel Info -->
+          <div v-if="showBarrelInfo" class="barrel-info-side">
+            <div class="bullet-count bullet-real">
+              <span class="bullet-dot"></span>
+              <span>{{ realCount }} réelles</span>
+            </div>
+            <div class="bullet-count bullet-blank">
+              <span class="bullet-dot"></span>
+              <span>{{ blankCount }} blanches</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -83,6 +94,13 @@
         📡 Scanner : la {{ player.scannerHint }}ème balle est réelle.
       </div>
 
+      <!-- ACTION BUTTONS -->
+      <GameSceneActions
+        :can-act="canAct"
+        :targets="shootTargets"
+        @shoot="emit('shoot', $event)"
+      />
+
       <!-- ITEMS SECTION -->
       <GameSceneItems
         :items="player.items"
@@ -91,47 +109,42 @@
         @use-item="handleUseItem"
       />
 
-      <!-- ACTION BUTTONS -->
-      <GameSceneActions
-        :can-act="canAct"
-        :targets="shootTargets"
-        @shoot="emit('shoot', $event)"
-      />
-
-      <div class="emoji-toolbar">
-        <q-btn
-          round
-          dense
-          flat
-          color="white"
-          :disable="!canSendEmoji"
-          class="emoji-trigger"
-          aria-label="Envoyer un emoji"
-        >
-          <span class="emoji-trigger-icon" aria-hidden="true">😊</span>
-          <q-tooltip>Envoyer un emoji</q-tooltip>
-          <q-menu v-model="showEmojiPicker" anchor="top middle" self="bottom middle">
-            <div class="emoji-picker-wrapper">
-              <EmojiPicker 
-                :native="true" 
-                theme="dark"
-                @select="onEmojiSelect" 
-              />
-            </div>
-          </q-menu>
-        </q-btn>
-        <div v-if="!canSendEmoji && emojiCooldownLeft > 0" class="emoji-cooldown">
-          ⏳ {{ emojiCooldownLeft }}s
+      <!-- PLAYER SECTION (BOTTOM) -->
+      <div class="player-area">
+        <GameScenePlayerCard
+          class="player-panel"
+          :player="player"
+          :is-reversed="true"
+          :is-bottom="true"
+          :emoji="playerEmojis?.[player?.id]"
+        />
+        <div class="emoji-toolbar emoji-toolbar-bottom">
+          <q-btn
+            round
+            dense
+            flat
+            color="white"
+            :disable="!canSendEmoji"
+            class="emoji-trigger"
+            aria-label="Envoyer un emoji"
+          >
+            <span class="emoji-trigger-icon" aria-hidden="true">😊</span>
+            <q-tooltip>Envoyer un emoji</q-tooltip>
+            <q-menu v-model="showEmojiPicker" anchor="top middle" self="bottom middle">
+              <div class="emoji-picker-wrapper">
+                <EmojiPicker 
+                  :native="true" 
+                  theme="dark"
+                  @select="onEmojiSelect" 
+                />
+              </div>
+            </q-menu>
+          </q-btn>
+          <div v-if="!canSendEmoji && emojiCooldownLeft > 0" class="emoji-cooldown">
+            ⏳ {{ emojiCooldownLeft }}s
+          </div>
         </div>
       </div>
-
-      <!-- PLAYER SECTION (BOTTOM) -->
-      <GameScenePlayerCard
-        :player="player"
-        :is-reversed="true"
-        :is-bottom="true"
-        :emoji="playerEmojis?.[player?.id]"
-      />
 
     </div>
 
@@ -432,17 +445,14 @@ const canUseItems = computed(() => {
 const counts = computed(() => remainingCounts(props.barrel));
 const realCount = computed(() => counts.value.real);
 const blankCount = computed(() => counts.value.blank);
-const totalCount = computed(() => counts.value.remaining);
 const totalSlots = computed(() => props.barrel?.chambers?.length ?? 6);
 const currentChamberNumber = computed(() => Math.min((props.barrel?.index ?? 0) + 1, totalSlots.value));
 const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel.firstShotFired);
 
-const phaseLabel = computed(() => {
-  if (props.phase === 'animating') return '⏳ ...';
+const currentTurnName = computed(() => {
   if (!props.currentTurnKey) return '';
-  if (props.currentTurnKey === props.localPlayerKey) return '🎮 VOTRE TOUR';
-  const name = props.playersByKey?.[props.currentTurnKey]?.name || 'Joueur';
-  return `🎯 Tour de ${name}`;
+  if (props.currentTurnKey === props.localPlayerKey) return 'VOUS';
+  return props.playersByKey?.[props.currentTurnKey]?.name || 'Joueur';
 });
 
 const turnOrderDisplay = computed(() => {
@@ -453,6 +463,8 @@ const turnOrderDisplay = computed(() => {
     isSelf: key === props.localPlayerKey
   }));
 });
+
+const isMultiTurnOrder = computed(() => turnOrderDisplay.value.length > 2);
 
 const turnClass = computed(() => ({
   'turn-player': props.currentTurnKey === props.localPlayerKey,
@@ -785,27 +797,87 @@ defineExpose({
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   min-height: 0;
-  padding: 8px 12px;
+  padding: 8px 20px;
+  width: 100%;
 }
 
-.turn-indicator {
-  padding: 8px 22px;
-  border-radius: 999px;
-  font-size: 11px;
+.turn-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-radius: 18px;
+  border: 2px solid;
+  backdrop-filter: blur(10px);
+  flex-wrap: wrap;
+}
+
+.turn-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.turn-prefix {
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  border: 2px solid;
-  backdrop-filter: blur(8px);
+}
+
+.turn-name {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.turn-name-active {
+  color: #4ade80;
+}
+
+.turn-name-inactive {
+  color: #f87171;
+}
+
+.turn-order-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.turn-separator {
+  padding: 0 6px;
+  color: rgba(226, 232, 240, 0.4);
+}
+
+.turn-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.turn-count {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.8);
 }
 
 .turn-timer {
-  margin-top: 6px;
-  padding: 4px 14px;
+  padding: 4px 12px;
   border-radius: 20px;
   background: rgba(245, 158, 11, 0.15);
   font-size: 12px;
@@ -816,76 +888,6 @@ defineExpose({
   animation: timer-pulse 1s ease-in-out infinite;
 }
 
-.turn-order-chip {
-  margin-top: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.turn-order-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: rgba(226, 232, 240, 0.6);
-  font-weight: 700;
-}
-
-.turn-order-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-}
-
-.turn-order-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(30, 41, 59, 0.6);
-  color: rgba(226, 232, 240, 0.85);
-  font-size: 11px;
-  font-weight: 600;
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.turn-order-item.active {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(74, 222, 128, 0.4);
-  color: #bbf7d0;
-}
-
-.turn-order-item.self {
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4);
-}
-
-.turn-order-index {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 800;
-  color: #0f172a;
-  background: rgba(226, 232, 240, 0.9);
-}
-
-.turn-order-name {
-  white-space: nowrap;
-}
-
 @keyframes timer-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
@@ -893,40 +895,64 @@ defineExpose({
 
 .turn-player {
   background: rgba(34, 197, 94, 0.12);
-  color: #4ade80;
   border-color: rgba(34, 197, 94, 0.5);
   box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
 }
 
 .turn-enemy {
   background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
   border-color: rgba(239, 68, 68, 0.5);
   box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+}
+
+.barrel-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .barrel-zone {
   flex-shrink: 0;
 }
 
-.barrel-info {
+.barrel-info-side {
   display: flex;
-  min-height: 24px;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #71717a;
-  padding: 6px 16px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 140px;
+  padding: 10px 14px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.separator {
-  opacity: 0.4;
-  color: #52525b;
+.bullet-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.bullet-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.bullet-real .bullet-dot {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
+.bullet-blank .bullet-dot {
+  background: #f4f4f5;
+  box-shadow: 0 0 8px rgba(244, 244, 245, 0.6);
 }
 
 .emoji-toolbar {
@@ -971,6 +997,28 @@ defineExpose({
   border-radius: 12px;
 }
 
+.player-area {
+  position: relative;
+  width: 100%;
+  padding: 0 16px 18px;
+}
+
+.player-panel {
+  width: 100%;
+}
+
+.player-area :deep(.player-card) {
+  padding-right: 64px;
+}
+
+.emoji-toolbar-bottom {
+  position: absolute;
+  right: 28px;
+  bottom: 26px;
+  justify-content: flex-end;
+  padding-bottom: 0;
+}
+
 /* Peeked banner */
 .peeked-banner {
   padding: 10px 20px;
@@ -1011,9 +1059,8 @@ defineExpose({
     gap: 6px;
   }
 
-  .turn-indicator {
-    font-size: 10px;
-    padding: 5px 14px;
+  .turn-row {
+    padding: 8px 12px;
   }
 
   .peeked-banner {
@@ -1028,11 +1075,20 @@ defineExpose({
     grid-template-columns: repeat(2, minmax(140px, 1fr));
     padding: 12px 12px 0;
   }
+
+  .barrel-row {
+    gap: 12px;
+  }
 }
 
 @media (max-width: 420px) {
   .emoji-toolbar {
     padding-bottom: 6px;
+  }
+
+  .emoji-toolbar-bottom {
+    right: 16px;
+    bottom: 18px;
   }
 
   .action-modal-card,
