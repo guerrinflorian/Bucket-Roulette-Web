@@ -50,8 +50,6 @@
           <span>⚪ {{ blankCount }} blanches</span>
           <span class="separator">•</span>
           <span>🎲 {{ totalCount }} cartouches</span>
-          <span class="separator">•</span>
-          <span>🔢 Chambre {{ currentChamberNumber }}/{{ totalSlots }}</span>
         </div>
       </section>
 
@@ -775,9 +773,12 @@ defineExpose({
 .peeked-banner {
   padding: 10px 20px;
   border-radius: 14px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
+  line-height: 1.2;
+  max-width: min(90vw, 320px);
+  margin: 0 auto;
   border: 2px solid;
   backdrop-filter: blur(8px);
   animation: pulse-peek 2s ease-in-out infinite;
@@ -814,8 +815,9 @@ defineExpose({
   }
 
   .peeked-banner {
-    font-size: 11px;
+    font-size: 10px;
     padding: 6px 12px;
+    max-width: min(90vw, 260px);
   }
 }
 
