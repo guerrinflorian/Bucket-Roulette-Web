@@ -2,7 +2,7 @@
   <section class="flex w-full flex-col items-center gap-3 px-4 pb-4">
     <div v-if="isTwoTargetMode" class="flex w-full flex-nowrap items-center justify-center gap-3 overflow-x-auto">
       <q-btn
-        class="min-w-[200px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
+        class="min-w-[200px] rounded-xl text-[0.7rem] font-semibold leading-tight shadow-lg shadow-red-500/20 whitespace-nowrap"
         color="negative"
         unelevated
         :disable="!canAct || !opponentTargets.length"
@@ -11,7 +11,7 @@
         🎯 Tirer sur l'adversaire
       </q-btn>
       <q-btn
-        class="min-w-[180px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
+        class="min-w-[180px] rounded-xl text-[0.7rem] font-semibold leading-tight shadow-lg shadow-red-500/20 whitespace-nowrap"
         color="negative"
         unelevated
         :disable="!canAct || !selfTarget"

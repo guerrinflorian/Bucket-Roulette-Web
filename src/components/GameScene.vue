@@ -63,6 +63,7 @@
         :emoji-cooldown-left="emojiCooldownLeft"
         :is-animating="isAnimating"
         :player-emojis="playerEmojis"
+        :is-single-opponent="isSingleOpponent"
         @send-emoji="emit('send-emoji', $event)"
       />
     </div>
@@ -158,6 +159,8 @@ const visibilityResetHandler = ref(null);
 const activePlayers = computed(() => {
   return Object.values(props.playersByKey || {}).filter((player) => player?.isActive && player.hp > 0);
 });
+
+const isSingleOpponent = computed(() => props.opponents.length === 1);
 
 const shootTargets = computed(() => {
   return activePlayers.value.map((player) => ({

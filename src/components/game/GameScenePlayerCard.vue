@@ -49,9 +49,21 @@
             :style="{ width: hpPercent + '%' }"
           ></div>
         </div>
+        <div
+          v-if="showItems && player.items?.length && isEnemy"
+          class="mt-2 flex flex-wrap gap-1"
+        >
+          <span
+            v-for="(itemId, index) in player.items"
+            :key="index"
+            class="flex h-6 w-6 items-center justify-center rounded-md border border-white/10 bg-white/5"
+          >
+            <img :src="getItemImage(itemId)" :alt="itemId" class="h-4 w-4 object-contain" />
+          </span>
+        </div>
       </div>
 
-      <div v-if="showItems && player.items?.length" class="flex gap-2">
+      <div v-if="showItems && player.items?.length && !isEnemy" class="flex gap-2">
         <span
           v-for="(itemId, index) in player.items"
           :key="index"
