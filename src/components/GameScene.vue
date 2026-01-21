@@ -15,13 +15,18 @@
 
     <div ref="gameContent" class="game-content">
       
-      <!-- ENEMY SECTION (TOP) -->
-      <GameScenePlayerCard
-        :player="enemy"
-        is-enemy
-        show-items
-        :emoji="enemyEmoji"
-      />
+      <!-- OPPONENTS SECTION (TOP) -->
+      <div class="opponents-row">
+        <GameScenePlayerCard
+          v-for="opponent in opponents"
+          :key="opponent.id"
+          :player="opponent"
+          is-enemy
+          show-items
+          :is-compact="opponents.length > 1"
+          :emoji="playerEmojis?.[opponent.id]"
+        />
+      </div>
 
       <!-- CENTER SECTION -->
       <section class="center-section">
@@ -72,6 +77,7 @@
       <!-- ACTION BUTTONS -->
       <GameSceneActions
         :can-act="canAct"
+        :targets="shootTargets"
         @shoot="emit('shoot', $event)"
       />
 
@@ -107,7 +113,7 @@
         :player="player"
         :is-reversed="true"
         :is-bottom="true"
-        :emoji="playerEmoji"
+        :emoji="playerEmojis?.[player?.id]"
       />
 
     </div>
@@ -138,8 +144,29 @@
       <q-card class="enemy-item-card">
         <q-card-section class="text-center">
           <div class="enemy-item-icon">{{ enemyItemEmoji }}</div>
-          <div class="enemy-item-title">L'ennemi utilise</div>
+          <div class="enemy-item-title">Un adversaire utilise</div>
           <div class="enemy-item-name">{{ enemyItemName }}</div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- TARGET PICKER MODAL -->
+    <q-dialog v-model="showTargetModal" persistent position="standard">
+      <q-card class="target-modal-card">
+        <q-card-section class="text-center">
+          <div class="target-modal-title">Choisir une cible</div>
+          <div class="target-modal-subtitle">Sélectionnez le joueur visé</div>
+          <div class="target-modal-buttons">
+            <q-btn
+              v-for="target in itemTargets"
+              :key="target.key"
+              color="deep-orange"
+              unelevated
+              @click="confirmItemTarget(target.key)"
+            >
+              {{ target.label }}
+            </q-btn>
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -204,7 +231,22 @@ import 'vue3-emoji-picker/css';
 
 const props = defineProps({
   player: Object,
-  enemy: Object,
+  opponents: {
+    type: Array,
+    default: () => []
+  },
+  playersByKey: {
+    type: Object,
+    default: () => ({})
+  },
+  localPlayerKey: {
+    type: String,
+    default: 'player'
+  },
+  currentTurnKey: {
+    type: String,
+    default: null
+  },
   barrel: Object,
   phase: String,
   isFlipVisible: {
@@ -234,13 +276,9 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  playerEmoji: {
-    type: String,
-    default: ''
-  },
-  enemyEmoji: {
-    type: String,
-    default: ''
+  playerEmojis: {
+    type: Object,
+    default: () => ({})
   }
 });
 
@@ -262,6 +300,25 @@ const actionModalClass = ref('');
 const showEnemyItemModal = ref(false);
 const enemyItemEmoji = ref('');
 const enemyItemName = ref('');
+
+// Target picker modal (for items)
+const showTargetModal = ref(false);
+const pendingItemId = ref(null);
+
+const activePlayers = computed(() => {
+  return Object.values(props.playersByKey || {}).filter((player) => player?.isActive && player.hp > 0);
+});
+
+const shootTargets = computed(() => {
+  return activePlayers.value.map((player) => ({
+    key: player.id,
+    label: player.id === props.localPlayerKey ? 'Moi' : player.name
+  }));
+});
+
+const itemTargets = computed(() => {
+  return shootTargets.value.filter((target) => target.key !== props.localPlayerKey);
+});
 
 // Peek result modal
 const showPeekModal = ref(false);
@@ -341,7 +398,7 @@ const canAct = computed(() => {
   if (props.canActOverride !== null) {
     return props.canActOverride;
   }
-  return props.phase === 'player_turn' && !props.isAnimating;
+  return props.currentTurnKey === props.localPlayerKey && !props.isAnimating;
 });
 const canUseItems = computed(() => {
   if (props.canUseItems !== null) {
@@ -359,19 +416,32 @@ const currentChamberNumber = computed(() => Math.min((props.barrel?.index ?? 0) 
 const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel.firstShotFired);
 
 const phaseLabel = computed(() => {
-  if (props.phase === 'player_turn') return '🎮 VOTRE TOUR';
-  if (props.phase === 'enemy_turn') return "💀 TOUR DE L'ENNEMI";
   if (props.phase === 'animating') return '⏳ ...';
-  return '';
+  if (!props.currentTurnKey) return '';
+  if (props.currentTurnKey === props.localPlayerKey) return '🎮 VOTRE TOUR';
+  const name = props.playersByKey?.[props.currentTurnKey]?.name || 'Joueur';
+  return `🎯 Tour de ${name}`;
 });
 
 const turnClass = computed(() => ({
-  'turn-player': props.phase === 'player_turn',
-  'turn-enemy': props.phase === 'enemy_turn' || props.phase === 'animating'
+  'turn-player': props.currentTurnKey === props.localPlayerKey,
+  'turn-enemy': props.currentTurnKey !== props.localPlayerKey || props.phase === 'animating'
 }));
 
 function handleUseItem(itemId) {
+  if (itemId === 'handcuffs' && itemTargets.value.length) {
+    pendingItemId.value = itemId;
+    showTargetModal.value = true;
+    return;
+  }
   emit('use-item', itemId);
+}
+
+function confirmItemTarget(targetKey) {
+  if (!pendingItemId.value) return;
+  emit('use-item', pendingItemId.value, targetKey);
+  pendingItemId.value = null;
+  showTargetModal.value = false;
 }
 
 // Animation handlers
@@ -421,10 +491,11 @@ async function showReloadNotice(text = 'Barillet chargé.') {
 
 // Show action choice modal (before shooting)
 async function showActionChoice(actionData) {
-  const actorName = actionData.actorName || (actionData.actor === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
-  const targetName = actionData.targetName || (actionData.target === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
+  const actorName = actionData.actorName || props.playersByKey?.[actionData.actor]?.name || 'Joueur';
+  const targetName = actionData.targetName || props.playersByKey?.[actionData.target]?.name || 'Joueur';
   const isSelf = actionData.actorIsSelf ?? (actionData.actor === actionData.target);
-  const isYou = actionData.actor === props.player?.id;
+  const isYou = actionData.actor === props.localPlayerKey;
+  const targetIsYou = actionData.target === props.localPlayerKey;
 
   actionModalIcon.value = isSelf ? '🔫' : '🎯';
   if (isSelf) {
@@ -434,7 +505,9 @@ async function showActionChoice(actionData) {
   } else {
     actionModalText.value = isYou
       ? `Vous tirez sur ${targetName}...`
-      : `${actorName} tire sur vous...`;
+      : targetIsYou
+        ? `${actorName} tire sur vous...`
+        : `${actorName} tire sur ${targetName}...`;
   }
   actionModalClass.value = isSelf ? 'action-self' : 'action-enemy';
   
@@ -473,11 +546,11 @@ async function showShotResult(actionData) {
   revealInverterText.value = '';
   
   // Build subtitle text
-  const actorName = actionData.actorName || (actionData.actor === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
-  const targetName = actionData.targetName || (actionData.target === 'player' ? props.player?.name : props.enemy?.name) || 'Joueur';
+  const actorName = actionData.actorName || props.playersByKey?.[actionData.actor]?.name || 'Joueur';
+  const targetName = actionData.targetName || props.playersByKey?.[actionData.target]?.name || 'Joueur';
   const isSelf = actionData.actorIsSelf ?? (actionData.actor === actionData.target);
-  const isYou = actionData.actor === props.player?.id;
-  const targetIsYou = actionData.target === props.player?.id;
+  const isYou = actionData.actor === props.localPlayerKey;
+  const targetIsYou = actionData.target === props.localPlayerKey;
   if (isSelf) {
     revealSubtitle.value = isYou
       ? `Vous vous êtes tiré dessus`
@@ -659,6 +732,14 @@ defineExpose({
   min-height: 100%;
 }
 
+.opponents-row {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  padding: 16px 24px 0;
+}
+
 /* Center section */
 .center-section {
   flex: 1;
@@ -832,6 +913,13 @@ defineExpose({
   }
 }
 
+@media (max-width: 640px) {
+  .opponents-row {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    padding: 12px 12px 0;
+  }
+}
+
 @media (max-width: 420px) {
   .emoji-toolbar {
     padding-bottom: 6px;
@@ -989,6 +1077,39 @@ defineExpose({
   font-weight: 800;
   color: #fbbf24;
   text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+}
+
+/* Target modal */
+.target-modal-card {
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.12), rgba(10, 10, 15, 0.95));
+  border: 2px solid rgba(59, 130, 246, 0.35);
+  border-radius: 24px;
+  padding: 28px 36px 32px;
+  min-width: min(360px, 90vw);
+  text-align: center;
+  backdrop-filter: blur(16px);
+}
+
+.target-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #e0f2fe;
+  margin-bottom: 6px;
+}
+
+.target-modal-subtitle {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.6);
+  margin-bottom: 18px;
+}
+
+.target-modal-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
 }
 
 /* Reload modal */

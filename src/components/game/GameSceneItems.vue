@@ -58,7 +58,7 @@ const itemData = {
   double: { image: doubleImg, name: 'Double dégâts', description: 'Le prochain tir consomme l’effet.' },
   peek: { image: peekImg, name: 'Voir la balle', description: 'Révèle la prochaine cartouche.' },
   eject: { image: ejectImg, name: 'Éjecter', description: 'Retire la prochaine cartouche sans tirer.' },
-  handcuffs: { image: handcuffsImg, name: 'Les Menottes', description: "Empêche l'adversaire de jouer au prochain tour." },
+  handcuffs: { image: handcuffsImg, name: 'Les Menottes', description: "Choisissez un adversaire à bloquer au prochain tour." },
   inverter: { image: inverterImg, name: "L'Inverseur", description: 'Inverse la balle actuelle : blanche ⇄ réelle.' },
   scanner: { image: scannerImg, name: 'Scanner', description: "Révèle la position d'une balle réelle." }
 };

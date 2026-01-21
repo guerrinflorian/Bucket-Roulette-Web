@@ -7,6 +7,16 @@ import { getBotLevel } from '../engine/botLevels/index.js';
 import { audioManager } from '../engine/audio.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const PLAYER_KEYS = ['player', 'enemy', 'enemy2'];
+const DEFAULT_TURN_ORDER = ['player', 'enemy'];
+const PHASE_BY_KEY = {
+  player: PHASES.PLAYER_TURN,
+  enemy: PHASES.ENEMY_TURN,
+  enemy2: PHASES.ENEMY_TWO_TURN
+};
+const TURN_PHASES = [PHASES.PLAYER_TURN, PHASES.ENEMY_TURN, PHASES.ENEMY_TWO_TURN];
+
+const getPhaseForKey = (key) => PHASE_BY_KEY[key] || PHASES.PLAYER_TURN;
 
 export const useGameStore = defineStore('game', {
   state: () => ({
@@ -19,6 +29,8 @@ export const useGameStore = defineStore('game', {
     players: {
       player: {
         id: 'player',
+        socketId: null,
+        isActive: true,
         name: 'Vous',
         hp: MAX_HP,
         maxHp: MAX_HP,
@@ -30,7 +42,22 @@ export const useGameStore = defineStore('game', {
       },
       enemy: {
         id: 'enemy',
+        socketId: null,
+        isActive: true,
         name: 'Adversaire',
+        hp: MAX_HP,
+        maxHp: MAX_HP,
+        items: [],
+        doubleDamageNextShot: false,
+        peekedNext: null,
+        scannerHint: null,
+        skipNextTurn: false
+      },
+      enemy2: {
+        id: 'enemy2',
+        socketId: null,
+        isActive: false,
+        name: 'Adversaire 2',
         hp: MAX_HP,
         maxHp: MAX_HP,
         items: [],
@@ -40,6 +67,7 @@ export const useGameStore = defineStore('game', {
         skipNextTurn: false
       }
     },
+    turnOrder: [...DEFAULT_TURN_ORDER],
     lastResult: null,
     lastAction: null,
     winner: null,
@@ -64,7 +92,8 @@ export const useGameStore = defineStore('game', {
     pendingBotItem: null,
     timeoutStreak: {
       player: 0,
-      enemy: 0
+      enemy: 0,
+      enemy2: 0
     }
   }),
   getters: {
@@ -82,25 +111,30 @@ export const useGameStore = defineStore('game', {
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
       this.lastReloadAt = Date.now();
-      this.players.player.name = 'Vous';
+      const playerKeys = options.playerKeys ?? DEFAULT_TURN_ORDER;
+      this.turnOrder = [...playerKeys];
+      PLAYER_KEYS.forEach((key) => {
+        const isActive = playerKeys.includes(key);
+        const player = this.players[key];
+        if (!player) return;
+        player.isActive = isActive;
+        player.socketId = null;
+        player.name = key === 'player' ? 'Vous' : key === 'enemy2' ? 'Adversaire 2' : 'Adversaire';
+        player.hp = isActive ? MAX_HP : 0;
+        player.maxHp = MAX_HP;
+        player.items = [];
+        player.doubleDamageNextShot = false;
+        player.peekedNext = null;
+        player.scannerHint = null;
+        player.skipNextTurn = false;
+      });
       if (mode === 'bot') {
         const level = getBotLevel(this.botDifficulty);
         this.players.enemy.name = level.name;
-      } else {
-        this.players.enemy.name = 'Adversaire';
+        this.players.enemy.isActive = true;
+        this.players.enemy2.isActive = false;
+        this.turnOrder = [...DEFAULT_TURN_ORDER];
       }
-      this.players.player.hp = MAX_HP;
-      this.players.enemy.hp = MAX_HP;
-      this.players.player.items = [];
-      this.players.enemy.items = [];
-      this.players.player.doubleDamageNextShot = false;
-      this.players.enemy.doubleDamageNextShot = false;
-      this.players.player.peekedNext = null;
-      this.players.enemy.peekedNext = null;
-      this.players.player.scannerHint = null;
-      this.players.enemy.scannerHint = null;
-      this.players.player.skipNextTurn = false;
-      this.players.enemy.skipNextTurn = false;
       this.lastResult = null;
       this.lastAction = null;
       this.winner = null;
@@ -108,6 +142,7 @@ export const useGameStore = defineStore('game', {
       this.lastResult = { text: `🔄 ${this.lastReloadInfo}` };
       this.timeoutStreak.player = 0;
       this.timeoutStreak.enemy = 0;
+      this.timeoutStreak.enemy2 = 0;
       this.resetBotMemory();
       this.dealItems();
     },
@@ -117,15 +152,35 @@ export const useGameStore = defineStore('game', {
     setRoom(id) {
       this.roomId = id;
     },
+    getActivePlayerKeys() {
+      return this.turnOrder.filter((key) => {
+        const player = this.players[key];
+        return player?.isActive && player.hp > 0;
+      });
+    },
+    getNextTurnKey(order, fromKey) {
+      const index = order.indexOf(fromKey);
+      if (index === -1) return order[0];
+      return order[(index + 1) % order.length];
+    },
+    setTurnByKey(key) {
+      this.currentTurn = key;
+      this.phase = getPhaseForKey(key);
+    },
+    isTurnPhase() {
+      return TURN_PHASES.includes(this.phase);
+    },
     // Hydrate state from network (for multiplayer sync)
     hydrateFromNetwork(state) {
       this.sessionActive = true;
       if (state.phase) this.phase = state.phase;
       if (state.currentTurn) this.currentTurn = state.currentTurn;
+      if (state.turnOrder) this.turnOrder = [...state.turnOrder];
       if (state.barrel) this.barrel = state.barrel;
       if (state.players) {
         if (state.players.player) Object.assign(this.players.player, state.players.player);
         if (state.players.enemy) Object.assign(this.players.enemy, state.players.enemy);
+        if (state.players.enemy2) Object.assign(this.players.enemy2, state.players.enemy2);
       }
       if (state.lastResult !== undefined) this.lastResult = state.lastResult;
       if (state.lastAction !== undefined) this.lastAction = state.lastAction;
@@ -149,6 +204,7 @@ export const useGameStore = defineStore('game', {
       if (state.timeoutStreak) {
         this.timeoutStreak.player = state.timeoutStreak.player ?? this.timeoutStreak.player;
         this.timeoutStreak.enemy = state.timeoutStreak.enemy ?? this.timeoutStreak.enemy;
+        this.timeoutStreak.enemy2 = state.timeoutStreak.enemy2 ?? this.timeoutStreak.enemy2;
       }
     },
     // Serialize state for network sync
@@ -156,6 +212,7 @@ export const useGameStore = defineStore('game', {
       return {
         phase: this.phase,
         currentTurn: this.currentTurn,
+        turnOrder: this.turnOrder,
         barrel: this.barrel,
         players: this.players,
         lastResult: this.lastResult,
@@ -172,8 +229,11 @@ export const useGameStore = defineStore('game', {
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
       this.lastReloadAt = Date.now();
-      this.players.player.scannerHint = null;
-      this.players.enemy.scannerHint = null;
+      PLAYER_KEYS.forEach((key) => {
+        if (this.players[key]) {
+          this.players[key].scannerHint = null;
+        }
+      });
       this.resetBotMemory();
       this.dealItems();
       if (notify) {
@@ -182,8 +242,11 @@ export const useGameStore = defineStore('game', {
       }
     },
     dealItems() {
-      this.players.player.items.push(...rollRandomItems(ITEMS_PER_RELOAD));
-      this.players.enemy.items.push(...rollRandomItems(ITEMS_PER_RELOAD));
+      PLAYER_KEYS.forEach((key) => {
+        const player = this.players[key];
+        if (!player?.isActive || player.hp <= 0) return;
+        player.items.push(...rollRandomItems(ITEMS_PER_RELOAD));
+      });
       audioManager.play('reload');
     },
     resetBotMemory() {
@@ -225,37 +288,41 @@ export const useGameStore = defineStore('game', {
           actor.scannerHint -= 1;
         }
       };
-      updateHint(this.players.player);
-      updateHint(this.players.enemy);
+      PLAYER_KEYS.forEach((key) => updateHint(this.players[key]));
     },
     setCoinFlipResult(starts) {
-      this.currentTurn = starts;
-      this.phase = starts === 'player' ? PHASES.PLAYER_TURN : PHASES.ENEMY_TURN;
-      this.lastResult = { text: starts === 'player' ? 'Vous commencez.' : "L'ennemi commence." };
-      if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
+      this.setTurnByKey(starts);
+      const starterName = this.players[starts]?.name || 'Joueur';
+      this.lastResult = { text: `${starterName} commence.` };
+      if (this.mode === 'bot' && starts === 'enemy') {
         this.queueBotAction();
       }
     },
     resolveNextTurn(nextActorKey) {
-      let nextKey = nextActorKey;
-      const skipped = [];
-      const oppositeKey = nextKey === 'player' ? 'enemy' : 'player';
-
-      if (this.players[oppositeKey]?.skipNextTurn) {
-        this.players[oppositeKey].skipNextTurn = false;
+      const activeOrder = this.getActivePlayerKeys();
+      if (activeOrder.length <= 1) {
+        this.winner = activeOrder[0] || null;
+        this.phase = PHASES.GAME_OVER;
+        return;
       }
 
-      for (let i = 0; i < 2; i += 1) {
+      let nextKey = nextActorKey;
+      if (!nextKey || !activeOrder.includes(nextKey)) {
+        nextKey = this.getNextTurnKey(activeOrder, this.currentTurn);
+      }
+
+      const skipped = [];
+      for (let i = 0; i < activeOrder.length; i += 1) {
         if (this.players[nextKey]?.skipNextTurn) {
           this.players[nextKey].skipNextTurn = false;
           skipped.push(nextKey);
-          nextKey = nextKey === 'player' ? 'enemy' : 'player';
+          nextKey = this.getNextTurnKey(activeOrder, nextKey);
         } else {
           break;
         }
       }
 
-      this.phase = nextKey === 'player' ? PHASES.PLAYER_TURN : PHASES.ENEMY_TURN;
+      this.setTurnByKey(nextKey);
 
       if (skipped.length) {
         const skippedNames = skipped.map((key) => this.players[key]?.name || 'Joueur');
@@ -265,19 +332,16 @@ export const useGameStore = defineStore('game', {
         this.lastResult = { text: message };
       }
 
-      if (this.mode === 'bot' && this.phase === PHASES.ENEMY_TURN) {
+      if (this.mode === 'bot' && this.currentTurn === 'enemy') {
         this.queueBotAction();
       }
     },
-    async useItem(itemId, actorKey = 'player') {
+    async useItem(itemId, actorKey = 'player', targetKey = null) {
       const actor = this.players[actorKey];
       if (!actor || this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) {
         return;
       }
-      if (actorKey === 'player' && this.phase !== PHASES.PLAYER_TURN) {
-        return;
-      }
-      if (actorKey === 'enemy' && this.phase !== PHASES.ENEMY_TURN) {
+      if (this.currentTurn !== actorKey) {
         return;
       }
 
@@ -288,7 +352,7 @@ export const useGameStore = defineStore('game', {
       const currentBullet = itemId === 'eject' || itemId === 'inverter'
         ? this.barrel.chambers[this.barrel.index]
         : null;
-      const result = applyItem(this.$state, actorKey, itemId);
+      const result = applyItem(this.$state, actorKey, itemId, targetKey);
       if (!result.success) {
         this.lastResult = { text: result.message };
         return;
@@ -310,7 +374,8 @@ export const useGameStore = defineStore('game', {
       this.lastAction = {
         type: 'item',
         actor: actorKey,
-        itemId
+        itemId,
+        target: targetKey
       };
       audioManager.play('click');
 
@@ -321,29 +386,34 @@ export const useGameStore = defineStore('game', {
     },
     async shoot(target, actorKeyOverride = null) {
       if (this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) return;
-      if (this.phase !== PHASES.PLAYER_TURN && this.phase !== PHASES.ENEMY_TURN) return;
+      if (!this.isTurnPhase()) return;
 
       const previousPhase = this.phase;
 
       try {
-        const actorKey = actorKeyOverride || (this.phase === PHASES.PLAYER_TURN ? 'player' : 'enemy');
+        const actorKey = actorKeyOverride || this.currentTurn;
         const actor = this.players[actorKey];
-        if (actorKey === 'player' && this.phase !== PHASES.PLAYER_TURN) return;
+        if (!actor) return;
 
       if (isEmpty(this.barrel)) {
         this.reloadBarrel({ notify: true });
       }
 
         this.phase = PHASES.ANIMATING;
-        const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
-        let targetKey = target === 'self' ? actorKey : opponentKey;
+        let targetKey = target || actorKey;
+        if (!this.players[targetKey] || !this.players[targetKey].isActive) {
+          targetKey = actorKey;
+        }
 
         const shot = this.barrel.chambers[this.barrel.index];
         this.barrel.index += 1;
         this.barrel.firstShotFired = true;
         this.barrel.invertedNext = null;
-        this.players.player.peekedNext = null;
-        this.players.enemy.peekedNext = null;
+        PLAYER_KEYS.forEach((key) => {
+          if (this.players[key]) {
+            this.players[key].peekedNext = null;
+          }
+        });
         this.updateBotMemoryAfterShot(shot);
         this.updateScannerHintsAfterAdvance();
 
@@ -378,9 +448,9 @@ export const useGameStore = defineStore('game', {
 
         await sleep(900);
 
-        if (this.players[targetKey].hp <= 0) {
-          const opponentKey = actorKey === 'player' ? 'enemy' : 'player';
-          this.winner = actorKey === targetKey ? opponentKey : actorKey;
+        const activePlayers = this.getActivePlayerKeys();
+        if (activePlayers.length <= 1) {
+          this.winner = activePlayers[0] || null;
           this.phase = PHASES.GAME_OVER;
           return;
         }
@@ -392,7 +462,7 @@ export const useGameStore = defineStore('game', {
         if (!isReal && targetKey === actorKey) {
           this.resolveNextTurn(actorKey);
         } else {
-          const nextActor = actorKey === 'player' ? 'enemy' : 'player';
+          const nextActor = this.getNextTurnKey(this.getActivePlayerKeys(), actorKey);
           this.resolveNextTurn(nextActor);
         }
       } catch (error) {
@@ -405,9 +475,9 @@ export const useGameStore = defineStore('game', {
     },
     timeoutTurn(actorKeyOverride = null) {
       if (this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) return;
-      if (this.phase !== PHASES.PLAYER_TURN && this.phase !== PHASES.ENEMY_TURN) return;
+      if (!this.isTurnPhase()) return;
 
-      const actorKey = actorKeyOverride || (this.phase === PHASES.PLAYER_TURN ? 'player' : 'enemy');
+      const actorKey = actorKeyOverride || this.currentTurn;
       const actorName = this.players[actorKey]?.name || 'Joueur';
 
       this.lastAction = {
@@ -420,16 +490,22 @@ export const useGameStore = defineStore('game', {
 
       this.timeoutStreak[actorKey] += 1;
       if (this.timeoutStreak[actorKey] >= 2) {
-        const winnerKey = actorKey === 'player' ? 'enemy' : 'player';
-        this.winner = winnerKey;
-        this.phase = PHASES.GAME_OVER;
+        this.players[actorKey].hp = 0;
+        const activePlayers = this.getActivePlayerKeys();
+        if (activePlayers.length <= 1) {
+          this.winner = activePlayers[0] || null;
+          this.phase = PHASES.GAME_OVER;
+          this.lastResult = {
+            text: `🏳️ ${actorName} est AFK. Victoire par abandon de l'adversaire.`
+          };
+          return;
+        }
         this.lastResult = {
-          text: `🏳️ ${actorName} est AFK. Victoire par abandon de l'adversaire.`
+          text: `🏳️ ${actorName} est AFK.`
         };
-        return;
       }
 
-      const nextActor = actorKey === 'player' ? 'enemy' : 'player';
+      const nextActor = this.getNextTurnKey(this.getActivePlayerKeys(), actorKey);
       this.resolveNextTurn(nextActor);
     },
     async queueBotAction() {
@@ -440,11 +516,11 @@ export const useGameStore = defineStore('game', {
         await sleep(1000);
         if (this.phase === PHASES.ANIMATING) {
           // Force reset to enemy turn if stuck
-          this.phase = PHASES.ENEMY_TURN;
+          this.setTurnByKey('enemy');
         }
       }
       
-      if (this.phase !== PHASES.ENEMY_TURN) return;
+      if (this.currentTurn !== 'enemy') return;
 
       // Delay so player can see it's enemy turn
       const baseDelay = 2800;
@@ -454,7 +530,7 @@ export const useGameStore = defineStore('game', {
       await sleep(baseDelay + reloadDelay);
       
       // Double check phase hasn't changed
-      if (this.phase !== PHASES.ENEMY_TURN) return;
+      if (this.currentTurn !== 'enemy') return;
       
       const decision = decideBotAction(this.$state);
       
@@ -462,8 +538,8 @@ export const useGameStore = defineStore('game', {
         // Signal item use to UI
         this.pendingBotItem = decision.itemId;
         await sleep(100);
-        
-        await this.useItem(decision.itemId, 'enemy');
+        const targetKey = decision.itemId === 'handcuffs' ? 'player' : null;
+        await this.useItem(decision.itemId, 'enemy', targetKey);
         
         // Clear pending item
         this.pendingBotItem = null;
@@ -472,7 +548,7 @@ export const useGameStore = defineStore('game', {
         await sleep(800);
         
         // Check if bot should act again
-        if (this.phase === PHASES.ENEMY_TURN) {
+        if (this.currentTurn === 'enemy') {
           this.queueBotAction();
         }
       } else {

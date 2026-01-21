@@ -4,14 +4,14 @@ import { io } from 'socket.io-client';
 export const useNetStore = defineStore('net', {
   state: () => ({
     socket: null,
+    socketId: null,
     connected: false,
     connecting: false,
     roomId: null,
     isHost: false,
     hostName: null,
     playerName: null,
-    opponentName: null,
-    opponentConnected: false,
+    roomPlayers: [],
     opponentLeft: null,
     roomReady: false,
     gameEnded: false,
@@ -21,7 +21,9 @@ export const useNetStore = defineStore('net', {
 
   getters: {
     isInRoom: (state) => !!state.roomId,
-    canStartGame: (state) => state.roomReady && state.isHost && !state.gameEnded
+    canStartGame: (state) => state.roomReady && state.isHost && !state.gameEnded,
+    opponentConnected: (state) => state.roomPlayers.length > 1,
+    otherPlayers: (state) => state.roomPlayers.filter((player) => player.id !== state.socketId)
   },
 
   actions: {
@@ -48,14 +50,16 @@ export const useNetStore = defineStore('net', {
           console.log('✅ Connected to server');
           this.connected = true;
           this.connecting = false;
+          this.socketId = this.socket.id;
           resolve();
         });
 
         this.socket.on('disconnect', (reason) => {
           console.log('❌ Disconnected:', reason);
           this.connected = false;
-          this.opponentConnected = false;
+          this.socketId = null;
           this.roomReady = false;
+          this.roomPlayers = [];
         });
 
         this.socket.on('connect_error', (err) => {
@@ -66,21 +70,22 @@ export const useNetStore = defineStore('net', {
         });
 
         // Room events
-        this.socket.on('room:created', ({ roomId, isHost, hostName }) => {
+        this.socket.on('room:created', ({ roomId, isHost, hostName, players }) => {
           console.log('🏠 Room created:', roomId);
           this.roomId = roomId;
           this.isHost = isHost;
           this.hostName = hostName || this.playerName;
+          this.roomPlayers = players || [];
           this.error = null;
           this.gameEnded = false;
         });
 
-        this.socket.on('room:joined', ({ roomId, isHost, hostName, guestName }) => {
+        this.socket.on('room:joined', ({ roomId, isHost, hostName, players }) => {
           console.log('👥 Joined room:', roomId);
           this.roomId = roomId;
           this.isHost = isHost;
           this.hostName = hostName;
-          this.opponentName = isHost ? guestName : hostName;
+          this.roomPlayers = players || [];
           this.error = null;
           this.gameEnded = false;
         });
@@ -90,24 +95,24 @@ export const useNetStore = defineStore('net', {
           this.error = message;
         });
 
-        this.socket.on('room:player-joined', ({ playerId, playerName }) => {
+        this.socket.on('room:player-joined', ({ playerId, playerName, players }) => {
           console.log('👋 Player joined:', playerName, playerId);
-          this.opponentConnected = true;
-          this.opponentName = playerName;
+          this.roomPlayers = players || this.roomPlayers;
         });
 
-        this.socket.on('room:ready', ({ hostId, hostName, guestId, guestName }) => {
-          console.log('🎮 Room ready! Host:', hostName, 'Guest:', guestName);
+        this.socket.on('room:ready', ({ hostName, players }) => {
+          console.log('🎮 Room ready! Host:', hostName);
           this.roomReady = true;
-          this.opponentConnected = true;
           this.hostName = hostName;
-          // Set opponent name based on our role
-          this.opponentName = this.isHost ? guestName : hostName;
+          this.roomPlayers = players || this.roomPlayers;
         });
 
-        this.socket.on('room:player-left', ({ playerId, playerName, wasHost }) => {
+        this.socket.on('room:player-left', ({ playerId, playerName, wasHost, players }) => {
           console.log('👋 Player left:', playerName || playerId);
-          this.opponentConnected = false;
+          this.roomPlayers = this.roomPlayers.filter((player) => player.id !== playerId);
+          if (players) {
+            this.roomPlayers = players;
+          }
           this.roomReady = false;
           this.opponentLeft = {
             playerId,
@@ -123,7 +128,6 @@ export const useNetStore = defineStore('net', {
 
         this.socket.on('room:host-left', ({ message }) => {
           console.log('🚪 Host left:', message);
-          this.opponentConnected = false;
           this.roomReady = false;
           this.gameEnded = true;
           this.opponentLeft = { wasHost: true, message };
@@ -132,7 +136,6 @@ export const useNetStore = defineStore('net', {
 
         this.socket.on('room:guest-left', ({ message }) => {
           console.log('🚪 Guest left:', message);
-          this.opponentConnected = false;
           this.roomReady = false;
           this.opponentLeft = { wasHost: false, message };
           this.error = message;
@@ -143,12 +146,19 @@ export const useNetStore = defineStore('net', {
           this.gameEnded = true;
         });
 
-        this.socket.on('room:promoted-host', ({ hostName }) => {
+        this.socket.on('room:promoted-host', ({ hostName, players }) => {
           console.log('👑 You are now the host');
           this.isHost = true;
           this.hostName = hostName || this.playerName;
-          this.opponentConnected = false;
-          this.opponentName = null;
+          this.roomPlayers = players || this.roomPlayers;
+          this.roomReady = false;
+        });
+
+        this.socket.on('room:kicked', ({ message }) => {
+          this.error = message || "Vous avez été éjecté.";
+          this.roomId = null;
+          this.isHost = false;
+          this.roomPlayers = [];
           this.roomReady = false;
         });
 
@@ -178,6 +188,7 @@ export const useNetStore = defineStore('net', {
         this.socket.emit('room:create', { playerName: this.playerName });
         this.isHost = true;
         this.hostName = this.playerName;
+        this.roomPlayers = [];
       } catch (err) {
         this.error = err.message;
       }
@@ -201,9 +212,15 @@ export const useNetStore = defineStore('net', {
           playerName: this.playerName
         });
         this.isHost = false;
+        this.roomPlayers = [];
       } catch (err) {
         this.error = err.message;
       }
+    },
+
+    kickPlayer(playerId) {
+      if (!this.socket || !this.roomId || !this.isHost) return;
+      this.socket.emit('room:kick', { roomId: this.roomId, playerId });
     },
 
     // Send an action to all players
@@ -300,12 +317,12 @@ export const useNetStore = defineStore('net', {
         this.socket.disconnect();
       }
       this.socket = null;
+      this.socketId = null;
       this.connected = false;
       this.roomId = null;
       this.isHost = false;
       this.hostName = null;
-      this.opponentConnected = false;
-      this.opponentName = null;
+      this.roomPlayers = [];
       this.opponentLeft = null;
       this.roomReady = false;
       this.gameEnded = false;

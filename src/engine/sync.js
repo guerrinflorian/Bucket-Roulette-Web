@@ -2,6 +2,7 @@ export function serializeState(state) {
   return JSON.stringify({
     phase: state.phase,
     currentTurn: state.currentTurn,
+    turnOrder: state.turnOrder,
     barrel: state.barrel,
     players: state.players,
     lastResult: state.lastResult,
