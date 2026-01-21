@@ -19,9 +19,24 @@ const normalizeEmail = (email) => email.trim().toLowerCase();
 export default async function authRoutes(fastify) {
   fastify.post('/register', async (request, reply) => {
     const { email, password, username } = request.body || {};
+
     if (!email || !password) {
       return reply.code(400).send({ error: 'Email et mot de passe requis.' });
     }
+
+    // Validation du pseudo
+    if (!username) {
+      return reply.code(400).send({ error: 'Le pseudo est requis.' });
+    }
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length < 2 || trimmedUsername.length > 12) {
+      return reply.code(400).send({ error: 'Le pseudo doit contenir entre 2 et 12 caractères.' });
+    }
+    // Regex pour lettres, chiffres et underscores, pas d'espaces
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+      return reply.code(400).send({ error: 'Le pseudo ne peut contenir que des lettres, chiffres et underscores (pas d\'espaces).' });
+    }
+
     if (password.length < 6) {
       return reply.code(400).send({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
     }
@@ -30,6 +45,16 @@ export default async function authRoutes(fastify) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      // Vérifier si le pseudo est déjà pris
+      const usernameCheck = await client.query(
+        'SELECT id FROM users WHERE lower(username) = lower($1) LIMIT 1',
+        [trimmedUsername]
+      );
+      if (usernameCheck.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return reply.code(409).send({ error: 'Ce pseudo est déjà utilisé.' });
+      }
 
       const userResult = await client.query(
         'SELECT * FROM users WHERE lower(email) = lower($1) LIMIT 1',
@@ -56,7 +81,7 @@ export default async function authRoutes(fastify) {
 
         const updatedUser = await client.query(
           'UPDATE users SET last_login = NOW(), username = COALESCE(username, $1) WHERE id = $2 RETURNING *',
-          [username || null, user.id]
+          [username.trim(), user.id]
         );
 
         await client.query('COMMIT');
@@ -69,7 +94,7 @@ export default async function authRoutes(fastify) {
       const passwordHash = await bcrypt.hash(password, 10);
       const createdUser = await client.query(
         'INSERT INTO users (id, created_at, last_login, email, username, avatar_url) VALUES ($1, NOW(), NOW(), $2, $3, $4) RETURNING *',
-        [userId, normalizedEmail, username || null, null]
+        [userId, normalizedEmail, username.trim(), null]
       );
 
       await client.query(

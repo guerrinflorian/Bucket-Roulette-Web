@@ -17,6 +17,25 @@
       <div class="menu-hero-canvas" ref="menuModelRef"></div>
     </div>
 
+    <!-- User bar (top right) -->
+    <div v-if="authStore.isAuthenticated" class="user-bar">
+      <div class="user-info">
+        <q-icon name="account_circle" size="24px" color="amber" />
+        <span class="user-name">{{ displayName }}</span>
+      </div>
+      <q-btn
+        flat
+        dense
+        round
+        icon="logout"
+        color="grey-5"
+        size="sm"
+        @click="handleLogout"
+      >
+        <q-tooltip>Se déconnecter</q-tooltip>
+      </q-btn>
+    </div>
+
     <!-- Main content -->
     <div class="menu-content">
       <!-- Logo/Title -->
@@ -355,6 +374,11 @@ const goAuth = () => {
   router.push('/auth');
 };
 
+const handleLogout = () => {
+  authStore.logout();
+  router.push('/auth');
+};
+
 const createRoom = async () => {
   if (!netStore.playerName) return;
   await netStore.createRoom();
@@ -679,6 +703,52 @@ const cleanupMenuModel = () => {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* User bar */
+.user-bar {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 16px;
+  background: linear-gradient(135deg, rgba(30, 20, 10, 0.9) 0%, rgba(15, 10, 5, 0.95) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 30px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fef3c7;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .user-bar {
+    top: 10px;
+    right: 10px;
+    padding: 6px 10px 6px 12px;
+  }
+
+  .user-name {
+    font-size: 12px;
+    max-width: 80px;
+  }
 }
 
 /* Background effects */

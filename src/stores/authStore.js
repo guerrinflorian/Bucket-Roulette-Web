@@ -126,7 +126,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     loginWithGoogle,
     fetchMe,
-    clearSession
+    clearSession,
+    logout: clearSession
   };
 });
 
