@@ -500,7 +500,7 @@ const initMenuModel = async () => {
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
-  camera.position.set(0.2, 0.25, width < 380 ? 5 : 4);
+  camera.position.set(0.2, 0.25, width < 380 ? 30 : 24);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -527,8 +527,8 @@ const initMenuModel = async () => {
     }
   });
 
-  const startScale = 2.6;
-  const finalScale = 0.9;
+  const startScale = 0.08;
+  const finalScale = 0.004;
   const startPosition = { x: -0.1, y: -0.35, z: 1.6 };
   const finalPosition = { x: 0.45, y: 0.15, z: -1.6 };
   const startRotation = { x: 0.1, y: Math.PI * 0.8, z: 0 };

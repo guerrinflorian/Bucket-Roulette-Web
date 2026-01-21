@@ -447,8 +447,8 @@ export const useGameStore = defineStore('game', {
       if (this.phase !== PHASES.ENEMY_TURN) return;
 
       // Delay so player can see it's enemy turn
-      const baseDelay = 2000;
-      const reloadPauseMs = 3600;
+      const baseDelay = 2800;
+      const reloadPauseMs = 6200;
       const timeSinceReload = this.lastReloadAt ? Date.now() - this.lastReloadAt : reloadPauseMs;
       const reloadDelay = timeSinceReload < reloadPauseMs ? reloadPauseMs - timeSinceReload : 0;
       await sleep(baseDelay + reloadDelay);
