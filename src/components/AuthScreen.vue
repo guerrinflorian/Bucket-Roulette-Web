@@ -218,7 +218,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { Notify } from 'quasar';
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/authStore.js';
 
@@ -254,7 +255,9 @@ const loadGoogleScript = () => new Promise((resolve, reject) => {
 
 const initGoogle = async () => {
   if (!clientId) {
-    authStore.setError('Google non configuré sur le client.');
+    const message = 'Google non configuré sur le client.';
+    authStore.setError(message);
+    Notify.create({ type: 'negative', message, icon: 'warning' });
     return;
   }
   try {
@@ -274,16 +277,52 @@ const initGoogle = async () => {
     });
     googleReady.value = true;
   } catch (error) {
-    authStore.setError('Impossible de charger Google.');
+    const message = 'Impossible de charger Google.';
+    authStore.setError(message);
+    Notify.create({ type: 'negative', message, icon: 'cloud_off' });
   }
+};
+
+const resolveAuthMessage = (message) => {
+  const normalized = String(message || '').toLowerCase();
+  if (!normalized) {
+    return 'Une erreur est survenue. Merci de réessayer.';
+  }
+  if (
+    normalized.includes('identifiant')
+    || normalized.includes('invalid')
+    || normalized.includes('incorrect')
+    || normalized.includes('password')
+  ) {
+    return 'Identifiants invalides. Vérifiez votre email et votre mot de passe.';
+  }
+  if (normalized.includes('existe') || normalized.includes('already')) {
+    return 'Ce compte existe déjà. Essayez de vous connecter.';
+  }
+  if (normalized.includes('connexion') || normalized.includes('network') || normalized.includes('fetch')) {
+    return 'Connexion au serveur impossible. Vérifiez votre réseau et réessayez.';
+  }
+  return message;
+};
+
+const notifyAuthState = (status, message) => {
+  Notify.create({
+    type: status,
+    message,
+    icon: status === 'positive' ? 'check_circle' : 'error',
+    position: 'top-right'
+  });
 };
 
 const handleLogin = async () => {
   try {
     await authStore.login({ email: loginEmail.value, password: loginPassword.value });
+    notifyAuthState('positive', 'Connexion réussie. Bon jeu !');
     router.push('/menu');
   } catch (error) {
-    // Erreur déjà stockée dans authStore
+    const message = resolveAuthMessage(error?.message || authStore.error);
+    authStore.setError(message);
+    notifyAuthState('negative', message);
   }
 };
 
@@ -294,18 +333,23 @@ const handleRegister = async () => {
       password: registerPassword.value,
       username: registerUsername.value
     });
+    notifyAuthState('positive', 'Compte créé. Bienvenue à bord !');
     router.push('/menu');
   } catch (error) {
-    // Erreur déjà stockée dans authStore
+    const message = resolveAuthMessage(error?.message || authStore.error);
+    authStore.setError(message);
+    notifyAuthState('negative', message);
   }
 };
-
-const goBack = () => router.push('/menu');
 
 onMounted(() => {
   if (enableGoogle) {
     initGoogle();
   }
+});
+
+watch(activeTab, () => {
+  authStore.setError('');
 });
 </script>
 
