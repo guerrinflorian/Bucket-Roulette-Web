@@ -120,7 +120,8 @@ function getItemImage(id) {
 }
 
 .player-card {
-  max-width: 500px;
+  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;

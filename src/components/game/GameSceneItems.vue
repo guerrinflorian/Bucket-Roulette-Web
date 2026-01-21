@@ -90,6 +90,9 @@ function handleUseItem(itemId) {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .item-btn {
