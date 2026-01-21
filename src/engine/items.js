@@ -91,13 +91,22 @@ export const ITEM_DEFS = [
       const realIndices = remaining
         .map((round, idx) => (round === 'real' ? idx : null))
         .filter((idx) => idx !== null);
+  
       if (!realIndices.length) {
         return { message: 'Aucune balle réelle détectée.' };
       }
+  
       const picked = realIndices[Math.floor(Math.random() * realIndices.length)];
       const position = picked + 1;
+      
+      // détermine le suffixe (ère pour 1, ème pour le reste)
+      const suffix = position === 1 ? 'ère' : 'ème';
+      
       state.players[actorKey].scannerHint = position;
-      return { message: `📡 Scanner : la ${position}ème balle est réelle.` };
+      
+      return { 
+        message: `📡 Scanner : la ${position}${suffix} balle est réelle.` 
+      };
     }
   }
 ];
