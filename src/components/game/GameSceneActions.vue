@@ -1,6 +1,27 @@
 <template>
   <section class="actions-section" :class="{ 'actions-multi': isMultiTargetMode }">
-    <div v-if="!isMultiTargetMode" class="target-picker">
+    <div v-if="isTwoTargetMode" class="duo-target-actions">
+      <q-btn
+        class="shoot-btn"
+        color="negative"
+        unelevated
+        :disable="!canAct || !selfTarget"
+        @click="emit('shoot', selfTarget?.key)"
+      >
+        🎯 Tirer sur moi
+      </q-btn>
+      <q-btn
+        class="shoot-btn"
+        color="deep-orange"
+        unelevated
+        :disable="!canAct || !opponentTargets.length"
+        @click="emit('shoot', opponentTargets[0]?.key)"
+      >
+        🎯 Tirer sur l'adversaire
+      </q-btn>
+    </div>
+
+    <div v-else-if="!isMultiTargetMode" class="target-picker">
       <div class="target-label">Cible</div>
       <q-btn-toggle
         v-model="selectedTarget"
@@ -49,7 +70,7 @@
     </div>
 
     <q-btn
-      v-if="!isMultiTargetMode"
+      v-if="!isMultiTargetMode && !isTwoTargetMode"
       class="shoot-btn"
       color="negative"
       unelevated
@@ -80,6 +101,7 @@ const emit = defineEmits(['shoot']);
 const selectedTarget = ref(null);
 
 const isMultiTargetMode = computed(() => props.targets.length > 2);
+const isTwoTargetMode = computed(() => props.targets.length === 2);
 
 const targetOptions = computed(() => props.targets.map((target) => ({
   label: target.label,
@@ -153,6 +175,13 @@ watch(
   width: min(520px, 100%);
   display: grid;
   gap: 12px;
+}
+
+.duo-target-actions {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .shoot-dropdown {
