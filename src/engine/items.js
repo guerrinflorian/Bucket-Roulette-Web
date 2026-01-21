@@ -58,6 +58,43 @@ export const ITEM_DEFS = [
       state.players[targetKey].skipNextTurn = true;
       return { message: `⛓️ ${state.players[targetKey].name} sera menotté au prochain tour.` };
     }
+  },
+  {
+    id: 'inverter',
+    name: "L'Inverseur",
+    description: 'Inverse la balle actuelle : blanche ⇄ réelle.',
+    canUse: (state) => peekNext(state.barrel) !== null,
+    apply: (state, actorKey) => {
+      const current = peekNext(state.barrel);
+      if (!current) {
+        return { message: "Impossible d'inverser : barillet vide." };
+      }
+      const flipped = current === 'real' ? 'blank' : 'real';
+      state.barrel.chambers[state.barrel.index] = flipped;
+      state.players[actorKey].peekedNext = flipped;
+      const otherKey = actorKey === 'player' ? 'enemy' : 'player';
+      state.players[otherKey].peekedNext = null;
+      return { message: `${state.players[actorKey].name} inverse la balle (${flipped}).` };
+    }
+  },
+  {
+    id: 'scanner',
+    name: 'Scanner',
+    description: "Révèle la position d'une balle réelle dans le barillet.",
+    canUse: (state) => state.barrel.chambers.slice(state.barrel.index).includes('real'),
+    apply: (state, actorKey) => {
+      const remaining = state.barrel.chambers.slice(state.barrel.index);
+      const realIndices = remaining
+        .map((round, idx) => (round === 'real' ? idx : null))
+        .filter((idx) => idx !== null);
+      if (!realIndices.length) {
+        return { message: 'Aucune balle réelle détectée.' };
+      }
+      const picked = realIndices[Math.floor(Math.random() * realIndices.length)];
+      const position = picked + 1;
+      state.players[actorKey].scannerHint = position;
+      return { message: `📡 Scanner : la ${position}ème balle est réelle.` };
+    }
   }
 ];
 
@@ -70,7 +107,9 @@ const ITEM_WEIGHTS = {
   double: 0.55,
   peek: 0.8,
   eject: 0.75,
-  handcuffs: 0.7
+  handcuffs: 0.7,
+  inverter: 0.6,
+  scanner: 0.65
 };
 
 function rollWeightedItemId() {

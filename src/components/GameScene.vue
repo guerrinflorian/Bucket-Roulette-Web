@@ -57,6 +57,9 @@
       <div v-if="player.peekedNext" class="peeked-banner" :class="player.peekedNext === 'real' ? 'peek-real' : 'peek-blank'">
         🔍 Prochaine balle : <strong>{{ player.peekedNext === 'real' ? 'RÉELLE 🔴' : 'BLANCHE ⚪' }}</strong>
       </div>
+      <div v-if="player.scannerHint" class="scanner-banner">
+        📡 Scanner : la {{ player.scannerHint }}ème balle est réelle.
+      </div>
 
       <!-- ITEMS SECTION -->
       <GameSceneItems
@@ -278,7 +281,9 @@ const itemData = {
   double: { emoji: '⚡', name: 'Double dégâts' },
   peek: { emoji: '🔍', name: 'Voir la balle' },
   eject: { emoji: '🔄', name: 'Éjecter' },
-  handcuffs: { emoji: '⛓️', name: 'Les Menottes' }
+  handcuffs: { emoji: '⛓️', name: 'Les Menottes' },
+  inverter: { emoji: '🔁', name: "L'Inverseur" },
+  scanner: { emoji: '📡', name: 'Scanner' }
 };
 
 function getItemEmoji(id) {
@@ -765,6 +770,18 @@ defineExpose({
   border: 2px solid;
   backdrop-filter: blur(8px);
   animation: pulse-peek 2s ease-in-out infinite;
+}
+
+.scanner-banner {
+  padding: 8px 18px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #bfdbfe;
+  background: rgba(30, 64, 175, 0.15);
+  backdrop-filter: blur(8px);
 }
 
 :deep(.q-dialog__inner--standard) {
