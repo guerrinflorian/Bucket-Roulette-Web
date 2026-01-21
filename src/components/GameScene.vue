@@ -16,7 +16,10 @@
     <div ref="gameContent" class="game-content">
       
       <!-- OPPONENTS SECTION (TOP) -->
-      <div class="opponents-row">
+      <div
+        class="opponents-row"
+        :class="{ 'single-opponent': opponents.length === 1 }"
+      >
         <GameScenePlayerCard
           v-for="opponent in opponents"
           :key="opponent.id"
@@ -36,6 +39,20 @@
         </div>
         <div v-if="turnTimeLeft !== null" class="turn-timer">
           ⏱ {{ turnTimeLeft }}s
+        </div>
+        <div v-if="turnOrderDisplay.length > 1" class="turn-order-chip">
+          <span class="turn-order-label">Ordre</span>
+          <div class="turn-order-list">
+            <span
+              v-for="(entry, index) in turnOrderDisplay"
+              :key="entry.key"
+              class="turn-order-item"
+              :class="{ active: entry.isCurrent, self: entry.isSelf }"
+            >
+              <span class="turn-order-index">{{ index + 1 }}</span>
+              <span class="turn-order-name">{{ entry.name }}</span>
+            </span>
+          </div>
         </div>
         
         <!-- Barrel -->
@@ -243,6 +260,10 @@ const props = defineProps({
     type: String,
     default: 'player'
   },
+  turnOrder: {
+    type: Array,
+    default: () => []
+  },
   currentTurnKey: {
     type: String,
     default: null
@@ -312,7 +333,8 @@ const activePlayers = computed(() => {
 const shootTargets = computed(() => {
   return activePlayers.value.map((player) => ({
     key: player.id,
-    label: player.id === props.localPlayerKey ? 'Moi' : player.name
+    label: player.id === props.localPlayerKey ? 'Moi' : player.name,
+    isSelf: player.id === props.localPlayerKey
   }));
 });
 
@@ -421,6 +443,15 @@ const phaseLabel = computed(() => {
   if (props.currentTurnKey === props.localPlayerKey) return '🎮 VOTRE TOUR';
   const name = props.playersByKey?.[props.currentTurnKey]?.name || 'Joueur';
   return `🎯 Tour de ${name}`;
+});
+
+const turnOrderDisplay = computed(() => {
+  return (props.turnOrder || []).map((key) => ({
+    key,
+    name: props.playersByKey?.[key]?.name || 'Joueur',
+    isCurrent: key === props.currentTurnKey,
+    isSelf: key === props.localPlayerKey
+  }));
 });
 
 const turnClass = computed(() => ({
@@ -740,6 +771,15 @@ defineExpose({
   padding: 16px 24px 0;
 }
 
+.opponents-row.single-opponent {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.opponents-row.single-opponent :deep(.player-card) {
+  width: min(520px, 100%);
+}
+
 /* Center section */
 .center-section {
   flex: 1;
@@ -774,6 +814,76 @@ defineExpose({
   color: #fbbf24;
   text-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
   animation: timer-pulse 1s ease-in-out infinite;
+}
+
+.turn-order-chip {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.turn-order-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(226, 232, 240, 0.6);
+  font-weight: 700;
+}
+
+.turn-order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.turn-order-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.6);
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.turn-order-item.active {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #bbf7d0;
+}
+
+.turn-order-item.self {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4);
+}
+
+.turn-order-index {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0f172a;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.turn-order-name {
+  white-space: nowrap;
 }
 
 @keyframes timer-pulse {

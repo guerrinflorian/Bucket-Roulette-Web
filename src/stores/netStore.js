@@ -1,5 +1,17 @@
 import { defineStore } from 'pinia';
 import { io } from 'socket.io-client';
+import { Notify } from 'quasar';
+
+const notifyDeparture = (message) => {
+  if (!message) return;
+  Notify.create({
+    message,
+    color: 'negative',
+    position: 'top',
+    timeout: 3500,
+    icon: 'logout'
+  });
+};
 
 export const useNetStore = defineStore('net', {
   state: () => ({
@@ -121,8 +133,10 @@ export const useNetStore = defineStore('net', {
           };
           if (wasHost) {
             this.error = "L'hôte a quitté la partie";
+            notifyDeparture("L'hôte a quitté la partie.");
           } else {
             this.error = "L'adversaire a quitté la room";
+            notifyDeparture(`${playerName || 'Un joueur'} a quitté la partie.`);
           }
         });
 
@@ -132,6 +146,7 @@ export const useNetStore = defineStore('net', {
           this.gameEnded = true;
           this.opponentLeft = { wasHost: true, message };
           this.error = message;
+          notifyDeparture(message || "L'hôte a quitté la partie.");
         });
 
         this.socket.on('room:guest-left', ({ message }) => {
@@ -139,6 +154,7 @@ export const useNetStore = defineStore('net', {
           this.roomReady = false;
           this.opponentLeft = { wasHost: false, message };
           this.error = message;
+          notifyDeparture(message || "Un joueur a quitté la partie.");
         });
 
         this.socket.on('room:game-ended', ({ roomId }) => {

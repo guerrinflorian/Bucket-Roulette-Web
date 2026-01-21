@@ -8,6 +8,7 @@
       :players-by-key="gameStore.players"
       :current-turn-key="gameStore.currentTurn"
       :local-player-key="localPlayerKey"
+      :turn-order="gameStore.turnOrder"
       :barrel="gameStore.barrel"
       :phase="uiPhase"
       :is-flip-visible="isFlipVisible"
@@ -40,6 +41,34 @@
       :forced-result="onlineFlipResult"
       @resolved="onOnlineFlipResolved"
     />
+
+    <!-- Multiplayer turn order modal (3+ players) -->
+    <q-dialog v-model="showOrderModal" persistent>
+      <q-card class="order-modal-card">
+        <q-card-section class="text-center">
+          <div class="order-modal-icon">🎲</div>
+          <div class="order-modal-title">Ordre de tir</div>
+          <div class="order-modal-subtitle">
+            {{ orderRevealDone ? 'Ordre déterminé !' : 'Tirage aléatoire en cours...' }}
+          </div>
+          <div class="order-modal-list">
+            <div
+              v-for="(entry, index) in orderModalEntries"
+              :key="entry.key"
+              class="order-modal-item"
+              :class="{
+                revealed: index <= orderRevealIndex,
+                active: entry.key === gameStore.currentTurn,
+                self: entry.key === localPlayerKey
+              }"
+            >
+              <span class="order-index">{{ index + 1 }}</span>
+              <span class="order-name">{{ entry.name }}</span>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
 
     <!-- Game Over Dialog -->
     <q-dialog v-model="showGameOver" persistent>
@@ -90,6 +119,11 @@ const showOnlineFlip = ref(false);
 const isFlipVisible = computed(() => gameStore.phase === 'coin_flip' || showOnlineFlip.value);
 const onlineFlipResult = ref(null);
 const onlineFlipShown = ref(false);
+const showOrderModal = ref(false);
+const orderModalShown = ref(false);
+const orderRevealIndex = ref(-1);
+const orderRevealDone = ref(false);
+const orderRevealTimers = [];
 const initialFlipResolved = ref(false);
 const isHandlingShot = ref(false);
 const isOnlineInitialFlipPending = computed(() => {
@@ -217,6 +251,10 @@ const shouldAutoTimeout = computed(() => {
 });
 
 const onlineActorKey = computed(() => localPlayerKey.value);
+const orderModalEntries = computed(() => gameStore.turnOrder.map((key) => ({
+  key,
+  name: gameStore.players[key]?.name || 'Joueur'
+})));
 
 // Watch for pending bot shoot action
 watch(() => gameStore.pendingBotAction, async (action) => {
@@ -610,6 +648,31 @@ const onOnlineFlipResolved = async () => {
   onlineFlipResult.value = null;
 };
 
+const startOrderReveal = () => {
+  if (orderModalShown.value) return;
+  const entries = orderModalEntries.value;
+  if (entries.length < 3) return;
+  orderModalShown.value = true;
+  showOrderModal.value = true;
+  orderRevealIndex.value = -1;
+  orderRevealDone.value = false;
+
+  const revealDelay = 650;
+  entries.forEach((_, index) => {
+    const timerId = setTimeout(() => {
+      orderRevealIndex.value = index;
+      if (index === entries.length - 1) {
+        orderRevealDone.value = true;
+        const closeTimer = setTimeout(() => {
+          showOrderModal.value = false;
+        }, 1400);
+        orderRevealTimers.push(closeTimer);
+      }
+    }, revealDelay * (index + 1));
+    orderRevealTimers.push(timerId);
+  });
+};
+
 const restart = () => {
   if (isOnlineMode.value) {
     netStore.leaveRoom();
@@ -718,6 +781,7 @@ onUnmounted(() => {
     netStore.offGameAction();
   }
   clearTurnTimer();
+  orderRevealTimers.splice(0).forEach((timerId) => clearTimeout(timerId));
   if (emojiTick) clearInterval(emojiTick);
   Object.values(emojiTimeouts).forEach((timeoutId) => clearTimeout(timeoutId));
 });
@@ -898,6 +962,26 @@ watch(
 );
 
 watch(
+  () => showOrderModal.value,
+  (isBlocked) => {
+    if (isBlocked) {
+      beginTimerBlock();
+      return;
+    }
+    endTimerBlock();
+  }
+);
+
+watch(
+  () => [isOnlineMode.value, gameStore.turnOrder.length, gameStore.currentTurn],
+  ([onlineMode, turnOrderLength, currentTurn]) => {
+    if (!onlineMode || !currentTurn || turnOrderLength < 3) return;
+    startOrderReveal();
+  },
+  { immediate: true }
+);
+
+watch(
   () => [gameStore.phase, showOnlineFlip.value, isOnlineInitialFlipPending.value],
   ([phase, onlineFlip, onlineFlipPending]) => {
     if (!initialFlipResolved.value && phase !== 'coin_flip' && !onlineFlip && !onlineFlipPending) {
@@ -1062,6 +1146,90 @@ watch(
   font-weight: 500;
 }
 
+.order-modal-card {
+  min-width: min(380px, 92vw);
+  border-radius: 26px;
+  padding: 26px 30px 30px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 0 60px rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(16px);
+}
+
+.order-modal-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.order-modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+.order-modal-subtitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 6px;
+  color: rgba(226, 232, 240, 0.6);
+}
+
+.order-modal-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.order-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid transparent;
+  color: rgba(226, 232, 240, 0.4);
+  opacity: 0.3;
+  transform: translateY(6px);
+  transition: all 0.35s ease;
+}
+
+.order-modal-item.revealed {
+  opacity: 1;
+  transform: translateY(0);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.order-modal-item.active {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.5);
+  color: #bbf7d0;
+}
+
+.order-modal-item.self {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4);
+}
+
+.order-index {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  color: #0f172a;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.order-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
 @media (max-width: 420px) {
   .game-over-card {
     min-width: 280px;
@@ -1078,6 +1246,10 @@ watch(
 
   .game-over-subtitle {
     font-size: 14px;
+  }
+
+  .order-modal-card {
+    padding: 22px 22px 26px;
   }
 }
 </style>
