@@ -36,8 +36,8 @@
           </div>
         </div>
         <h1 class="game-title">
-          <span class="title-main">BUCKET</span>
-          <span class="title-sub">ROULETTE</span>
+          <span class="title-main">REVOLVER GAMBIT</span>
+          <span class="title-sub">ONLINE</span>
         </h1>
         <p class="tagline">Tentez votre chance... si vous l'osez</p>
       </header>
