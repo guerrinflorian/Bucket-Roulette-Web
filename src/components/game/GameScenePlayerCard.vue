@@ -106,6 +106,7 @@ function getItemImage(id) {
 
 <style scoped>
 .player-section {
+  width: 100%;
   flex-shrink: 0;
   padding: 12px 16px;
 }
