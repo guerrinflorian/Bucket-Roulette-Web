@@ -47,6 +47,7 @@ export const useGameStore = defineStore('game', {
     isAnimating: false,
     reloadCount: 0,
     lastReloadInfo: null,
+    lastReloadAt: null,
     botMemory: {
       realRemaining: 0,
       blankRemaining: 0
@@ -80,6 +81,7 @@ export const useGameStore = defineStore('game', {
       this.currentTurn = null;
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
+      this.lastReloadAt = Date.now();
       this.players.player.name = 'Vous';
       if (mode === 'bot') {
         const level = getBotLevel(this.botDifficulty);
@@ -161,6 +163,7 @@ export const useGameStore = defineStore('game', {
     reloadBarrel({ notify = true } = {}) {
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
+      this.lastReloadAt = Date.now();
       this.players.player.scannerHint = null;
       this.players.enemy.scannerHint = null;
       this.resetBotMemory();
@@ -435,7 +438,11 @@ export const useGameStore = defineStore('game', {
       if (this.phase !== PHASES.ENEMY_TURN) return;
 
       // Delay so player can see it's enemy turn
-      await sleep(1500);
+      const baseDelay = 1500;
+      const reloadPauseMs = 2800;
+      const timeSinceReload = this.lastReloadAt ? Date.now() - this.lastReloadAt : reloadPauseMs;
+      const reloadDelay = timeSinceReload < reloadPauseMs ? reloadPauseMs - timeSinceReload : 0;
+      await sleep(baseDelay + reloadDelay);
       
       // Double check phase hasn't changed
       if (this.phase !== PHASES.ENEMY_TURN) return;
