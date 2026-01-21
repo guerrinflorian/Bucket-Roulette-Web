@@ -42,6 +42,7 @@ export const ITEM_DEFS = [
     apply: (state, actorKey) => {
       const removed = popNext(state.barrel);
       state.players[actorKey].peekedNext = null;
+      state.barrel.invertedNext = null;
       return { message: `${state.players[actorKey].name} éjecte une cartouche (${removed}).` };
     }
   },
@@ -71,10 +72,13 @@ export const ITEM_DEFS = [
       }
       const flipped = current === 'real' ? 'blank' : 'real';
       state.barrel.chambers[state.barrel.index] = flipped;
-      state.players[actorKey].peekedNext = flipped;
+      state.barrel.invertedNext = { from: current, to: flipped };
+      if (state.players[actorKey].peekedNext) {
+        state.players[actorKey].peekedNext = flipped;
+      }
       const otherKey = actorKey === 'player' ? 'enemy' : 'player';
       state.players[otherKey].peekedNext = null;
-      return { message: `${state.players[actorKey].name} inverse la balle (${flipped}).` };
+      return { message: `${state.players[actorKey].name} inverse la balle.` };
     }
   },
   {
