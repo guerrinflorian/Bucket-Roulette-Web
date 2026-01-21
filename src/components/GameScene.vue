@@ -40,7 +40,7 @@
         <div v-if="turnTimeLeft !== null" class="turn-timer">
           ⏱ {{ turnTimeLeft }}s
         </div>
-        <div v-if="turnOrderDisplay.length > 1" class="turn-order-chip">
+        <div v-if="turnOrderDisplay.length > 2" class="turn-order-chip">
           <span class="turn-order-label">Ordre</span>
           <div class="turn-order-list">
             <span

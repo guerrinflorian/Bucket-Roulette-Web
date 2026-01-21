@@ -197,7 +197,7 @@
           </div>
 
           <button 
-            v-if="netStore.isHost && netStore.roomReady"
+            v-if="netStore.isHost && canStartMatch"
             class="start-game-btn"
             @click="startMultiplayer"
           >
@@ -207,7 +207,12 @@
 
           <p v-else-if="netStore.isHost" class="waiting-message">
             <span class="pulse-dot"></span>
-            En attente de {{ missingPlayerCount }} joueur{{ missingPlayerCount > 1 ? 's' : '' }}...
+            <span v-if="missingPlayerCount > 0">
+              En attente de {{ missingPlayerCount }} joueur{{ missingPlayerCount > 1 ? 's' : '' }}...
+            </span>
+            <span v-else>
+              Vous pouvez lancer à 2 joueurs ou attendre un 3e.
+            </span>
           </p>
           <p v-else class="waiting-message">
             <span class="pulse-dot"></span>
@@ -297,13 +302,16 @@ const botLevels = [
   { id: 4, name: 'Empereur', stars: '⭐⭐⭐⭐', tag: 'Difficile ++' }
 ];
 
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 3;
+
 const lobbySlots = computed(() => {
   const slots = netStore.roomPlayers.map((player) => ({
     ...player,
     isSelf: player.id === netStore.socketId,
     isEmpty: false
   }));
-  while (slots.length < 3) {
+  while (slots.length < MAX_PLAYERS) {
     slots.push({
       id: null,
       name: 'Emplacement libre',
@@ -315,7 +323,8 @@ const lobbySlots = computed(() => {
   return slots;
 });
 
-const missingPlayerCount = computed(() => Math.max(0, 3 - netStore.roomPlayers.length));
+const missingPlayerCount = computed(() => Math.max(0, MIN_PLAYERS - netStore.roomPlayers.length));
+const canStartMatch = computed(() => netStore.roomPlayers.length >= MIN_PLAYERS && !netStore.gameEnded);
 
 const selectBotDifficulty = (levelId) => {
   botDifficulty.value = levelId;
@@ -393,11 +402,13 @@ const copyCode = () => {
 const startMultiplayer = async () => {
   console.log('🎮 Host starting game...');
   const roster = netStore.roomPlayers;
-  if (roster.length < 3) {
+  if (roster.length < MIN_PLAYERS) {
     return;
   }
 
-  const playerKeys = ['player', 'enemy', 'enemy2'];
+  const playerKeys = roster.length >= MAX_PLAYERS
+    ? ['player', 'enemy', 'enemy2']
+    : ['player', 'enemy'];
   gameStore.initGame('online', { playerKeys });
 
   playerKeys.forEach((key, index) => {
