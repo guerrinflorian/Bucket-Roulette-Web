@@ -133,10 +133,18 @@ export const useGameStore = defineStore('game', {
       if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
       if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
       if (state.turnTimer) {
-        this.turnTimer.remaining = state.turnTimer.remaining ?? this.turnTimer.remaining;
-        this.turnTimer.paused = state.turnTimer.paused ?? this.turnTimer.paused;
-        this.turnTimer.phase = state.turnTimer.phase ?? this.turnTimer.phase;
-        this.turnTimer.autoTimeout = state.turnTimer.autoTimeout ?? this.turnTimer.autoTimeout;
+        if ('remaining' in state.turnTimer) {
+          this.turnTimer.remaining = state.turnTimer.remaining;
+        }
+        if ('paused' in state.turnTimer) {
+          this.turnTimer.paused = state.turnTimer.paused;
+        }
+        if ('phase' in state.turnTimer) {
+          this.turnTimer.phase = state.turnTimer.phase;
+        }
+        if ('autoTimeout' in state.turnTimer) {
+          this.turnTimer.autoTimeout = state.turnTimer.autoTimeout;
+        }
       }
       if (state.timeoutStreak) {
         this.timeoutStreak.player = state.timeoutStreak.player ?? this.timeoutStreak.player;
@@ -438,8 +446,8 @@ export const useGameStore = defineStore('game', {
       if (this.phase !== PHASES.ENEMY_TURN) return;
 
       // Delay so player can see it's enemy turn
-      const baseDelay = 1500;
-      const reloadPauseMs = 2800;
+      const baseDelay = 2000;
+      const reloadPauseMs = 3600;
       const timeSinceReload = this.lastReloadAt ? Date.now() - this.lastReloadAt : reloadPauseMs;
       const reloadDelay = timeSinceReload < reloadPauseMs ? reloadPauseMs - timeSinceReload : 0;
       await sleep(baseDelay + reloadDelay);
