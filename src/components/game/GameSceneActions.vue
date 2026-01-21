@@ -1,6 +1,27 @@
 <template>
-  <section class="actions-section">
-    <div class="target-picker">
+  <section class="actions-section" :class="{ 'actions-multi': isMultiTargetMode }">
+    <div v-if="isTwoTargetMode" class="duo-target-actions">
+      <q-btn
+        class="shoot-btn"
+        color="negative"
+        unelevated
+        :disable="!canAct || !selfTarget"
+        @click="emit('shoot', selfTarget?.key)"
+      >
+        🎯 Tirer sur moi
+      </q-btn>
+      <q-btn
+        class="shoot-btn"
+        color="deep-orange"
+        unelevated
+        :disable="!canAct || !opponentTargets.length"
+        @click="emit('shoot', opponentTargets[0]?.key)"
+      >
+        🎯 Tirer sur l'adversaire
+      </q-btn>
+    </div>
+
+    <div v-else-if="!isMultiTargetMode" class="target-picker">
       <div class="target-label">Cible</div>
       <q-btn-toggle
         v-model="selectedTarget"
@@ -13,7 +34,43 @@
         :disable="!canAct"
       />
     </div>
+
+    <div v-else class="multi-target-actions">
+      <q-btn-dropdown
+        class="shoot-dropdown"
+        color="deep-orange"
+        unelevated
+        :disable="!canAct || !opponentTargets.length"
+        label="Tirer sur un adversaire"
+        dropdown-icon="arrow_drop_down"
+      >
+        <q-list class="dropdown-list">
+          <q-item
+            v-for="target in opponentTargets"
+            :key="target.key"
+            clickable
+            v-close-popup
+            @click="emit('shoot', target.key)"
+          >
+            <q-item-section>{{ target.label }}</q-item-section>
+          </q-item>
+        </q-list>
+      </q-btn-dropdown>
+
+      <q-btn
+        class="shoot-btn shoot-btn-self"
+        color="negative"
+        unelevated
+        :disable="!canAct || !selfTarget"
+        @click="emit('shoot', selfTarget?.key)"
+      >
+        🎯 Tirer sur soi
+        <q-tooltip>Choisissez la cible avant de tirer.</q-tooltip>
+      </q-btn>
+    </div>
+
     <q-btn
+      v-if="!isMultiTargetMode && !isTwoTargetMode"
       class="shoot-btn"
       color="negative"
       unelevated
@@ -43,10 +100,16 @@ const props = defineProps({
 const emit = defineEmits(['shoot']);
 const selectedTarget = ref(null);
 
+const isMultiTargetMode = computed(() => props.targets.length > 2);
+const isTwoTargetMode = computed(() => props.targets.length === 2);
+
 const targetOptions = computed(() => props.targets.map((target) => ({
   label: target.label,
   value: target.key
 })));
+
+const selfTarget = computed(() => props.targets.find((target) => target.isSelf));
+const opponentTargets = computed(() => props.targets.filter((target) => !target.isSelf));
 
 watch(
   () => props.targets,
@@ -70,6 +133,10 @@ watch(
   gap: 14px;
   justify-items: center;
   padding: 12px 18px 18px;
+}
+
+.actions-section.actions-multi {
+  gap: 12px;
 }
 
 .target-picker {
@@ -102,6 +169,34 @@ watch(
   color: #f4f4f5;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 10px 30px rgba(239, 68, 68, 0.25);
+}
+
+.multi-target-actions {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 12px;
+}
+
+.duo-target-actions {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.shoot-dropdown {
+  width: 100%;
+  border-radius: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.shoot-btn-self {
+  width: 100%;
+}
+
+.dropdown-list {
+  min-width: 220px;
 }
 
 @media (max-height: 700px) {
