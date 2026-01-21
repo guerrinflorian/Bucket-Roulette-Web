@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-4">
+    <div class="relative flex w-full items-center justify-center pb-8 sm:pb-0">
       <div class="flex-shrink-0">
         <BarrelRevolver
           ref="barrelRef"
@@ -44,7 +44,7 @@
       </div>
       <div
         v-if="showBarrelInfo"
-        class="flex min-w-[140px] flex-col gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold"
+        class="absolute left-1/2 top-full mt-3 flex min-w-[140px] -translate-x-1/2 flex-col gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold sm:left-auto sm:right-0 sm:top-1/2 sm:mt-0 sm:-translate-x-0 sm:-translate-y-1/2"
       >
         <div class="flex items-center gap-2 text-white/80">
           <span class="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]"></span>

@@ -5,7 +5,7 @@
       :is-reversed="true"
       :is-bottom="true"
       :emoji="playerEmojis?.[player?.id]"
-      class="w-full"
+      :class="isSingleOpponent ? 'mx-auto w-full max-w-xl' : 'w-full'"
     />
     <div class="absolute bottom-5 right-6 flex items-center gap-2">
       <q-btn
@@ -65,6 +65,10 @@ const props = defineProps({
   playerEmojis: {
     type: Object,
     default: () => ({})
+  },
+  isSingleOpponent: {
+    type: Boolean,
+    default: false
   }
 });
 
