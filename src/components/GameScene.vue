@@ -323,17 +323,18 @@ watch(
 onMounted(() => {
   const handler = () => {
     if (document.visibilityState === 'visible') {
-      const targetScale = props.isAnimating ? 2.2 : 1;
-      setZoom(targetScale);
+      resetZoomAfterVisibility();
     }
   };
   visibilityResetHandler.value = handler;
   document.addEventListener('visibilitychange', handler);
+  window.addEventListener('focus', handler);
 });
 
 onBeforeUnmount(() => {
   if (visibilityResetHandler.value) {
     document.removeEventListener('visibilitychange', visibilityResetHandler.value);
+    window.removeEventListener('focus', visibilityResetHandler.value);
   }
 });
 
@@ -455,6 +456,12 @@ function startZoom() {
 function setZoom(scale = 1) {
   if (!gameContent.value) return;
   gsap.set(gameContent.value, { scale, x: 0, y: 0 });
+}
+
+function resetZoomAfterVisibility() {
+  if (!gameContent.value) return;
+  gsap.killTweensOf(gameContent.value);
+  setZoom(1);
 }
 
 // Show shot result modal
