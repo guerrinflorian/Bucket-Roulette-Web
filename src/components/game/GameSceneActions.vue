@@ -1,8 +1,8 @@
 <template>
-  <section class="actions-section" :class="{ 'actions-multi': isMultiTargetMode }">
-    <div v-if="isTwoTargetMode" class="duo-target-actions">
+  <section class="flex w-full flex-col items-center gap-3 px-4 pb-4">
+    <div v-if="isTwoTargetMode" class="flex w-full flex-nowrap items-center justify-center gap-3 overflow-x-auto">
       <q-btn
-        class="shoot-btn"
+        class="min-w-[200px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
         color="negative"
         unelevated
         :disable="!canAct || !opponentTargets.length"
@@ -11,7 +11,7 @@
         🎯 Tirer sur l'adversaire
       </q-btn>
       <q-btn
-        class="shoot-btn shoot-btn-self"
+        class="min-w-[180px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
         color="negative"
         unelevated
         :disable="!canAct || !selfTarget"
@@ -21,30 +21,42 @@
       </q-btn>
     </div>
 
-    <div v-else-if="!isMultiTargetMode" class="target-picker">
-      <div class="target-label">Cible</div>
-      <q-btn-toggle
-        v-model="selectedTarget"
-        :options="targetOptions"
-        class="target-toggle"
-        color="deep-orange"
-        text-color="white"
+    <div v-else-if="!isMultiTargetMode" class="flex w-full flex-wrap items-center justify-center gap-3">
+      <div class="flex w-full max-w-2xl flex-col gap-2">
+        <div class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-white/60">Cible</div>
+        <q-btn-toggle
+          v-model="selectedTarget"
+          :options="targetOptions"
+          class="rounded-xl bg-white/5 p-1"
+          color="deep-orange"
+          text-color="white"
+          unelevated
+          spread
+          :disable="!canAct"
+        />
+      </div>
+      <q-btn
+        class="min-w-[180px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
+        color="negative"
         unelevated
-        spread
-        :disable="!canAct"
-      />
+        :disable="!canAct || !selectedTarget"
+        @click="emit('shoot', selectedTarget)"
+      >
+        🎯 Tirer
+        <q-tooltip>Choisissez la cible avant de tirer.</q-tooltip>
+      </q-btn>
     </div>
 
-    <div v-else class="multi-target-actions">
+    <div v-else class="flex w-full flex-nowrap items-center justify-center gap-3 overflow-x-auto">
       <q-btn-dropdown
-        class="shoot-dropdown"
+        class="min-w-[240px] rounded-xl text-xs font-semibold"
         color="deep-orange"
         unelevated
         :disable="!canAct || !opponentTargets.length"
         label="Tirer sur un adversaire"
         dropdown-icon="arrow_drop_down"
       >
-        <q-list class="dropdown-list">
+        <q-list class="min-w-[220px]">
           <q-item
             v-for="target in opponentTargets"
             :key="target.key"
@@ -58,7 +70,7 @@
       </q-btn-dropdown>
 
       <q-btn
-        class="shoot-btn shoot-btn-self"
+        class="min-w-[180px] rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20"
         color="negative"
         unelevated
         :disable="!canAct || !selfTarget"
@@ -69,17 +81,9 @@
       </q-btn>
     </div>
 
-    <q-btn
-      v-if="!isMultiTargetMode && !isTwoTargetMode"
-      class="shoot-btn"
-      color="negative"
-      unelevated
-      :disable="!canAct || !selectedTarget"
-      @click="emit('shoot', selectedTarget)"
-    >
-      🎯 Tirer
-      <q-tooltip>Choisissez la cible avant de tirer.</q-tooltip>
-    </q-btn>
+    <span v-if="!isMultiTargetMode && !isTwoTargetMode" class="sr-only">
+      Bouton de tir affiché dans la section cible.
+    </span>
   </section>
 </template>
 
@@ -126,101 +130,3 @@ watch(
   { immediate: true, deep: true }
 );
 </script>
-
-<style scoped>
-.actions-section {
-  display: grid;
-  gap: 14px;
-  justify-items: center;
-  padding: 12px 18px 18px;
-}
-
-.actions-section.actions-multi {
-  gap: 12px;
-}
-
-.target-picker {
-  width: min(520px, 100%);
-  display: grid;
-  gap: 8px;
-}
-
-.target-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(244, 244, 245, 0.7);
-  font-weight: 700;
-}
-
-.target-toggle {
-  width: 100%;
-  background: rgba(24, 24, 27, 0.6);
-  border-radius: 14px;
-  padding: 4px;
-}
-
-.shoot-btn {
-  width: min(260px, 100%);
-  border-radius: 16px;
-  padding: 14px 18px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #f4f4f5;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.25);
-}
-
-.multi-target-actions {
-  width: min(720px, 100%);
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.duo-target-actions {
-  width: min(720px, 100%);
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.shoot-dropdown {
-  width: min(320px, 100%);
-  border-radius: 16px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.shoot-btn-self {
-  width: min(260px, 100%);
-}
-
-.dropdown-list {
-  min-width: 220px;
-}
-
-@media (max-height: 700px) {
-  .actions-section {
-    padding: 8px 14px 14px;
-    gap: 10px;
-  }
-
-  .shoot-btn {
-    padding: 10px 14px;
-    font-size: 12px;
-    border-radius: 14px;
-  }
-}
-
-@media (max-width: 380px) {
-  .shoot-btn {
-    padding: 10px 12px;
-    font-size: 11px;
-  }
-}
-</style>

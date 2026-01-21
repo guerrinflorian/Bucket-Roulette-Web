@@ -1,41 +1,63 @@
 <template>
-  <section class="player-section" :class="{ 'player-section-bottom': isBottom, 'player-section-compact': isCompact }">
-    <div class="player-card" :class="{ 'player-card-reverse': isReversed, 'player-card-compact': isCompact }">
-      <div class="avatar-stack">
-       <q-avatar :size="isCompact ? '44px' : '56px'" class="player-avatar">
-          <Avatar 
-            :name="firstName" 
-            variant="beam" 
-            :size="isCompact ? 44 : 56" 
+  <section
+    class="w-full flex-shrink-0 px-3 py-2"
+    :class="{
+      'pb-4': isBottom,
+      'px-2 py-1': isCompact
+    }"
+  >
+    <div
+      class="mx-auto flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-lg shadow-black/30 backdrop-blur"
+      :class="{
+        'flex-row-reverse': isReversed,
+        'gap-2 px-2 py-2': isCompact
+      }"
+    >
+      <div class="relative flex items-center justify-center">
+        <q-avatar :size="isCompact ? '44px' : '56px'" class="rounded-full border border-white/10">
+          <Avatar
+            :name="firstName"
+            variant="beam"
+            :size="isCompact ? 44 : 56"
             :colors="avatarColors"
           />
         </q-avatar>
         <Transition name="emoji-pop">
-          <div v-if="emoji" class="emoji-bubble" :class="{ 'emoji-bubble-reverse': isReversed }">
+          <div
+            v-if="emoji"
+            class="emoji-bubble"
+            :class="isReversed ? 'emoji-bubble-reverse' : ''"
+          >
             {{ emoji }}
           </div>
         </Transition>
       </div>
-      <div class="player-info">
-        <div class="player-header">
-          <span class="player-name">{{ displayName }}</span>
-          <span class="player-hp-text">{{ player.hp }}/{{ player.maxHp }}</span>
+
+      <div class="flex min-w-0 flex-1 flex-col">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="truncate text-sm font-bold text-white">
+            {{ displayName }}
+          </span>
+          <span class="text-xs font-semibold text-white/60">
+            {{ player.hp }}/{{ player.maxHp }}
+          </span>
         </div>
-        <div class="hp-bar">
+        <div class="h-3 rounded-full bg-white/10 shadow-inner">
           <div
-            class="hp-fill"
-            :class="isEnemy ? 'hp-enemy' : 'hp-player'"
+            class="h-3 rounded-full transition-all"
+            :class="isEnemy ? 'bg-gradient-to-r from-red-700 to-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'bg-gradient-to-r from-emerald-700 to-emerald-400 shadow-[0_0_12px_rgba(34,197,94,0.4)]'"
             :style="{ width: hpPercent + '%' }"
           ></div>
         </div>
       </div>
-      <div v-if="showItems && player.items?.length" class="enemy-items">
+
+      <div v-if="showItems && player.items?.length" class="flex gap-2">
         <span
           v-for="(itemId, index) in player.items"
           :key="index"
-          class="enemy-item-badge"
+          class="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5"
         >
-          <img :src="getItemImage(itemId)" :alt="itemId" />
+          <img :src="getItemImage(itemId)" :alt="itemId" class="h-5 w-5 object-contain" />
         </span>
       </div>
     </div>
@@ -44,7 +66,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import Avatar from "vue-boring-avatars";
+import Avatar from 'vue-boring-avatars';
 import heartImg from '../../assets/items/heart.png';
 import doubleImg from '../../assets/items/double.png';
 import peekImg from '../../assets/items/peek.png';
@@ -87,7 +109,7 @@ const props = defineProps({
 const displayName = computed(() => props.player?.name || 'Joueur');
 const firstName = computed(() => displayName.value.split(' ')[0] || displayName.value);
 const hpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
-const avatarColors = ["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"];
+const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 
 const itemImages = {
   heart: heartImg,
@@ -105,101 +127,6 @@ function getItemImage(id) {
 </script>
 
 <style scoped>
-.player-section {
-  width: 100%;
-  flex-shrink: 0;
-  padding: 12px 16px;
-}
-
-.player-section-bottom {
-  padding-bottom: 16px;
-}
-
-.player-section-compact {
-  padding: 8px 10px;
-}
-
-.player-card {
-  max-width: 100%;
-  width: 100%;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-}
-
-.player-card-reverse {
-  flex-direction: row-reverse;
-}
-
-.player-card-compact {
-  padding: 10px 12px;
-  gap: 10px;
-}
-
-.player-card-compact .player-avatar {
-  width: 44px;
-  height: 44px;
-}
-
-.player-card-compact .player-name {
-  font-size: 12px;
-}
-
-.player-card-compact .player-hp-text {
-  font-size: 11px;
-}
-
-.avatar-stack {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.enemy-items {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.enemy-item-badge {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  cursor: help;
-  transition: all 0.2s;
-}
-
-.enemy-item-badge img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-.enemy-item-badge:hover {
-  background: rgba(255, 255, 255, 0.12);
-  transform: scale(1.1);
-}
-
-.player-avatar {
-  width: 56px;
-  height: 56px;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-}
-
 .emoji-bubble {
   position: absolute;
   top: -12px;
@@ -222,15 +149,15 @@ function getItemImage(id) {
   animation: emoji-bounce 0.3s ease-out;
 }
 
+.emoji-bubble-reverse {
+  right: auto;
+  left: -12px;
+}
+
 @keyframes emoji-bounce {
   0% { transform: scale(0) rotate(-20deg); }
   60% { transform: scale(1.2) rotate(5deg); }
   100% { transform: scale(1) rotate(0deg); }
-}
-
-.emoji-bubble-reverse {
-  right: auto;
-  left: -12px;
 }
 
 .emoji-pop-enter-active,
@@ -242,103 +169,5 @@ function getItemImage(id) {
 .emoji-pop-leave-to {
   opacity: 0;
   transform: translateY(8px) scale(0.8);
-}
-
-.player-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.player-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.player-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #f4f4f5;
-  letter-spacing: 0.01em;
-}
-
-.player-hp-text {
-  font-size: 13px;
-  font-family: 'SF Mono', 'Monaco', monospace;
-  font-weight: 600;
-  color: #a1a1aa;
-}
-
-.hp-bar {
-  height: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.hp-fill {
-  height: 100%;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 999px;
-}
-
-.hp-enemy {
-  background: linear-gradient(90deg, #b91c1c, #ef4444);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
-}
-
-.hp-player {
-  background: linear-gradient(90deg, #15803d, #22c55e);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
-}
-
-@media (max-height: 700px) {
-  .player-section {
-    padding: 8px 12px;
-  }
-
-  .player-section-bottom {
-    padding-bottom: 12px;
-  }
-
-  .player-card {
-    padding: 10px 14px;
-    gap: 12px;
-    border-radius: 16px;
-  }
-
-  .player-avatar {
-    transform: scale(0.9);
-  }
-
-  .player-name {
-    font-size: 13px;
-  }
-
-  .player-hp-text {
-    font-size: 11px;
-  }
-
-  .hp-bar {
-    height: 10px;
-  }
-
-  .enemy-item-badge {
-    width: 26px;
-    height: 26px;
-  }
-
-  .enemy-item-badge img {
-    width: 16px;
-    height: 16px;
-  }
-
-  .emoji-bubble {
-    min-width: 34px;
-    min-height: 34px;
-    font-size: 22px;
-  }
 }
 </style>
