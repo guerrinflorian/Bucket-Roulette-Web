@@ -111,6 +111,20 @@ function decideItemAction(state, level, counts) {
 }
 
 function decideShootTarget(state, level, counts) {
+  const bot = state.players.enemy;
+  const next = maybeForgetPeek(bot, level);
+
+  if (next === 'real') {
+    return 'enemy';
+  }
+  if (next === 'blank') {
+    return 'self';
+  }
+
+  if (bot.doubleDamageNextShot) {
+    return 'enemy';
+  }
+
   if (level.behavior.randomTarget) {
     return Math.random() < 0.5 ? 'enemy' : 'self';
   }
