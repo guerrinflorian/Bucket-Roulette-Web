@@ -132,8 +132,8 @@ io.on('connection', (socket) => {
       ...getRoomInfo(room)
     });
 
-    // If all players are here, notify both that the game can start
-    if (room.players.length === 3) {
+    // If minimum players are here, notify both that the game can start
+    if (room.players.length >= 2) {
       io.to(normalizedRoomId).emit('room:ready', getRoomInfo(room));
     }
   });

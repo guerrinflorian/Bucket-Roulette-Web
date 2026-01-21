@@ -31,6 +31,12 @@ function shouldUseImmediateItem(bot, itemId) {
   return bot.items.includes(itemId);
 }
 
+function canUseItem(state, itemId, actorKey, targetKey = null) {
+  const item = getItemById(itemId);
+  if (!item) return false;
+  return item.canUse(state, actorKey, targetKey);
+}
+
 function decideItemAction(state, level, counts) {
   const bot = state.players.enemy;
   const opponent = state.players.player;
@@ -39,35 +45,51 @@ function decideItemAction(state, level, counts) {
   if (level.behavior.itemUseStrategy === 'immediate') {
     const order = ['handcuffs', 'double', 'scanner', 'peek', 'eject', 'inverter', 'heart'];
     for (const itemId of order) {
-      if (shouldUseImmediateItem(bot, itemId)) {
+      const targetKey = itemId === 'handcuffs' ? 'player' : null;
+      if (shouldUseImmediateItem(bot, itemId) && canUseItem(state, itemId, 'enemy', targetKey)) {
         return { type: 'item', itemId };
       }
     }
   }
 
-  if (bot.items.includes('heart') && bot.hp <= level.behavior.healThreshold) {
+  if (
+    bot.items.includes('heart') &&
+    bot.hp <= level.behavior.healThreshold &&
+    canUseItem(state, 'heart', 'enemy')
+  ) {
     return { type: 'item', itemId: 'heart' };
   }
 
   if (
     bot.items.includes('handcuffs') &&
     !opponent.skipNextTurn &&
-    (level.behavior.handcuffsPriority || Math.random() < (level.behavior.handcuffsRandomChance ?? 0))
+    (level.behavior.handcuffsPriority || Math.random() < (level.behavior.handcuffsRandomChance ?? 0)) &&
+    canUseItem(state, 'handcuffs', 'enemy', 'player')
   ) {
     return { type: 'item', itemId: 'handcuffs' };
   }
 
   if (level.behavior.itemUseStrategy === 'imperial') {
-    if (bot.items.includes('peek') && !bot.peekedNext) {
+    if (bot.items.includes('peek') && !bot.peekedNext && canUseItem(state, 'peek', 'enemy')) {
       return { type: 'item', itemId: 'peek' };
     }
-    if (bot.items.includes('scanner') && Math.random() < level.behavior.scannerUseChance) {
+    if (
+      bot.items.includes('scanner') &&
+      Math.random() < level.behavior.scannerUseChance &&
+      canUseItem(state, 'scanner', 'enemy')
+    ) {
       return { type: 'item', itemId: 'scanner' };
     }
-    if (bot.items.includes('eject') && counts.pReal === 1 && bot.hp <= 1 && opponent.hp >= 3) {
+    if (
+      bot.items.includes('eject') &&
+      counts.pReal === 1 &&
+      bot.hp <= 1 &&
+      opponent.hp >= 3 &&
+      canUseItem(state, 'eject', 'enemy')
+    ) {
       return { type: 'item', itemId: 'eject' };
     }
-    if (bot.items.includes('inverter') && next) {
+    if (bot.items.includes('inverter') && next && canUseItem(state, 'inverter', 'enemy')) {
       if (next === 'blank' && counts.pReal >= 0.5) {
         return { type: 'item', itemId: 'inverter' };
       }
@@ -75,35 +97,63 @@ function decideItemAction(state, level, counts) {
         return { type: 'item', itemId: 'inverter' };
       }
     }
-    if (bot.items.includes('eject') && next === 'blank') {
+    if (bot.items.includes('eject') && next === 'blank' && canUseItem(state, 'eject', 'enemy')) {
       return { type: 'item', itemId: 'eject' };
     }
-    if (bot.items.includes('double') && next === 'real') {
+    if (bot.items.includes('double') && next === 'real' && canUseItem(state, 'double', 'enemy')) {
       return { type: 'item', itemId: 'double' };
     }
   }
 
-  if (bot.items.includes('peek') && !bot.peekedNext && Math.random() < level.behavior.peekUseChance) {
+  if (
+    bot.items.includes('peek') &&
+    !bot.peekedNext &&
+    Math.random() < level.behavior.peekUseChance &&
+    canUseItem(state, 'peek', 'enemy')
+  ) {
     return { type: 'item', itemId: 'peek' };
   }
 
-  if (bot.items.includes('scanner') && Math.random() < level.behavior.scannerUseChance) {
+  if (
+    bot.items.includes('scanner') &&
+    Math.random() < level.behavior.scannerUseChance &&
+    canUseItem(state, 'scanner', 'enemy')
+  ) {
     return { type: 'item', itemId: 'scanner' };
   }
 
-  if (bot.items.includes('inverter') && next && Math.random() < level.behavior.inverterUseChance) {
+  if (
+    bot.items.includes('inverter') &&
+    next &&
+    Math.random() < level.behavior.inverterUseChance &&
+    canUseItem(state, 'inverter', 'enemy')
+  ) {
     return { type: 'item', itemId: 'inverter' };
   }
 
-  if (bot.items.includes('eject') && next && Math.random() < level.behavior.ejectUseChance) {
+  if (
+    bot.items.includes('eject') &&
+    next &&
+    Math.random() < level.behavior.ejectUseChance &&
+    canUseItem(state, 'eject', 'enemy')
+  ) {
     return { type: 'item', itemId: 'eject' };
   }
 
-  if (bot.items.includes('double') && counts.pReal >= level.behavior.doubleUseThreshold) {
+  if (
+    bot.items.includes('double') &&
+    counts.pReal >= level.behavior.doubleUseThreshold &&
+    canUseItem(state, 'double', 'enemy')
+  ) {
     return { type: 'item', itemId: 'double' };
   }
 
-  if (bot.items.includes('double') && next === 'real' && counts.remaining <= 2) {
+  if (
+    bot.items.includes('double') &&
+    next === 'real' &&
+    counts.remaining <= 2 &&
+    canUseItem(state, 'double', 'enemy')
+  ) {
     return { type: 'item', itemId: 'double' };
   }
 
