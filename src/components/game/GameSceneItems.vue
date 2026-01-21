@@ -8,7 +8,11 @@
         :disabled="!canUseItems"
         @click="handleUseItem(itemId)"
       >
-        <span class="item-icon">{{ getItemEmoji(itemId) }}</span>
+        <img
+          :src="getItemImage(itemId)"
+          :alt="getItemName(itemId)"
+          class="item-image"
+        />
         <span class="item-name">{{ getItemName(itemId) }}</span>
         <q-tooltip>{{ getItemName(itemId) }} — {{ getItemDescription(itemId) }}</q-tooltip>
       </button>
@@ -18,6 +22,13 @@
 
 <script setup>
 import { computed } from 'vue';
+import heartImg from '../../assets/items/heart.png';
+import doubleImg from '../../assets/items/double.png';
+import peekImg from '../../assets/items/peek.png';
+import ejectImg from '../../assets/items/eject.png';
+import handcuffsImg from '../../assets/items/handcuffs.png';
+import inverterImg from '../../assets/items/inverter.png';
+import scannerImg from '../../assets/items/scanner.png';
 const props = defineProps({
   items: {
     type: Array,
@@ -43,15 +54,17 @@ const canUseItems = computed(() => {
 const emit = defineEmits(['use-item']);
 
 const itemData = {
-  heart: { emoji: '❤️', name: '+1 PV', description: 'Soigne 1 PV (max).'},
-  double: { emoji: '⚡', name: 'Double dégâts', description: 'Le prochain tir consomme l’effet.' },
-  peek: { emoji: '🔍', name: 'Voir la balle', description: 'Révèle la prochaine cartouche.' },
-  eject: { emoji: '🔄', name: 'Éjecter', description: 'Retire la prochaine cartouche sans tirer.' },
-  handcuffs: { emoji: '⛓️', name: 'Les Menottes', description: "Empêche l'adversaire de jouer au prochain tour." }
+  heart: { image: heartImg, name: '+1 PV', description: 'Soigne 1 PV (max).' },
+  double: { image: doubleImg, name: 'Double dégâts', description: 'Le prochain tir consomme l’effet.' },
+  peek: { image: peekImg, name: 'Voir la balle', description: 'Révèle la prochaine cartouche.' },
+  eject: { image: ejectImg, name: 'Éjecter', description: 'Retire la prochaine cartouche sans tirer.' },
+  handcuffs: { image: handcuffsImg, name: 'Les Menottes', description: "Empêche l'adversaire de jouer au prochain tour." },
+  inverter: { image: inverterImg, name: "L'Inverseur", description: 'Inverse la balle actuelle : blanche ⇄ réelle.' },
+  scanner: { image: scannerImg, name: 'Scanner', description: "Révèle la position d'une balle réelle." }
 };
 
-function getItemEmoji(id) {
-  return itemData[id]?.emoji || '📦';
+function getItemImage(id) {
+  return itemData[id]?.image || heartImg;
 }
 
 function getItemName(id) {
@@ -125,8 +138,10 @@ function handleUseItem(itemId) {
   cursor: not-allowed;
 }
 
-.item-icon {
-  font-size: 18px;
+.item-image {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
   position: relative;
   z-index: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
@@ -150,8 +165,9 @@ function handleUseItem(itemId) {
     border-radius: 12px;
   }
 
-  .item-icon {
-    font-size: 15px;
+  .item-image {
+    width: 22px;
+    height: 22px;
   }
 }
 

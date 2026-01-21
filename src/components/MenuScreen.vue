@@ -72,7 +72,7 @@
 
       <!-- Main menu buttons -->
       <div class="menu-buttons" v-if="!showMultiplayer">
-        <button class="game-btn btn-solo" @click="startBot" :disabled="!netStore.playerName">
+        <button class="game-btn btn-solo" @click="openSoloModal" :disabled="!netStore.playerName">
           <div class="btn-glow"></div>
           <div class="btn-content">
             <span class="btn-icon">🤖</span>
@@ -230,6 +230,38 @@
         <p>Un jeu de chance et de stratégie</p>
       </footer>
     </div>
+
+    <q-dialog v-model="showDifficultyModal">
+      <q-card class="difficulty-modal-card">
+        <q-card-section class="difficulty-modal-header">
+          <h2>Choisir la difficulté</h2>
+        </q-card-section>
+        <q-card-section>
+          <div class="difficulty-grid">
+            <button
+              v-for="level in botLevels"
+              :key="level.id"
+              class="difficulty-card"
+              :class="{ selected: botDifficulty === level.id }"
+              @click="selectBotDifficulty(level.id)"
+            >
+              <div class="difficulty-stars">{{ level.stars }}</div>
+              <div class="difficulty-name">{{ level.name }}</div>
+              <div class="difficulty-tag">{{ level.tag }}</div>
+            </button>
+          </div>
+        </q-card-section>
+        <q-card-actions align="center">
+          <q-btn
+            unelevated
+            color="positive"
+            label="Lancer la partie"
+            class="start-bot-btn"
+            @click="startBot"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -249,6 +281,28 @@ const playerNameInput = ref('');
 const editingName = ref(!netStore.playerName);
 const nameError = ref('');
 const nameInputRef = ref(null);
+const showDifficultyModal = ref(false);
+const botDifficulty = ref(gameStore.botDifficulty ?? 1);
+const botLevels = [
+  { id: 1, name: 'Bot Paysan', stars: '⭐', tag: 'Facile' },
+  { id: 2, name: 'Bot Prince', stars: '⭐⭐', tag: 'Moyen' },
+  { id: 3, name: 'Bot Tsar', stars: '⭐⭐⭐', tag: 'Difficile' },
+  { id: 4, name: 'Empereur', stars: '⭐⭐⭐⭐', tag: 'Difficile ++' }
+];
+
+const selectBotDifficulty = (levelId) => {
+  botDifficulty.value = levelId;
+  gameStore.setBotDifficulty(levelId);
+};
+
+const openSoloModal = () => {
+  if (!netStore.playerName) {
+    nameError.value = 'Veuillez renseigner un nom pour jouer.';
+    editingName.value = true;
+    return;
+  }
+  showDifficultyModal.value = true;
+};
 
 const startBot = () => {
   if (!netStore.playerName) {
@@ -256,8 +310,9 @@ const startBot = () => {
     editingName.value = true;
     return;
   }
-  gameStore.initGame('bot');
+  gameStore.initGame('bot', { botDifficulty: botDifficulty.value });
   gameStore.players.player.name = netStore.playerName;
+  showDifficultyModal.value = false;
   router.push('/game');
 };
 
@@ -670,6 +725,82 @@ onUnmounted(() => {
   font-size: 13px;
   color: #f87171;
   text-align: center;
+}
+
+/* Difficulty modal */
+.difficulty-modal-card {
+  width: min(90vw, 360px);
+  border-radius: 20px;
+  padding: 8px 4px 16px;
+  background: linear-gradient(145deg, rgba(15, 15, 20, 0.98), rgba(8, 8, 12, 0.98));
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.difficulty-modal-header {
+  text-align: center;
+  padding: 16px 18px 8px;
+}
+
+.difficulty-modal-header h2 {
+  margin: 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #fef3c7;
+}
+
+.difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.difficulty-card {
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fef3c7;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.difficulty-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+}
+
+.difficulty-card.selected {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(180, 83, 9, 0.2));
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
+}
+
+.difficulty-stars {
+  font-size: 13px;
+  color: #fbbf24;
+  letter-spacing: 0.1em;
+}
+
+.difficulty-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.difficulty-tag {
+  font-size: 10px;
+  color: #a1a1aa;
+}
+
+.start-bot-btn {
+  width: 100%;
+  font-weight: 700;
 }
 
 /* Menu buttons */

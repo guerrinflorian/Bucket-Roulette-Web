@@ -35,7 +35,7 @@
           :key="index"
           class="enemy-item-badge"
         >
-          {{ getItemEmoji(itemId) }}
+          <img :src="getItemImage(itemId)" :alt="itemId" />
         </span>
       </div>
     </div>
@@ -45,6 +45,13 @@
 <script setup>
 import { computed } from 'vue';
 import Avatar from "vue-boring-avatars";
+import heartImg from '../../assets/items/heart.png';
+import doubleImg from '../../assets/items/double.png';
+import peekImg from '../../assets/items/peek.png';
+import ejectImg from '../../assets/items/eject.png';
+import handcuffsImg from '../../assets/items/handcuffs.png';
+import inverterImg from '../../assets/items/inverter.png';
+import scannerImg from '../../assets/items/scanner.png';
 
 const props = defineProps({
   player: {
@@ -78,16 +85,18 @@ const firstName = computed(() => displayName.value.split(' ')[0] || displayName.
 const hpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
 const avatarColors = ["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"];
 
-const itemEmoji = {
-  heart: '❤️',
-  double: '⚡',
-  peek: '🔍',
-  eject: '🔄',
-  handcuffs: '⛓️'
+const itemImages = {
+  heart: heartImg,
+  double: doubleImg,
+  peek: peekImg,
+  eject: ejectImg,
+  handcuffs: handcuffsImg,
+  inverter: inverterImg,
+  scanner: scannerImg
 };
 
-function getItemEmoji(id) {
-  return itemEmoji[id] || '📦';
+function getItemImage(id) {
+  return itemImages[id] || heartImg;
 }
 </script>
 
@@ -141,11 +150,15 @@ function getItemEmoji(id) {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  font-size: 15px;
   cursor: help;
   transition: all 0.2s;
 }
 
+.enemy-item-badge img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
 .enemy-item-badge:hover {
   background: rgba(255, 255, 255, 0.12);
   transform: scale(1.1);
@@ -287,7 +300,11 @@ function getItemEmoji(id) {
   .enemy-item-badge {
     width: 26px;
     height: 26px;
-    font-size: 13px;
+  }
+
+  .enemy-item-badge img {
+    width: 16px;
+    height: 16px;
   }
 
   .emoji-bubble {

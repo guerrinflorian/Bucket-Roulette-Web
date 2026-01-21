@@ -3,6 +3,7 @@ import { createBarrel, formatBarrelAnnouncement, isEmpty, remainingCounts } from
 import { PHASES, MAX_HP, ITEMS_PER_RELOAD } from '../engine/rules.js';
 import { rollRandomItems, applyItem } from '../engine/items.js';
 import { decideBotAction, describeBotItem } from '../engine/bot.js';
+import { getBotLevel } from '../engine/botLevels/index.js';
 import { audioManager } from '../engine/audio.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,6 +11,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const useGameStore = defineStore('game', {
   state: () => ({
     mode: 'bot',
+    botDifficulty: 1,
     phase: PHASES.COIN_FLIP,
     currentTurn: null,
     sessionActive: false,
@@ -23,6 +25,7 @@ export const useGameStore = defineStore('game', {
         items: [],
         doubleDamageNextShot: false,
         peekedNext: null,
+        scannerHint: null,
         skipNextTurn: false
       },
       enemy: {
@@ -33,6 +36,7 @@ export const useGameStore = defineStore('game', {
         items: [],
         doubleDamageNextShot: false,
         peekedNext: null,
+        scannerHint: null,
         skipNextTurn: false
       }
     },
@@ -43,6 +47,10 @@ export const useGameStore = defineStore('game', {
     isAnimating: false,
     reloadCount: 0,
     lastReloadInfo: null,
+    botMemory: {
+      realRemaining: 0,
+      blankRemaining: 0
+    },
     turnTimer: {
       remaining: null,
       paused: false,
@@ -64,15 +72,21 @@ export const useGameStore = defineStore('game', {
     counts: (state) => remainingCounts(state.barrel)
   },
   actions: {
-    initGame(mode = 'bot') {
+    initGame(mode = 'bot', options = {}) {
       this.mode = mode;
+      this.botDifficulty = options.botDifficulty ?? this.botDifficulty ?? 1;
       this.sessionActive = true;
       this.phase = PHASES.COIN_FLIP;
       this.currentTurn = null;
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
       this.players.player.name = 'Vous';
-      this.players.enemy.name = mode === 'bot' ? 'BOT' : 'Adversaire';
+      if (mode === 'bot') {
+        const level = getBotLevel(this.botDifficulty);
+        this.players.enemy.name = level.name;
+      } else {
+        this.players.enemy.name = 'Adversaire';
+      }
       this.players.player.hp = MAX_HP;
       this.players.enemy.hp = MAX_HP;
       this.players.player.items = [];
@@ -81,6 +95,8 @@ export const useGameStore = defineStore('game', {
       this.players.enemy.doubleDamageNextShot = false;
       this.players.player.peekedNext = null;
       this.players.enemy.peekedNext = null;
+      this.players.player.scannerHint = null;
+      this.players.enemy.scannerHint = null;
       this.players.player.skipNextTurn = false;
       this.players.enemy.skipNextTurn = false;
       this.lastResult = null;
@@ -90,7 +106,11 @@ export const useGameStore = defineStore('game', {
       this.lastResult = { text: `🔄 ${this.lastReloadInfo}` };
       this.timeoutStreak.player = 0;
       this.timeoutStreak.enemy = 0;
+      this.resetBotMemory();
       this.dealItems();
+    },
+    setBotDifficulty(level) {
+      this.botDifficulty = level;
     },
     setRoom(id) {
       this.roomId = id;
@@ -141,6 +161,9 @@ export const useGameStore = defineStore('game', {
     reloadBarrel({ notify = true } = {}) {
       this.barrel = createBarrel();
       this.lastReloadInfo = formatBarrelAnnouncement(this.barrel);
+      this.players.player.scannerHint = null;
+      this.players.enemy.scannerHint = null;
+      this.resetBotMemory();
       this.dealItems();
       if (notify) {
         this.reloadCount += 1;
@@ -151,6 +174,45 @@ export const useGameStore = defineStore('game', {
       this.players.player.items.push(...rollRandomItems(ITEMS_PER_RELOAD));
       this.players.enemy.items.push(...rollRandomItems(ITEMS_PER_RELOAD));
       audioManager.play('reload');
+    },
+    resetBotMemory() {
+      const counts = remainingCounts(this.barrel);
+      this.botMemory.realRemaining = counts.real;
+      this.botMemory.blankRemaining = counts.blank;
+    },
+    updateBotMemoryAfterShot(shot) {
+      if (shot === 'real') {
+        this.botMemory.realRemaining = Math.max(0, this.botMemory.realRemaining - 1);
+      } else if (shot === 'blank') {
+        this.botMemory.blankRemaining = Math.max(0, this.botMemory.blankRemaining - 1);
+      }
+    },
+    updateBotMemoryAfterEject(removed) {
+      if (removed === 'real') {
+        this.botMemory.realRemaining = Math.max(0, this.botMemory.realRemaining - 1);
+      } else if (removed === 'blank') {
+        this.botMemory.blankRemaining = Math.max(0, this.botMemory.blankRemaining - 1);
+      }
+    },
+    updateBotMemoryAfterInverter(original, flipped) {
+      if (original === flipped) return;
+      if (original === 'real' && flipped === 'blank') {
+        this.botMemory.realRemaining = Math.max(0, this.botMemory.realRemaining - 1);
+        this.botMemory.blankRemaining += 1;
+      }
+      if (original === 'blank' && flipped === 'real') {
+        this.botMemory.blankRemaining = Math.max(0, this.botMemory.blankRemaining - 1);
+        this.botMemory.realRemaining += 1;
+      }
+    },
+    updateScannerHintAfterAdvance(actorKey) {
+      const actor = this.players[actorKey];
+      if (!actor?.scannerHint) return;
+      if (actor.scannerHint <= 1) {
+        actor.scannerHint = null;
+      } else {
+        actor.scannerHint -= 1;
+      }
     },
     setCoinFlipResult(starts) {
       this.currentTurn = starts;
@@ -209,10 +271,21 @@ export const useGameStore = defineStore('game', {
         return;
       }
 
+      const currentBullet = itemId === 'eject' || itemId === 'inverter'
+        ? this.barrel.chambers[this.barrel.index]
+        : null;
       const result = applyItem(this.$state, actorKey, itemId);
       if (!result.success) {
         this.lastResult = { text: result.message };
         return;
+      }
+      if (itemId === 'eject' && currentBullet) {
+        this.updateBotMemoryAfterEject(currentBullet);
+        this.updateScannerHintAfterAdvance(actorKey);
+      }
+      if (itemId === 'inverter' && currentBullet) {
+        const flipped = currentBullet === 'real' ? 'blank' : 'real';
+        this.updateBotMemoryAfterInverter(currentBullet, flipped);
       }
       this.timeoutStreak[actorKey] = 0;
       const index = actor.items.indexOf(itemId);
@@ -256,6 +329,8 @@ export const useGameStore = defineStore('game', {
         this.barrel.firstShotFired = true;
         this.players.player.peekedNext = null;
         this.players.enemy.peekedNext = null;
+        this.updateBotMemoryAfterShot(shot);
+        this.updateScannerHintAfterAdvance(actorKey);
 
         const isReal = shot === 'real';
         const hadDouble = actor.doubleDamageNextShot;
