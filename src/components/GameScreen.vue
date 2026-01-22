@@ -197,12 +197,12 @@ const getVictoryType = () => {
     return 'abandon';
   }
   if (text.includes('afk') || text.includes('inactivité')) {
-    return 'afk';
+    return 'abandon';
   }
   if (gameStore.lastAction?.type === 'timeout') {
-    return 'timeout';
+    return 'abandon';
   }
-  return 'hp';
+  return 'death';
 };
 
 const getMatchPlayerEntries = () => {
