@@ -19,10 +19,11 @@
 
     <!-- User bar (top right) -->
     <div v-if="authStore.isAuthenticated" class="user-bar">
-      <div class="user-info">
+      <button class="user-info" type="button" @click="openProfileSelf">
         <q-icon name="account_circle" size="24px" color="amber" />
         <span class="user-name">{{ displayName }}</span>
-      </div>
+        <q-icon name="visibility" size="16px" color="grey-4" />
+      </button>
       <q-btn
         flat
         dense
@@ -210,6 +211,15 @@
                 <span class="status-dot"></span>
               </div>
               <button
+                v-if="!slot.isEmpty"
+                class="player-profile-btn"
+                type="button"
+                @click="openProfileFromSlot(slot)"
+                title="Voir le profil"
+              >
+                <q-icon name="insights" size="18px" />
+              </button>
+              <button
                 v-if="netStore.isHost && slot.id && !slot.isSelf"
                 class="kick-btn"
                 @click="kickPlayer(slot.id)"
@@ -279,7 +289,21 @@
               <div class="difficulty-stars">{{ level.stars }}</div>
               <div class="difficulty-name">{{ level.name }}</div>
               <div class="difficulty-tag">{{ level.tag }}</div>
+              <div class="difficulty-status" v-if="authStore.isAuthenticated">
+                <q-badge
+                  v-if="soloProgressStatus(level).label"
+                  :color="soloProgressStatus(level).color"
+                  class="status-badge"
+                  rounded
+                >
+                  <q-icon :name="soloProgressStatus(level).icon" size="14px" class="q-mr-xs" />
+                  {{ soloProgressStatus(level).label }}
+                </q-badge>
+              </div>
             </button>
+          </div>
+          <div v-if="!authStore.isAuthenticated" class="difficulty-hint">
+            Connectez-vous pour suivre votre progression contre les bots.
           </div>
         </q-card-section>
         <q-card-actions align="center">
@@ -293,6 +317,16 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <ProfileStatsModal
+      v-model="showProfileModal"
+      :profile="selectedProfile"
+      :stats="profileStats"
+      :loading="profileLoading"
+      :error="profileError"
+      :solo-progress="soloProgress"
+      :bot-levels="botLevels"
+    />
   </q-page>
 </template>
 
@@ -302,6 +336,8 @@ import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useMatchStore } from '../stores/matchStore.js';
+import ProfileStatsModal from './ProfileStatsModal.vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
@@ -310,12 +346,19 @@ const router = useRouter();
 const gameStore = useGameStore();
 const netStore = useNetStore();
 const authStore = useAuthStore();
+const matchStore = useMatchStore();
 
 const showMultiplayer = ref(false);
 const roomInput = ref('');
 const showDifficultyModal = ref(false);
+const showProfileModal = ref(false);
 const botDifficulty = ref(gameStore.botDifficulty ?? 1);
 const menuModelRef = ref(null);
+const soloProgress = ref([]);
+const profileLoading = ref(false);
+const profileError = ref('');
+const profileStats = ref(null);
+const selectedProfile = ref(null);
 let renderer;
 let scene;
 let camera;
@@ -325,10 +368,10 @@ let resizeObserver;
 let floatingClock;
 let resizeHandler;
 const botLevels = [
-  { id: 1, name: 'Bot Paysan', stars: '⭐', tag: 'Facile' },
-  { id: 2, name: 'Bot Prince', stars: '⭐⭐', tag: 'Moyen' },
-  { id: 3, name: 'Bot Tsar', stars: '⭐⭐⭐', tag: 'Difficile' },
-  { id: 4, name: 'Empereur', stars: '⭐⭐⭐⭐', tag: 'Difficile ++' }
+  { id: 1, key: 'peasant', name: 'Bot Paysan', stars: '⭐', tag: 'Facile' },
+  { id: 2, key: 'prince', name: 'Bot Prince', stars: '⭐⭐', tag: 'Moyen' },
+  { id: 3, key: 'tsar', name: 'Bot Tsar', stars: '⭐⭐⭐', tag: 'Difficile' },
+  { id: 4, key: 'emperor', name: 'Empereur', stars: '⭐⭐⭐⭐', tag: 'Difficile ++' }
 ];
 
 const MIN_PLAYERS = 2;
@@ -359,6 +402,10 @@ const lobbySlots = computed(() => {
 
 const missingPlayerCount = computed(() => Math.max(0, MIN_PLAYERS - netStore.roomPlayers.length));
 const canStartMatch = computed(() => netStore.roomPlayers.length >= MIN_PLAYERS && !netStore.gameEnded);
+const soloProgressMap = computed(
+  () => new Map(soloProgress.value.map((entry) => [entry.difficulty, entry]))
+);
+
 
 const selectBotDifficulty = (levelId) => {
   botDifficulty.value = levelId;
@@ -367,6 +414,7 @@ const selectBotDifficulty = (levelId) => {
 
 const openSoloModal = () => {
   showDifficultyModal.value = true;
+  loadSoloProgress();
 };
 
 const startBot = () => {
@@ -389,6 +437,81 @@ const goAuth = () => {
 
 const goHelp = () => {
   router.push('/help');
+};
+
+const soloProgressStatus = (level) => {
+  if (!authStore.isAuthenticated) {
+    return { label: '', color: 'grey-7', icon: 'help_outline' };
+  }
+  const entry = soloProgressMap.value.get(level.key);
+  if (!entry) {
+    return { label: 'Non tenté', color: 'grey-7', icon: 'hourglass_empty' };
+  }
+  if (entry.is_defeated) {
+    return { label: 'Défaite', color: 'negative', icon: 'close' };
+  }
+  return { label: 'Bot battu', color: 'positive', icon: 'check' };
+};
+
+const loadSoloProgress = async () => {
+  if (!authStore.isAuthenticated) return;
+  try {
+    const data = await matchStore.fetchSoloProgress();
+    soloProgress.value = data?.progress || [];
+  } catch (error) {
+    console.warn('Impossible de charger la progression solo:', error);
+  }
+};
+
+const loadProfileStats = async (target) => {
+  profileError.value = '';
+  profileStats.value = null;
+  if (!authStore.isAuthenticated) {
+    profileError.value = 'Connectez-vous pour voir les statistiques.';
+    return;
+  }
+  if (!target?.userId) {
+    profileError.value = 'Stats indisponibles pour ce joueur.';
+    return;
+  }
+  profileLoading.value = true;
+  try {
+    const response = target.isSelf
+      ? await matchStore.fetchMyStats()
+      : await matchStore.fetchUserStats(target.userId);
+    profileStats.value = response?.stats || {};
+    if (target.isSelf) {
+      await loadSoloProgress();
+    }
+  } catch (error) {
+    profileError.value = error?.message || 'Impossible de charger les stats.';
+  } finally {
+    profileLoading.value = false;
+  }
+};
+
+const openProfileSelf = () => {
+  const user = authStore.user;
+  const payload = {
+    name: displayName.value,
+    userId: user?.id || null,
+    isSelf: true
+  };
+  selectedProfile.value = payload;
+  showProfileModal.value = true;
+  loadProfileStats(payload);
+};
+
+const openProfileFromSlot = (slot) => {
+  if (!slot || slot.isEmpty) return;
+  const payload = {
+    name: slot.name,
+    userId: slot.userId || null,
+    isSelf: slot.isSelf
+  };
+  selectedProfile.value = payload;
+  showProfileModal.value = true;
+  loadProfileStats(payload);
 };
 
 const handleLogout = () => {
@@ -748,6 +871,17 @@ const cleanupMenuModel = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.user-info:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .user-name {
@@ -758,6 +892,23 @@ const cleanupMenuModel = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.difficulty-status {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.difficulty-status .status-badge {
+  font-size: 11px;
+}
+
+.difficulty-hint {
+  margin-top: 12px;
+  text-align: center;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 12px;
 }
 
 .help-icon {
@@ -1906,6 +2057,26 @@ const cleanupMenuModel = () => {
 .player-status-indicator.waiting .status-dot {
   background: #71717a;
   animation: pulse-gray 2s infinite;
+}
+
+.player-profile-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.player-profile-btn:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: #fbbf24;
+  transform: translateY(-1px);
 }
 
 @keyframes pulse-green {

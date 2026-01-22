@@ -412,6 +412,31 @@ export default async function gameRoutes(fastify) {
     }
   });
 
+  fastify.get('/stats/user/:userId', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+    const { userId } = request.params || {};
+    if (!userId) {
+      return reply.code(400).send({ error: 'Identifiant utilisateur requis.' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await ensureUserStats(client, userId);
+      const statsResult = await client.query(
+        'SELECT * FROM user_stats WHERE user_id = $1 LIMIT 1',
+        [userId]
+      );
+      if (!statsResult.rows[0]) {
+        return reply.code(404).send({ error: 'Stats utilisateur introuvables.' });
+      }
+      return reply.send({ stats: statsResult.rows[0] });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Erreur serveur lors de la récupération des stats.' });
+    } finally {
+      client.release();
+    }
+  });
+
   fastify.get('/solo/progress', { preValidation: [fastify.authenticate] }, async (request, reply) => {
     const userId = request.user.userId;
     try {
