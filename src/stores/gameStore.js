@@ -99,6 +99,8 @@ export const useGameStore = defineStore('game', {
     pendingBotAction: null,
     // Pending bot item use for UI to display
     pendingBotItem: null,
+    // Prevent duplicate bot queues while waiting
+    botActionQueued: false,
     timeoutStreak: {
       player: 0,
       enemy: 0,
@@ -117,6 +119,7 @@ export const useGameStore = defineStore('game', {
       this.mode = mode;
       this.botDifficulty = options.botDifficulty ?? this.botDifficulty ?? 1;
       this.sessionActive = true;
+      this.botActionQueued = false;
       this.phase = PHASES.COIN_FLIP;
       this.currentTurn = null;
       this.barrel = createBarrel();
@@ -532,59 +535,69 @@ export const useGameStore = defineStore('game', {
       this.resolveNextTurn(nextActor);
     },
     async queueBotAction() {
-      if (this.mode !== 'bot') return;
+      if (this.mode !== 'bot' || this.botActionQueued) return;
+      this.botActionQueued = true;
+      let shouldRepeat = false;
       
-      // Safety check: if phase is ANIMATING, wait and check again
-      if (this.phase === PHASES.ANIMATING) {
-        await sleep(1000);
+      try {
+        // Safety check: if phase is ANIMATING, wait and check again
         if (this.phase === PHASES.ANIMATING) {
-          // Force reset to enemy turn if stuck
-          this.setTurnByKey('enemy');
+          await sleep(1000);
+          if (this.phase === PHASES.ANIMATING) {
+            // Force reset to enemy turn if stuck
+            this.setTurnByKey('enemy');
+          }
         }
-      }
-      
-      if (this.currentTurn !== 'enemy') return;
+        
+        if (this.currentTurn !== 'enemy') return;
 
-      // Delay so player can see it's enemy turn
-      const baseDelay = 2800;
-      const reloadPauseMs = 6200;
-      const timeSinceReload = this.lastReloadAt ? Date.now() - this.lastReloadAt : reloadPauseMs;
-      const reloadDelay = timeSinceReload < reloadPauseMs ? reloadPauseMs - timeSinceReload : 0;
-      await sleep(baseDelay + reloadDelay);
-      
-      // Double check phase hasn't changed
-      if (this.currentTurn !== 'enemy') return;
-      
-      const decision = decideBotAction(this.$state);
-      
-      if (decision.type === 'item') {
-        // Signal item use to UI
-        this.pendingBotItem = decision.itemId;
-        await sleep(100);
-        const targetKey = decision.itemId === 'handcuffs' ? 'player' : null;
-        await this.useItem(decision.itemId, 'enemy', targetKey);
+        // Delay so player can see it's enemy turn
+        const baseDelay = 2800;
+        const reloadPauseMs = 6200;
+        const timeSinceReload = this.lastReloadAt ? Date.now() - this.lastReloadAt : reloadPauseMs;
+        const reloadDelay = timeSinceReload < reloadPauseMs ? reloadPauseMs - timeSinceReload : 0;
+        await sleep(baseDelay + reloadDelay);
         
-        // Clear pending item
-        this.pendingBotItem = null;
+        // Double check phase hasn't changed
+        if (this.currentTurn !== 'enemy') return;
         
-        // Delay after item use
-        await sleep(800);
+        const decision = decideBotAction(this.$state);
         
-        // Check if bot should act again
-        if (this.currentTurn === 'enemy') {
-          this.queueBotAction();
+        if (decision.type === 'item') {
+          // Signal item use to UI
+          this.pendingBotItem = decision.itemId;
+          await sleep(100);
+          const targetKey = decision.itemId === 'handcuffs' ? 'player' : null;
+          await this.useItem(decision.itemId, 'enemy', targetKey);
+          
+          // Clear pending item
+          this.pendingBotItem = null;
+          
+          // Delay after item use
+          await sleep(800);
+          
+          // Check if bot should act again
+          if (this.currentTurn === 'enemy') {
+            shouldRepeat = true;
+          }
+        } else {
+          // Signal that bot wants to shoot - UI will handle animation
+          const targetText = decision.target === 'self' ? 'sur lui-même' : 'sur vous';
+          this.lastResult = { text: `💀 L'ennemi tire ${targetText}...` };
+          await sleep(800);
+          
+          // Set pending action for UI to process with animation
+          this.pendingBotAction = {
+            type: 'shoot',
+            target: decision.target
+          };
         }
-      } else {
-        // Signal that bot wants to shoot - UI will handle animation
-        const targetText = decision.target === 'self' ? 'sur lui-même' : 'sur vous';
-        this.lastResult = { text: `💀 L'ennemi tire ${targetText}...` };
-        await sleep(800);
-        
-        // Set pending action for UI to process with animation
-        this.pendingBotAction = {
-          type: 'shoot',
-          target: decision.target
-        };
+      } finally {
+        this.botActionQueued = false;
+      }
+
+      if (shouldRepeat) {
+        this.queueBotAction();
       }
     },
     
