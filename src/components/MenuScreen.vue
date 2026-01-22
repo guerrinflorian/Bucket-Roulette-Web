@@ -37,16 +37,28 @@
       </q-btn>
     </div>
 
-    <q-btn
-      class="help-icon"
-      round
-      flat
-      icon="help_outline"
-      aria-label="Ouvrir l'aide"
-      @click="goHelp"
-    >
-      <q-tooltip>Voir l'aide</q-tooltip>
-    </q-btn>
+    <div class="menu-utility-buttons">
+      <q-btn
+        class="utility-icon"
+        round
+        flat
+        icon="help_outline"
+        aria-label="Ouvrir l'aide"
+        @click="goHelp"
+      >
+        <q-tooltip>Voir l'aide</q-tooltip>
+      </q-btn>
+      <q-btn
+        class="utility-icon leaderboard-icon"
+        round
+        flat
+        icon="leaderboard"
+        aria-label="Ouvrir le classement"
+        @click="openLeaderboard"
+      >
+        <q-tooltip>Classements</q-tooltip>
+      </q-btn>
+    </div>
 
     <!-- Main content -->
     <div class="menu-content">
@@ -327,6 +339,14 @@
       :solo-progress="soloProgress"
       :bot-levels="botLevels"
     />
+
+    <LeaderboardModal
+      v-model="showLeaderboardModal"
+      :leaderboards="leaderboards"
+      :loading="leaderboardLoading"
+      :error="leaderboardError"
+      :highlight-id="leaderboardUserId"
+    />
   </q-page>
 </template>
 
@@ -338,6 +358,7 @@ import { useNetStore } from '../stores/netStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useMatchStore } from '../stores/matchStore.js';
 import ProfileStatsModal from './ProfileStatsModal.vue';
+import LeaderboardModal from './LeaderboardModal.vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
@@ -358,6 +379,13 @@ const soloProgress = ref([]);
 const profileLoading = ref(false);
 const profileError = ref('');
 const profileStats = ref(null);
+const showLeaderboardModal = ref(false);
+const leaderboardLoading = ref(false);
+const leaderboardError = ref('');
+const leaderboards = ref({
+  '1v1': { entries: [], selfEntry: null },
+  '1v1v1': { entries: [], selfEntry: null }
+});
 const selectedProfile = ref(null);
 let renderer;
 let scene;
@@ -381,6 +409,8 @@ const displayName = computed(() => {
   const user = authStore.user;
   return user?.username || user?.email?.split('@')[0] || 'Joueur';
 });
+
+const leaderboardUserId = computed(() => authStore.user?.id || '');
 
 const lobbySlots = computed(() => {
   const slots = netStore.roomPlayers.map((player) => ({
@@ -437,6 +467,34 @@ const goAuth = () => {
 
 const goHelp = () => {
   router.push('/help');
+};
+
+const loadLeaderboards = async () => {
+  leaderboardError.value = '';
+  if (!authStore.isAuthenticated) {
+    leaderboardError.value = 'Connectez-vous pour voir le classement.';
+    return;
+  }
+  leaderboardLoading.value = true;
+  try {
+    const [duel, trio] = await Promise.all([
+      matchStore.fetchLeaderboard('1v1'),
+      matchStore.fetchLeaderboard('1v1v1')
+    ]);
+    leaderboards.value = {
+      '1v1': duel,
+      '1v1v1': trio
+    };
+  } catch (error) {
+    leaderboardError.value = error?.message || 'Impossible de charger le classement.';
+  } finally {
+    leaderboardLoading.value = false;
+  }
+};
+
+const openLeaderboard = () => {
+  showLeaderboardModal.value = true;
+  loadLeaderboards();
 };
 
 const soloProgressStatus = (level) => {
@@ -911,11 +969,16 @@ const cleanupMenuModel = () => {
   font-size: 12px;
 }
 
-.help-icon {
+.menu-utility-buttons {
   position: fixed;
   top: 16px;
   left: 16px;
   z-index: 100;
+  display: flex;
+  gap: 10px;
+}
+
+.utility-icon {
   color: #fef3c7;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(245, 158, 11, 0.4);
@@ -923,9 +986,18 @@ const cleanupMenuModel = () => {
   backdrop-filter: blur(10px);
 }
 
-.help-icon:hover {
+.utility-icon:hover {
   border-color: rgba(251, 191, 36, 0.8);
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
+}
+
+.leaderboard-icon {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.leaderboard-icon:hover {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.3);
 }
 
 @media (max-width: 480px) {
@@ -935,7 +1007,7 @@ const cleanupMenuModel = () => {
     padding: 6px 10px 6px 12px;
   }
 
-  .help-icon {
+  .menu-utility-buttons {
     top: 10px;
     left: 10px;
   }

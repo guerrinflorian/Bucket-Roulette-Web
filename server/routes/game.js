@@ -3,6 +3,7 @@ import { pool } from '../db.js';
 
 const MAX_HISTORY_LIMIT = 50;
 const DEFAULT_HISTORY_LIMIT = 20;
+const LEADERBOARD_LIMIT = 10;
 const MULTIPLAYER_MODES = new Set(['1v1', '1v1v1']);
 const MODE_STAT_KEYS = ['solo', '1v1', '1v1v1'];
 const BOT_DIFFICULTY_TO_DB = {
@@ -517,6 +518,70 @@ export default async function gameRoutes(fastify) {
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors de la récupération des stats.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  fastify.get('/leaderboard', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+    const { mode } = request.query || {};
+    if (!MULTIPLAYER_MODES.has(mode)) {
+      return reply.code(400).send({ error: 'Mode invalide.' });
+    }
+
+    const userId = request.user.userId;
+    const client = await pool.connect();
+    try {
+      await ensureUserModeStats(client, userId, mode);
+
+      const baseQuery = `
+        WITH base AS (
+          SELECT
+            ums.user_id,
+            u.username,
+            COALESCE(ums.wins, 0) AS wins,
+            COALESCE(ums.losses, 0) AS losses,
+            COALESCE(ums.top2_finishes, 0) AS top2_finishes,
+            CASE
+              WHEN $1 = '1v1' THEN (COALESCE(ums.wins, 0) * 20 - COALESCE(ums.losses, 0) * 10)
+              WHEN (COALESCE(ums.wins, 0) + COALESCE(ums.losses, 0)) > 0 THEN
+                (
+                  (COALESCE(ums.wins, 0) * 100)
+                  + (GREATEST(COALESCE(ums.top2_finishes, 0) - COALESCE(ums.wins, 0), 0) * 40)
+                )::numeric / (COALESCE(ums.wins, 0) + COALESCE(ums.losses, 0) + 10)
+              ELSE 0
+            END AS score
+          FROM user_mode_stats ums
+          JOIN users u ON u.id = ums.user_id
+          WHERE ums.mode = $1
+        ),
+        ranked AS (
+          SELECT
+            base.*,
+            RANK() OVER (ORDER BY base.score DESC, base.wins DESC, base.losses ASC, base.username ASC) AS rank
+          FROM base
+        )
+        SELECT *
+        FROM ranked
+      `;
+
+      const entriesResult = await client.query(
+        `${baseQuery} ORDER BY rank ASC LIMIT $2`,
+        [mode, LEADERBOARD_LIMIT]
+      );
+      const selfResult = await client.query(
+        `${baseQuery} WHERE user_id = $2 LIMIT 1`,
+        [mode, userId]
+      );
+
+      return reply.send({
+        mode,
+        entries: entriesResult.rows,
+        selfEntry: selfResult.rows[0] || null
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Erreur serveur lors du chargement du classement.' });
     } finally {
       client.release();
     }

@@ -76,6 +76,13 @@ export const useMatchStore = defineStore('match', () => {
 
   const fetchSoloProgress = async () => request('/api/solo/progress');
 
+  const fetchLeaderboard = async (mode) => {
+    const searchParams = new URLSearchParams();
+    if (mode) searchParams.set('mode', mode);
+    const query = searchParams.toString();
+    return request(`/api/leaderboard${query ? `?${query}` : ''}`);
+  };
+
   return {
     submitting,
     error,
@@ -84,6 +91,7 @@ export const useMatchStore = defineStore('match', () => {
     fetchMatchHistory,
     fetchMyStats,
     fetchUserStats,
-    fetchSoloProgress
+    fetchSoloProgress,
+    fetchLeaderboard
   };
 });
