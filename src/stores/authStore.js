@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-const API_BASE = import.meta.env.VITE_API_BASE
-  || `${window.location.protocol}//${window.location.hostname}:3001`;
+const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
@@ -34,9 +33,13 @@ export const useAuthStore = defineStore('auth', () => {
   });
 
   const request = async (path, options = {}) => {
+    const requestHeaders = {
+      ...authHeaders(),
+      ...(options.headers || {})
+    };
     const response = await fetch(`${API_BASE}${path}`, {
-      headers: authHeaders(),
-      ...options
+      ...options,
+      headers: requestHeaders
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -130,4 +133,3 @@ export const useAuthStore = defineStore('auth', () => {
     logout: clearSession
   };
 });
-
