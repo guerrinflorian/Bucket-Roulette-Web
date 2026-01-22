@@ -24,16 +24,16 @@
         unelevated
         no-caps
         dropdown-icon="expand_more"
-        content-class="user-dropdown-menu"
+        content-class="user-dropdown-menu bg-black"
         menu-anchor="bottom right"
         menu-self="top right"
       >
         <template v-slot:label>
-          <q-avatar size="34px" class="user-avatar">
+          <q-avatar size="30px" class="user-avatar">
             <Avatar
               :name="avatarSeed"
               variant="beam"
-              :size="34"
+              :size="30"
               :colors="avatarColors"
             />
           </q-avatar>
@@ -1147,6 +1147,14 @@ const cleanupMenuModel = () => {
 
   .user-subtitle {
     font-size: 10px;
+  }
+
+  .user-meta {
+    display: none; /* Masque le texte (nom + mon compte) sur mobile */
+  }
+
+  .user-dropdown :deep(.q-btn__content) {
+    gap: 0; /* Optionnel : enlève l'espace vide à côté de l'avatar */
   }
 }
 
