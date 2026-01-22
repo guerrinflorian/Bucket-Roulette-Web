@@ -19,22 +19,72 @@
 
     <!-- User bar (top right) -->
     <div v-if="authStore.isAuthenticated" class="user-bar">
-      <button class="user-info" type="button" @click="openProfileSelf">
-        <q-icon name="account_circle" size="24px" color="amber" />
-        <span class="user-name">{{ displayName }}</span>
-        <q-icon name="visibility" size="16px" color="grey-4" />
-      </button>
-      <q-btn
-        flat
-        dense
-        round
-        icon="logout"
-        color="grey-5"
-        size="sm"
-        @click="handleLogout"
+      <q-btn-dropdown
+        class="user-dropdown"
+        unelevated
+        no-caps
+        dropdown-icon="expand_more"
+        content-class="user-dropdown-menu"
+        menu-anchor="bottom right"
+        menu-self="top right"
       >
-        <q-tooltip>Se déconnecter</q-tooltip>
-      </q-btn>
+        <template v-slot:label>
+          <q-avatar size="34px" class="user-avatar">
+            <Avatar
+              :name="avatarSeed"
+              variant="beam"
+              :size="34"
+              :colors="avatarColors"
+            />
+          </q-avatar>
+          <div class="user-meta">
+            <span class="user-name">{{ displayName }}</span>
+            <span class="user-subtitle">Mon compte</span>
+          </div>
+        </template>
+
+        <div class="dropdown-panel">
+          <div class="dropdown-header">
+            <q-avatar size="58px" class="dropdown-avatar">
+              <Avatar
+                :name="avatarSeed"
+                variant="beam"
+                :size="58"
+                :colors="avatarColors"
+              />
+            </q-avatar>
+            <div class="dropdown-text">
+              <div class="dropdown-name">{{ displayName }}</div>
+              <div class="dropdown-email">
+                {{ authStore.user?.email || 'Compte connecté' }}
+              </div>
+            </div>
+          </div>
+
+          <q-separator dark class="q-my-sm" />
+
+          <q-list class="dropdown-actions">
+            <q-item clickable v-close-popup @click="openProfileSelf">
+              <q-item-section avatar>
+                <q-icon name="insights" color="amber" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Voir mes statistiques</q-item-label>
+                <q-item-label caption>Performances et progression</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="handleLogout">
+              <q-item-section avatar>
+                <q-icon name="logout" color="red-4" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Se déconnecter</q-item-label>
+                <q-item-label caption>Quitter la session</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+      </q-btn-dropdown>
     </div>
 
     <div class="menu-utility-buttons">
@@ -359,6 +409,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useMatchStore } from '../stores/matchStore.js';
 import ProfileStatsModal from './ProfileStatsModal.vue';
 import LeaderboardModal from './LeaderboardModal.vue';
+import Avatar from 'vue-boring-avatars';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
@@ -409,6 +460,8 @@ const displayName = computed(() => {
   const user = authStore.user;
   return user?.username || user?.email?.split('@')[0] || 'Joueur';
 });
+const avatarSeed = computed(() => displayName.value.split(' ')[0] || displayName.value);
+const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 
 const leaderboardUserId = computed(() => authStore.user?.id || '');
 
@@ -916,40 +969,116 @@ const cleanupMenuModel = () => {
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 16px;
-  background: linear-gradient(135deg, rgba(30, 20, 10, 0.9) 0%, rgba(15, 10, 5, 0.95) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 30px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: inherit;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.user-info:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
 }
 
 .user-name {
   font-size: 13px;
   font-weight: 700;
   color: #fef3c7;
-  max-width: 120px;
+  max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-subtitle {
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.user-avatar {
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+}
+
+.user-dropdown :deep(.q-btn) {
+  padding: 6px 10px 6px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(30, 20, 10, 0.92) 0%, rgba(15, 10, 5, 0.98) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  color: #fef3c7;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-dropdown :deep(.q-btn:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5);
+}
+
+.user-dropdown :deep(.q-btn__content) {
+  gap: 10px;
+  align-items: center;
+}
+
+.user-dropdown :deep(.q-btn__dropdown-icon) {
+  font-size: 20px;
+  color: rgba(251, 191, 36, 0.85);
+}
+
+:deep(.user-dropdown-menu) {
+  min-width: 280px;
+  background: rgba(13, 16, 24, 0.98);
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+}
+
+.dropdown-panel {
+  padding: 14px 16px 10px;
+  color: #e2e8f0;
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dropdown-avatar {
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
+}
+
+.dropdown-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dropdown-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff7ed;
+}
+
+.dropdown-email {
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.dropdown-actions :deep(.q-item) {
+  border-radius: 12px;
+  margin: 4px 0;
+  color: inherit;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dropdown-actions :deep(.q-item:hover) {
+  background: rgba(251, 191, 36, 0.12);
+  transform: translateX(2px);
+}
+
+.dropdown-actions :deep(.q-item__label--caption) {
+  color: rgba(226, 232, 240, 0.6);
 }
 
 .difficulty-status {
@@ -1004,7 +1133,6 @@ const cleanupMenuModel = () => {
   .user-bar {
     top: 10px;
     right: 10px;
-    padding: 6px 10px 6px 12px;
   }
 
   .menu-utility-buttons {
@@ -1015,6 +1143,10 @@ const cleanupMenuModel = () => {
   .user-name {
     font-size: 12px;
     max-width: 80px;
+  }
+
+  .user-subtitle {
+    font-size: 10px;
   }
 }
 
