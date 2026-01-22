@@ -15,20 +15,36 @@ const SOUND_MAP = {
 class AudioManager {
   constructor() {
     this.sounds = {};
+    this.soundPools = {};
     this.background = new Audio(backgroundSrc);
     this.background.loop = true;
     this.background.volume = 0.02;
     Object.entries(SOUND_MAP).forEach(([key, src]) => {
-      const audio = new Audio(src);
-      audio.volume = 0.6;
+      const audio = this.createAudio(src, 0.6);
       this.sounds[key] = audio;
+      this.soundPools[key] = [audio];
     });
   }
 
+  createAudio(src, volume) {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.volume = volume;
+    return audio;
+  }
+
   play(key) {
-    const audio = this.sounds[key];
-    if (!audio) return;
-    audio.currentTime = 0;
+    const pool = this.soundPools[key];
+    if (!pool || pool.length === 0) return;
+    let audio = pool.find((candidate) => candidate.paused || candidate.ended);
+    if (!audio) {
+      const baseAudio = this.sounds[key];
+      audio = this.createAudio(baseAudio.src, baseAudio.volume);
+      pool.push(audio);
+    }
+    if (audio.currentTime !== 0) {
+      audio.currentTime = 0;
+    }
     audio.play().catch((err) => {
       console.warn(`Could not play audio ${key}:`, err);
     });
