@@ -72,6 +72,8 @@ export const useMatchStore = defineStore('match', () => {
 
   const fetchMyStats = async () => request('/api/stats/me');
 
+  const fetchUserStats = async (userId) => request(`/api/stats/user/${userId}`);
+
   const fetchSoloProgress = async () => request('/api/solo/progress');
 
   return {
@@ -81,6 +83,7 @@ export const useMatchStore = defineStore('match', () => {
     recordMultiplayerMatch,
     fetchMatchHistory,
     fetchMyStats,
+    fetchUserStats,
     fetchSoloProgress
   };
 });
