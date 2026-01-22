@@ -36,6 +36,17 @@
       </q-btn>
     </div>
 
+    <q-btn
+      class="help-icon"
+      round
+      flat
+      icon="help_outline"
+      aria-label="Ouvrir l'aide"
+      @click="goHelp"
+    >
+      <q-tooltip>Voir l'aide</q-tooltip>
+    </q-btn>
+
     <!-- Main content -->
     <div class="menu-content">
       <!-- Logo/Title -->
@@ -88,16 +99,6 @@
           </div>
         </button>
 
-        <button class="game-btn btn-help" @click="goHelp">
-          <div class="btn-glow"></div>
-          <div class="btn-content">
-            <span class="btn-icon">📖</span>
-            <div class="btn-text">
-              <span class="btn-title">Aide & règles</span>
-              <span class="btn-subtitle">Comprendre le jeu en 2 minutes</span>
-            </div>
-          </div>
-        </button>
       </div>
 
       <!-- Multiplayer panel -->
@@ -753,11 +754,33 @@ const cleanupMenuModel = () => {
   white-space: nowrap;
 }
 
+.help-icon {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 100;
+  color: #fef3c7;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.help-icon:hover {
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
+}
+
 @media (max-width: 480px) {
   .user-bar {
     top: 10px;
     right: 10px;
     padding: 6px 10px 6px 12px;
+  }
+
+  .help-icon {
+    top: 10px;
+    left: 10px;
   }
 
   .user-name {

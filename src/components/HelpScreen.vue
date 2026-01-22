@@ -112,7 +112,7 @@
                 :src="card.image"
                 class="card-image"
                 :alt="card.name"
-                fit="contain"
+                fit="cover"
                 ratio="1"
                 loading="eager"
               />
@@ -472,6 +472,11 @@ const goBack = () => {
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.2);
   margin: 12px;
+  flex: 0 0 auto;
+}
+
+.card-image :deep(.q-img__image) {
+  object-fit: cover;
 }
 
 .card-body {
