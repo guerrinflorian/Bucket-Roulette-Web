@@ -279,6 +279,26 @@ io.on('connection', (socket) => {
 
   });
 
+  socket.on('room:chat', ({ roomId, message }) => {
+    if (!roomId || typeof message !== 'string') return;
+    const trimmed = message.trim();
+    if (!trimmed || trimmed.length > 240) return;
+    if (!socket.roomId || socket.roomId !== roomId) return;
+    const room = rooms.get(roomId);
+    if (!room || room.gameStarted || room.gameEnded) return;
+
+    const player = room.players.find((entry) => entry.id === socket.id);
+    if (!player) return;
+
+    io.to(roomId).emit('room:chat', {
+      playerId: socket.id,
+      playerName: player.name,
+      userId: player.userId || null,
+      message: trimmed,
+      timestamp: Date.now()
+    });
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`❌ Client disconnected: ${socket.id}`);

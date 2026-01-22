@@ -247,49 +247,55 @@
             <span class="code-hint">{{ codeCopied ? '✅ Copié dans le presse-papier !' : '💡 Cliquez pour copier et partager' }}</span>
           </div>
 
-          <div class="players-list">
-            <div class="players-list-header">
-              <span class="list-title">👥 Joueurs</span>
-              <span class="list-count">{{ lobbySlots.filter(s => !s.isEmpty).length }}/3</span>
+          <div class="lobby-body">
+            <div class="lobby-panel players-panel">
+              <div class="players-list">
+                <div class="players-list-header">
+                  <span class="list-title">👥 Joueurs</span>
+                  <span class="list-count">{{ lobbySlots.filter(s => !s.isEmpty).length }}/3</span>
+                </div>
+                <div
+                  v-for="(slot, index) in lobbySlots"
+                  :key="slot.id || `slot-${index}`"
+                  class="player-row"
+                  :class="{ 'is-you': slot.isSelf, waiting: slot.isEmpty }"
+                >
+                  <div class="player-avatar-slot" :class="{ empty: slot.isEmpty }">
+                    <span v-if="slot.isHost" class="crown-badge">👑</span>
+                    <span class="avatar-placeholder">{{ slot.isEmpty ? '?' : slot.name.charAt(0).toUpperCase() }}</span>
+                  </div>
+                  <div class="player-details">
+                    <span class="player-row-name">
+                      {{ slot.isEmpty ? 'Slot vide' : slot.name }}
+                      <span v-if="slot.isSelf" class="you-tag">vous</span>
+                    </span>
+                    <span class="player-role">{{ slot.isHost ? 'Hôte' : slot.isEmpty ? 'En attente...' : 'Joueur' }}</span>
+                  </div>
+                  <div class="player-status-indicator" :class="{ ready: !slot.isEmpty, waiting: slot.isEmpty }">
+                    <span class="status-dot"></span>
+                  </div>
+                  <button
+                    v-if="!slot.isEmpty"
+                    class="player-profile-btn"
+                    type="button"
+                    @click="openProfileFromSlot(slot)"
+                    title="Voir le profil"
+                  >
+                    <q-icon name="insights" size="18px" />
+                  </button>
+                  <button
+                    v-if="netStore.isHost && slot.id && !slot.isSelf"
+                    class="kick-btn"
+                    @click="kickPlayer(slot.id)"
+                    title="Éjecter ce joueur"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             </div>
-            <div
-              v-for="(slot, index) in lobbySlots"
-              :key="slot.id || `slot-${index}`"
-              class="player-row"
-              :class="{ 'is-you': slot.isSelf, waiting: slot.isEmpty }"
-            >
-              <div class="player-avatar-slot" :class="{ empty: slot.isEmpty }">
-                <span v-if="slot.isHost" class="crown-badge">👑</span>
-                <span class="avatar-placeholder">{{ slot.isEmpty ? '?' : slot.name.charAt(0).toUpperCase() }}</span>
-              </div>
-              <div class="player-details">
-                <span class="player-row-name">
-                  {{ slot.isEmpty ? 'Slot vide' : slot.name }}
-                  <span v-if="slot.isSelf" class="you-tag">vous</span>
-                </span>
-                <span class="player-role">{{ slot.isHost ? 'Hôte' : slot.isEmpty ? 'En attente...' : 'Joueur' }}</span>
-              </div>
-              <div class="player-status-indicator" :class="{ ready: !slot.isEmpty, waiting: slot.isEmpty }">
-                <span class="status-dot"></span>
-              </div>
-              <button
-                v-if="!slot.isEmpty"
-                class="player-profile-btn"
-                type="button"
-                @click="openProfileFromSlot(slot)"
-                title="Voir le profil"
-              >
-                <q-icon name="insights" size="18px" />
-              </button>
-              <button
-                v-if="netStore.isHost && slot.id && !slot.isSelf"
-                class="kick-btn"
-                @click="kickPlayer(slot.id)"
-                title="Éjecter ce joueur"
-              >
-                ✕
-              </button>
-            </div>
+
+            <LobbyChatPanel />
           </div>
 
           <div class="lobby-actions">
@@ -471,6 +477,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useMatchStore } from '../stores/matchStore.js';
 import ProfileStatsModal from './ProfileStatsModal.vue';
 import LeaderboardModal from './LeaderboardModal.vue';
+import LobbyChatPanel from './LobbyChatPanel.vue';
 import Avatar from 'vue-boring-avatars';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -2436,6 +2443,19 @@ const cleanupMenuModel = () => {
   gap: 20px;
 }
 
+.lobby-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.lobby-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .lobby-code-card {
   text-align: center;
   padding: 24px;
@@ -3125,6 +3145,12 @@ const cleanupMenuModel = () => {
   
   .btn-title {
     font-size: 22px;
+  }
+}
+
+@media (max-width: 960px) {
+  .lobby-body {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -29,7 +29,8 @@ export const useNetStore = defineStore('net', {
     roomReady: false,
     gameEnded: false,
     error: null,
-    lastPing: null
+    lastPing: null,
+    lobbyChatMessages: []
   }),
 
   getters: {
@@ -73,6 +74,7 @@ export const useNetStore = defineStore('net', {
           this.socketId = null;
           this.roomReady = false;
           this.roomPlayers = [];
+          this.lobbyChatMessages = [];
         });
 
         this.socket.on('connect_error', (err) => {
@@ -91,6 +93,14 @@ export const useNetStore = defineStore('net', {
           this.roomPlayers = players || [];
           this.error = null;
           this.gameEnded = false;
+          this.lobbyChatMessages = [];
+          if (this.playerName) {
+            this.addLobbyMessage({
+              type: 'system',
+              name: this.playerName,
+              text: `${this.playerName} a rejoint la room.`
+            });
+          }
         });
 
         this.socket.on('room:joined', ({ roomId, isHost, hostName, players }) => {
@@ -101,6 +111,14 @@ export const useNetStore = defineStore('net', {
           this.roomPlayers = players || [];
           this.error = null;
           this.gameEnded = false;
+          this.lobbyChatMessages = [];
+          if (this.playerName) {
+            this.addLobbyMessage({
+              type: 'system',
+              name: this.playerName,
+              text: `${this.playerName} a rejoint la room.`
+            });
+          }
         });
 
         this.socket.on('room:error', ({ message }) => {
@@ -111,6 +129,14 @@ export const useNetStore = defineStore('net', {
         this.socket.on('room:player-joined', ({ playerId, playerName, players }) => {
           console.log('👋 Player joined:', playerName, playerId);
           this.roomPlayers = players || this.roomPlayers;
+          if (playerName) {
+            this.addLobbyMessage({
+              type: 'system',
+              name: playerName,
+              playerId,
+              text: `${playerName} a rejoint la room.`
+            });
+          }
         });
 
         this.socket.on('room:ready', ({ hostName, players }) => {
@@ -132,6 +158,14 @@ export const useNetStore = defineStore('net', {
             playerName,
             wasHost
           };
+          if (playerName) {
+            this.addLobbyMessage({
+              type: 'system',
+              name: playerName,
+              playerId,
+              text: `${playerName} a quitté la room.`
+            });
+          }
           if (wasHost) {
             this.error = "L'hôte a quitté la partie";
             notifyDeparture("L'hôte a quitté la partie.");
@@ -177,6 +211,20 @@ export const useNetStore = defineStore('net', {
           this.isHost = false;
           this.roomPlayers = [];
           this.roomReady = false;
+          this.lobbyChatMessages = [];
+        });
+
+        this.socket.on('room:chat', ({ playerId, playerName, userId, message, timestamp }) => {
+          if (!message || !playerName) return;
+          this.addLobbyMessage({
+            type: 'chat',
+            name: playerName,
+            text: message,
+            playerId,
+            userId,
+            timestamp,
+            isSelf: playerId === this.socketId
+          });
         });
 
         this.socket.on('pong', ({ time }) => {
@@ -245,6 +293,13 @@ export const useNetStore = defineStore('net', {
     sendAction(action) {
       if (!this.socket || !this.roomId) return;
       this.socket.emit('game:action', { roomId: this.roomId, action });
+    },
+
+    sendLobbyChat(message) {
+      if (!this.socket || !this.roomId) return;
+      const trimmed = message?.trim();
+      if (!trimmed) return;
+      this.socket.emit('room:chat', { roomId: this.roomId, message: trimmed });
     },
 
     // Host sends game state to sync
@@ -345,6 +400,7 @@ export const useNetStore = defineStore('net', {
       this.roomReady = false;
       this.gameEnded = false;
       this.error = null;
+      this.lobbyChatMessages = [];
     },
 
     // Clear error
@@ -354,6 +410,22 @@ export const useNetStore = defineStore('net', {
 
     clearOpponentLeft() {
       this.opponentLeft = null;
+    },
+
+    addLobbyMessage(payload) {
+      if (!payload?.text) return;
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        type: payload.type || 'chat',
+        name: payload.name || 'Système',
+        text: payload.text,
+        playerId: payload.playerId || null,
+        userId: payload.userId || null,
+        timestamp: payload.timestamp || Date.now(),
+        isSelf: payload.isSelf || false
+      };
+      const next = [...this.lobbyChatMessages, entry];
+      this.lobbyChatMessages = next.slice(-120);
     }
   }
 });
