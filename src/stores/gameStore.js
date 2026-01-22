@@ -30,11 +30,14 @@ export const useGameStore = defineStore('game', {
       player: {
         id: 'player',
         socketId: null,
+        userId: null,
         isActive: true,
         name: 'Vous',
         hp: MAX_HP,
         maxHp: MAX_HP,
         items: [],
+        shotsFired: 0,
+        itemsUsed: 0,
         doubleDamageNextShot: false,
         peekedNext: null,
         scannerHint: null,
@@ -43,11 +46,14 @@ export const useGameStore = defineStore('game', {
       enemy: {
         id: 'enemy',
         socketId: null,
+        userId: null,
         isActive: true,
         name: 'Adversaire',
         hp: MAX_HP,
         maxHp: MAX_HP,
         items: [],
+        shotsFired: 0,
+        itemsUsed: 0,
         doubleDamageNextShot: false,
         peekedNext: null,
         scannerHint: null,
@@ -56,11 +62,14 @@ export const useGameStore = defineStore('game', {
       enemy2: {
         id: 'enemy2',
         socketId: null,
+        userId: null,
         isActive: false,
         name: 'Adversaire 2',
         hp: MAX_HP,
         maxHp: MAX_HP,
         items: [],
+        shotsFired: 0,
+        itemsUsed: 0,
         doubleDamageNextShot: false,
         peekedNext: null,
         scannerHint: null,
@@ -121,10 +130,13 @@ export const useGameStore = defineStore('game', {
         if (!player) return;
         player.isActive = isActive;
         player.socketId = null;
+        player.userId = null;
         player.name = key === 'player' ? 'Vous' : key === 'enemy2' ? 'Adversaire 2' : 'Adversaire';
         player.hp = isActive ? MAX_HP : 0;
         player.maxHp = MAX_HP;
         player.items = [];
+        player.shotsFired = 0;
+        player.itemsUsed = 0;
         player.doubleDamageNextShot = false;
         player.peekedNext = null;
         player.scannerHint = null;
@@ -385,6 +397,7 @@ export const useGameStore = defineStore('game', {
         itemId,
         target: targetKey
       };
+      actor.itemsUsed += 1;
       audioManager.play('click');
 
       if (this.mode === 'bot' && actorKey === 'enemy') {
@@ -449,6 +462,7 @@ export const useGameStore = defineStore('game', {
           shot,
           damage
         };
+        actor.shotsFired += 1;
 
         this.lastResult = {
           text: isReal ? 'BALLE RÉELLE !' : 'À BLANC...'

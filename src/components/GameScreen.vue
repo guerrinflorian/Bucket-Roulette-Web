@@ -103,6 +103,9 @@ import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
+import { useAuthStore } from '../stores/authStore.js';
+import { useMatchStore } from '../stores/matchStore.js';
+import { getBotLevel } from '../engine/botLevels/index.js';
 import { audioManager } from '../engine/audio.js';
 import { remainingCounts } from '../engine/barrel.js';
 import GameScene from './GameScene.vue';
@@ -111,7 +114,10 @@ import CoinFlipModal from './CoinFlipModal.vue';
 const router = useRouter();
 const gameStore = useGameStore();
 const netStore = useNetStore();
+const authStore = useAuthStore();
+const matchStore = useMatchStore();
 const gameSceneRef = ref(null);
+const matchSubmitted = ref(false);
 
 const showGameOver = computed(() => gameStore.phase === 'game_over');
 const isOnlineMode = computed(() => gameStore.mode === 'online');
@@ -182,6 +188,104 @@ const isInitialOnlineFlip = (state = null) => {
 
 const uiNameForStoreKey = (key) => {
   return gameStore.players[key]?.name || 'Joueur';
+};
+
+const getVictoryType = () => {
+  const text = gameStore.lastResult?.text?.toLowerCase() || '';
+  if (text.includes('abandon') || text.includes('quitté')) {
+    return 'abandon';
+  }
+  if (text.includes('afk') || text.includes('inactivité')) {
+    return 'afk';
+  }
+  if (gameStore.lastAction?.type === 'timeout') {
+    return 'timeout';
+  }
+  return 'hp';
+};
+
+const getMatchPlayerEntries = () => {
+  const order = gameStore.turnOrder.length
+    ? gameStore.turnOrder
+    : Object.keys(gameStore.players);
+  return order
+    .map((key) => ({ key, player: gameStore.players[key] }))
+    .filter(({ player }) => player?.isActive);
+};
+
+const rankParticipants = (entries) => {
+  const winnerKey = gameStore.winner;
+  const winnerPresent = entries.some((entry) => entry.key === winnerKey);
+  return [...entries]
+    .sort((a, b) => {
+      if (winnerPresent) {
+        if (a.key === winnerKey) return -1;
+        if (b.key === winnerKey) return 1;
+      }
+      const hpDelta = (b.player?.hp ?? 0) - (a.player?.hp ?? 0);
+      if (hpDelta !== 0) return hpDelta;
+      return gameStore.turnOrder.indexOf(a.key) - gameStore.turnOrder.indexOf(b.key);
+    })
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
+};
+
+const shouldSubmitOnlineMatch = () => {
+  if (!isOnlineMode.value) return true;
+  const hostEntry = netStore.roomPlayers.find((player) => player.isHost);
+  if (!hostEntry?.userId) return true;
+  return hostEntry.id === netStore.socketId;
+};
+
+const buildParticipantsPayload = (entries) =>
+  entries.map(({ key, player, rank }) => ({
+    userId: player.userId || null,
+    rank,
+    finalHp: player.hp,
+    shotsFired: player.shotsFired ?? 0,
+    itemsUsed: player.itemsUsed ?? 0,
+    isBot: !isOnlineMode.value && key !== 'player'
+  }));
+
+const submitMatchResult = async () => {
+  if (matchSubmitted.value) return;
+  if (!authStore.isAuthenticated) return;
+  if (isOnlineMode.value && !shouldSubmitOnlineMatch()) return;
+
+  matchSubmitted.value = true;
+  const entries = rankParticipants(getMatchPlayerEntries());
+  const victoryType = getVictoryType();
+  const roundsPlayed = gameStore.reloadCount ?? null;
+  const winnerEntry = entries.find((entry) => entry.key === gameStore.winner);
+  const winnerId = winnerEntry?.player?.userId || null;
+
+  try {
+    if (isOnlineMode.value) {
+      const mode = entries.length >= 3 ? '1v1v1' : '1v1';
+      await matchStore.recordMultiplayerMatch({
+        mode,
+        victoryType,
+        roundsPlayed,
+        winnerId,
+        participants: buildParticipantsPayload(entries)
+      });
+    } else {
+      const botLevel = getBotLevel(gameStore.botDifficulty);
+      await matchStore.recordSoloMatch({
+        victoryType,
+        botLevel: botLevel.key,
+        roundsPlayed,
+        winnerId,
+        participants: buildParticipantsPayload(entries),
+        difficulty: botLevel.key,
+        isDefeated: gameStore.winner !== 'player'
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to record match:', error);
+  }
 };
 
 const canAct = computed(() => {
@@ -696,6 +800,7 @@ const restart = () => {
 
 // Setup multiplayer listeners
 onMounted(() => {
+  matchSubmitted.value = false;
   if (!gameStore.players.player.items) {
     gameStore.initGame('bot');
   }
@@ -861,6 +966,17 @@ watch(
       }
     }
     netStore.clearOpponentLeft();
+  }
+);
+
+watch(
+  () => gameStore.phase,
+  (phase) => {
+    if (phase !== 'game_over') return;
+    submitMatchResult();
+    if (isOnlineMode.value && netStore.isHost) {
+      netStore.endGame();
+    }
   }
 );
 
