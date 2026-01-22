@@ -87,6 +87,17 @@
             </div>
           </div>
         </button>
+
+        <button class="game-btn btn-help" @click="goHelp">
+          <div class="btn-glow"></div>
+          <div class="btn-content">
+            <span class="btn-icon">📖</span>
+            <div class="btn-text">
+              <span class="btn-title">Aide & règles</span>
+              <span class="btn-subtitle">Comprendre le jeu en 2 minutes</span>
+            </div>
+          </div>
+        </button>
       </div>
 
       <!-- Multiplayer panel -->
@@ -372,6 +383,10 @@ const goBack = () => {
 
 const goAuth = () => {
   router.push('/auth');
+};
+
+const goHelp = () => {
+  router.push('/help');
 };
 
 const handleLogout = () => {
@@ -1274,7 +1289,8 @@ const cleanupMenuModel = () => {
 }
 
 .btn-solo,
-.btn-multi {
+.btn-multi,
+.btn-help {
   background: linear-gradient(145deg, rgba(30, 20, 10, 0.9) 0%, rgba(15, 10, 5, 0.95) 100%);
   border-color: rgba(180, 120, 60, 0.4);
   box-shadow: 
@@ -1283,12 +1299,14 @@ const cleanupMenuModel = () => {
 }
 
 .btn-solo .btn-glow,
-.btn-multi .btn-glow {
+.btn-multi .btn-glow,
+.btn-help .btn-glow {
   background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
 }
 
 .btn-solo:hover:not(:disabled),
-.btn-multi:hover:not(:disabled) {
+.btn-multi:hover:not(:disabled),
+.btn-help:hover:not(:disabled) {
   border-color: rgba(245, 158, 11, 0.6);
   transform: translateY(-3px);
   box-shadow: 
@@ -1298,7 +1316,8 @@ const cleanupMenuModel = () => {
 }
 
 .btn-solo:active:not(:disabled),
-.btn-multi:active:not(:disabled) {
+.btn-multi:active:not(:disabled),
+.btn-help:active:not(:disabled) {
   transform: translateY(-1px);
 }
 
