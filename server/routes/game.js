@@ -553,7 +553,7 @@ export default async function gameRoutes(fastify) {
             END AS score
           FROM user_mode_stats ums
           JOIN users u ON u.id = ums.user_id
-          WHERE ums.mode = $1
+          WHERE ums.mode = $1::game_mode
         ),
         ranked AS (
           SELECT
