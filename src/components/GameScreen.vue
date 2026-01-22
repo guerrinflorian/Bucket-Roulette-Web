@@ -699,6 +699,8 @@ onMounted(() => {
   if (!gameStore.players.player.items) {
     gameStore.initGame('bot');
   }
+
+  audioManager.startBackground();
   
   // Online mode: listen for game state updates and actions
   if (isOnlineMode.value) {
@@ -789,6 +791,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  audioManager.stopBackground();
   if (isOnlineMode.value) {
     netStore.offGameState();
     netStore.offGameAction();

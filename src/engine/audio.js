@@ -2,6 +2,7 @@ import spinSrc from '../assets/audio/barrel_spin.mp3';
 import reloadSrc from '../assets/audio/revolver_reload.mp3';
 import shotSrc from '../assets/audio/revolver_shot.mp3';
 import blankSrc from '../assets/audio/revolver_no_ammo_shot.mp3';
+import backgroundSrc from '../assets/audio/background.mp3';
 
 const SOUND_MAP = {
   spin: spinSrc,
@@ -14,6 +15,9 @@ const SOUND_MAP = {
 class AudioManager {
   constructor() {
     this.sounds = {};
+    this.background = new Audio(backgroundSrc);
+    this.background.loop = true;
+    this.background.volume = 0.18;
     Object.entries(SOUND_MAP).forEach(([key, src]) => {
       const audio = new Audio(src);
       audio.volume = 0.6;
@@ -28,6 +32,19 @@ class AudioManager {
     audio.play().catch((err) => {
       console.warn(`Could not play audio ${key}:`, err);
     });
+  }
+
+  startBackground() {
+    if (!this.background || !this.background.paused) return;
+    this.background.play().catch((err) => {
+      console.warn('Could not play background audio:', err);
+    });
+  }
+
+  stopBackground() {
+    if (!this.background) return;
+    this.background.pause();
+    this.background.currentTime = 0;
   }
 }
 

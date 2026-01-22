@@ -185,11 +185,20 @@ function decideShootTarget(state, level, counts) {
   }
 
   if (level.behavior.randomTarget) {
-    return Math.random() < 0.5 ? 'enemy' : 'self';
+    return Math.random() < 0.5 ? opponentKey : selfKey;
   }
 
   if (!level.behavior.usesProbability) {
-    return Math.random() < 0.5 ? 'enemy' : 'self';
+    return Math.random() < 0.5 ? opponentKey : selfKey;
+  }
+
+  if (
+    level.behavior.itemUseStrategy === 'imperial' &&
+    counts.remaining === 2 &&
+    counts.real === 1 &&
+    counts.blank === 1
+  ) {
+    return opponentKey;
   }
 
   if (level.behavior.itemUseStrategy === 'advanced' && counts.blank > counts.real) {
@@ -201,10 +210,10 @@ function decideShootTarget(state, level, counts) {
   }
 
   if (counts.pReal < 0.5) {
-  return selfKey;
-}
+    return selfKey;
+  }
 
-  return Math.random() < 0.5 ? 'enemy' : 'self';
+  return Math.random() < 0.5 ? opponentKey : selfKey;
 }
 
 export function decideBotAction(state) {
