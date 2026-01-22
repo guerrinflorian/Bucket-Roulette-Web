@@ -1,152 +1,272 @@
 <template>
-  <q-page class="help-page">
-    <div class="help-bg">
-      <div class="help-gradient"></div>
-      <div class="help-grid"></div>
-      <div class="help-embers">
-        <span class="ember e1">🔥</span>
-        <span class="ember e2">✨</span>
-        <span class="ember e3">🔴</span>
-        <span class="ember e4">⚪</span>
+  <q-page class="min-h-screen bg-black relative overflow-hidden">
+    <!-- Animated Background -->
+    <div class="absolute inset-0">
+      <!-- Gradient Background -->
+      <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20"></div>
+      
+      <!-- Grid Pattern -->
+      <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px] opacity-40"></div>
+      
+      <!-- Floating Bullets (like menu) -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[15%] left-[10%] text-xl opacity-15 animate-float-bullet">🔴</div>
+        <div class="absolute top-[25%] right-[15%] text-xl opacity-15 animate-float-bullet-delayed" style="animation-delay: -4s">⚪</div>
+        <div class="absolute top-[60%] left-[5%] text-xl opacity-15 animate-float-bullet-delayed" style="animation-delay: -8s">🔴</div>
+        <div class="absolute top-[70%] right-[8%] text-xl opacity-15 animate-float-bullet" style="animation-delay: -12s">⚪</div>
+        <div class="absolute top-[85%] left-[50%] text-xl opacity-15 animate-float-bullet-delayed" style="animation-delay: -16s">🔴</div>
       </div>
     </div>
 
-    <div class="help-content">
-      <header class="help-hero">
-        <q-btn flat class="help-back" icon="arrow_back" label="Retour au menu" @click="goBack" />
+    <!-- Content -->
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      
+      <!-- Back Button with Style -->
+      <q-btn
+        flat
+        icon="arrow_back"
+        label="Retour au menu"
+        class="mb-8 px-6 py-3 rounded-full border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 hover:border-amber-400 hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] transition-all duration-300 font-semibold"
+        @click="goBack"
+      />
 
-        <div class="hero-title">
-          <q-chip class="hero-kicker" icon="auto_awesome">Guide du duel</q-chip>
-          <h1>Aide & règles du jeu</h1>
-          <p>
-            Pas besoin d'être un expert : voici les règles expliquées simplement, étape par étape,
-            avec les cartes disponibles et des astuces pour survivre.
-          </p>
+      <!-- Hero Section -->
+      <div class="mb-16 lg:mb-20">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 mb-6 backdrop-blur-sm">
+          <q-icon name="auto_awesome" class="text-amber-400 animate-pulse" />
+          <span class="text-amber-300 font-bold text-sm tracking-widest uppercase">Guide du duel</span>
         </div>
-      </header>
+        
+        <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-orange-400 mb-6 leading-tight">
+          Aide & règles du jeu
+        </h1>
+        
+        <p class="text-xl sm:text-2xl text-slate-300/90 max-w-4xl leading-relaxed font-light">
+          Pas besoin d'être un expert : voici les règles expliquées simplement, étape par étape,
+          avec les cartes disponibles et des astuces pour survivre. 💀
+        </p>
+      </div>
 
-      <section class="help-section">
-        <div class="section-title">
-          <q-icon name="sports_martial_arts" />
-          <h2>Objectif & principes</h2>
+      <!-- Objectif & Principes -->
+      <section class="mb-16 lg:mb-20">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/50">
+            <q-icon name="sports_martial_arts" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Objectif & principes</h2>
         </div>
-        <div class="help-cards">
-          <q-card class="help-card">
-            <q-card-section>
-              <h3>Dernier survivant</h3>
-              <p>
-                Vous commencez avec <strong>5 PV</strong>. Chaque balle réelle retire des PV. Le dernier
-                joueur debout remporte la manche.
-              </p>
-            </q-card-section>
-          </q-card>
-          <q-card class="help-card">
-            <q-card-section>
-              <h3>Barillet aléatoire</h3>
-              <p>
-                Le barillet contient <strong>2 à 7</strong> cartouches mélangées (réelles + blanches). Quand
-                il est vide, il est rechargé et remixé.
-              </p>
-            </q-card-section>
-          </q-card>
-          <q-card class="help-card">
-            <q-card-section>
-              <h3>Cartes tactiques</h3>
-              <p>
-                Après chaque rechargement, vous recevez <strong>1 carte</strong>. Elles servent à manipuler
-                le barillet ou votre adversaire.
-              </p>
-            </q-card-section>
-          </q-card>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-2 border-amber-500/30 group-hover:border-amber-400 rounded-2xl transition-all duration-300 h-full">
+              <q-card-section class="p-6">
+                <div class="text-4xl mb-4">🎯</div>
+                <h3 class="text-2xl font-bold text-amber-400 mb-4">Dernier survivant</h3>
+                <p class="text-slate-300 leading-relaxed text-lg">
+                  Vous commencez avec <span class="text-amber-400 font-bold text-xl">5 PV</span>. Chaque balle réelle retire des PV. 
+                  Le dernier joueur debout remporte la manche.
+                </p>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-2 border-red-500/30 group-hover:border-red-400 rounded-2xl transition-all duration-300 h-full">
+              <q-card-section class="p-6">
+                <div class="text-4xl mb-4">🔫</div>
+                <h3 class="text-2xl font-bold text-red-400 mb-4">Barillet aléatoire</h3>
+                <p class="text-slate-300 leading-relaxed text-lg">
+                  Le barillet contient <span class="text-red-400 font-bold text-xl">2 à 7</span> cartouches mélangées (réelles + blanches). 
+                  Quand il est vide, il est rechargé et remixé.
+                </p>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-2 border-purple-500/30 group-hover:border-purple-400 rounded-2xl transition-all duration-300 h-full">
+              <q-card-section class="p-6">
+                <div class="text-4xl mb-4">🃏</div>
+                <h3 class="text-2xl font-bold text-purple-400 mb-4">Cartes tactiques</h3>
+                <p class="text-slate-300 leading-relaxed text-lg">
+                  Après chaque rechargement, vous recevez <span class="text-purple-400 font-bold text-xl">1 carte</span>. 
+                  Elles servent à manipuler le barillet ou votre adversaire.
+                </p>
+              </q-card-section>
+            </q-card>
+          </div>
         </div>
       </section>
 
-      <section class="help-section">
-        <div class="section-title">
-          <q-icon name="insights" />
-          <h2>Pourquoi tirer sur soi ?</h2>
+      <!-- Pourquoi tirer sur soi -->
+      <section class="mb-16 lg:mb-20">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/50">
+            <q-icon name="insights" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Pourquoi tirer sur soi ?</h2>
         </div>
-        <q-card class="help-card wide-card">
-          <q-card-section>
-            <p>
-              Tenter un tir sur vous-même peut paraître étrange, mais c'est un choix stratégique :
-              si la balle est blanche, <strong>vous ne perdez aucun PV</strong> et vous gagnez un nouveau tour.
-              Cela permet d'enchaîner les actions, d'utiliser vos cartes, ou de forcer l'adversaire à subir
-              un barillet plus dangereux.
-            </p>
-            <p class="muted">
-              En résumé : tirer sur soi est un pari pour conserver l'initiative quand vous pensez que la
-              prochaine balle est blanche.
-            </p>
-          </q-card-section>
-        </q-card>
-      </section>
-
-      <section class="help-section">
-        <div class="section-title">
-          <q-icon name="route" />
-          <h2>Déroulé d'une manche</h2>
-        </div>
-        <div class="steps-grid">
-          <q-card v-for="step in steps" :key="step.title" class="step-card">
-            <q-card-section>
-              <div class="step-head">
-                <q-badge color="amber-7" text-color="black">{{ step.index }}</q-badge>
-                <h3>{{ step.title }}</h3>
+        
+        <div class="relative group">
+          <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500"></div>
+          <q-card class="relative bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-2 border-cyan-500/40 rounded-3xl overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-cyan-500/10 to-transparent rounded-full blur-3xl"></div>
+            <q-card-section class="relative p-8 lg:p-10">
+              <p class="text-slate-200 leading-relaxed text-xl mb-6">
+                Tenter un tir sur vous-même peut paraître étrange, mais c'est un choix stratégique : 
+                si la balle est blanche, <span class="text-cyan-400 font-bold text-2xl">vous ne perdez aucun PV</span> et 
+                vous gagnez un nouveau tour. Cela permet d'enchaîner les actions, d'utiliser vos cartes, 
+                ou de forcer l'adversaire à subir un barillet plus dangereux.
+              </p>
+              <div class="flex items-start gap-3 p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/30">
+                <q-icon name="lightbulb" class="text-cyan-400 text-2xl mt-1" />
+                <p class="text-cyan-200 italic text-lg">
+                  En résumé : tirer sur soi est un pari pour conserver l'initiative quand vous pensez que 
+                  la prochaine balle est blanche.
+                </p>
               </div>
-              <p>{{ step.text }}</p>
             </q-card-section>
           </q-card>
         </div>
       </section>
 
-      <section class="help-section">
-        <div class="section-title">
-          <q-icon name="style" />
-          <h2>Cartes disponibles</h2>
+      <!-- Déroulé d'une manche -->
+      <section class="mb-16 lg:mb-20">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/50">
+            <q-icon name="route" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Déroulé d'une manche</h2>
         </div>
-        <div class="cards-grid">
-          <q-card v-for="card in cards" :key="card.name" class="game-card">
-            <q-card-section horizontal class="card-row">
-              <q-img
-                :src="card.image"
-                class="card-image"
-                :alt="card.name"
-                fit="cover"
-                ratio="1"
-                loading="eager"
-              />
-              <q-card-section class="card-body">
-                <div class="card-header">
-                  <h3>{{ card.name }}</h3>
-                  <q-chip dense outline color="blue-4" text-color="blue-2">{{ card.tag }}</q-chip>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div
+            v-for="(step, idx) in steps"
+            :key="step.index"
+            class="group relative"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl border-2 border-green-500/30 group-hover:border-green-400 rounded-2xl transition-all duration-300">
+              <q-card-section class="flex gap-5 p-6">
+                <div class="flex-shrink-0">
+                  <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/50 font-black text-xl text-white">
+                    {{ step.index }}
+                  </div>
                 </div>
-                <p>{{ card.description }}</p>
-                <div class="card-hint-row">
-                  <q-icon name="task_alt" size="16px" class="card-hint-icon" />
-                  <span class="card-hint">{{ card.hint }}</span>
+                <div class="flex-1">
+                  <h3 class="text-xl font-bold text-green-400 mb-3">{{ step.title }}</h3>
+                  <p class="text-slate-300 leading-relaxed text-base">{{ step.text }}</p>
                 </div>
               </q-card-section>
+            </q-card>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cartes disponibles -->
+      <section class="mb-16 lg:mb-20">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg shadow-pink-500/50">
+            <q-icon name="style" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Cartes disponibles</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div
+            v-for="card in cards"
+            :key="card.name"
+            class="group relative"
+          >
+            <div :class="`absolute inset-0 ${card.glowClass} rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500`"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-2 border-white/10 group-hover:border-white/30 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] h-full">
+              <div :class="`absolute inset-0 ${card.bgGradient} opacity-10`"></div>
+              
+              <q-card-section class="relative p-6">
+                <!-- Image de la carte -->
+                <div class="mb-5 flex justify-center">
+                  <div :class="`relative w-28 h-28 rounded-2xl ${card.imageBg} border-2 ${card.borderClass} shadow-2xl ${card.shadowClass} p-3 group-hover:scale-110 transition-transform duration-300`">
+                    <img :src="card.image" :alt="card.name" class="w-full h-full object-contain drop-shadow-2xl" />
+                  </div>
+                </div>
+                
+                <!-- Header -->
+                <div class="flex items-start justify-between gap-3 mb-4">
+                  <h3 class="text-xl font-bold text-white flex-1">{{ card.name }}</h3>
+                  <q-chip
+                    dense
+                    :class="`${card.chipBg} ${card.chipText} border ${card.chipBorder} font-bold px-3`"
+                  >
+                    {{ card.tag }}
+                  </q-chip>
+                </div>
+                
+                <!-- Description -->
+                <p class="text-slate-300 mb-4 leading-relaxed">
+                  {{ card.description }}
+                </p>
+                
+                <!-- Hint -->
+                <div :class="`flex items-start gap-3 p-3 ${card.hintBg} rounded-xl border ${card.hintBorder}`">
+                  <q-icon name="tips_and_updates" :class="`${card.hintIcon} flex-shrink-0 mt-0.5`" />
+                  <span :class="`text-sm ${card.hintText}`">{{ card.hint }}</span>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+      </section>
+
+      <!-- Astuces -->
+      <section class="mb-12">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-600 flex items-center justify-center shadow-lg shadow-yellow-500/50 animate-pulse">
+            <q-icon name="lightbulb" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Astuces pour débuter</h2>
+        </div>
+        
+        <div class="relative group">
+          <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-amber-500/20 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500"></div>
+          <q-card class="relative bg-gradient-to-br from-amber-900/20 to-slate-900/90 backdrop-blur-xl border-2 border-amber-500/40 rounded-3xl overflow-hidden">
+            <div class="absolute top-0 left-0 w-64 h-64 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-3xl"></div>
+            <q-card-section class="relative p-8 lg:p-10">
+              <div class="space-y-5">
+                <div class="flex gap-4 items-start group/item hover:translate-x-2 transition-transform duration-200">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/50">
+                    <q-icon name="check_circle" class="text-white text-xl" />
+                  </div>
+                  <p class="text-slate-200 text-lg leading-relaxed pt-1">
+                    Si vous connaissez la prochaine balle, adaptez votre cible (vous ou l'adversaire).
+                  </p>
+                </div>
+                
+                <div class="flex gap-4 items-start group/item hover:translate-x-2 transition-transform duration-200">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/50">
+                    <q-icon name="check_circle" class="text-white text-xl" />
+                  </div>
+                  <p class="text-slate-200 text-lg leading-relaxed pt-1">
+                    Le <strong class="text-amber-400">Double dégâts</strong> consomme la prochaine balle, même à blanc : gardez-le pour un tir sûr.
+                  </p>
+                </div>
+                
+                <div class="flex gap-4 items-start group/item hover:translate-x-2 transition-transform duration-200">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/50">
+                    <q-icon name="check_circle" class="text-white text-xl" />
+                  </div>
+                  <p class="text-slate-200 text-lg leading-relaxed pt-1">
+                    Gardez une carte défensive pour encaisser un tour difficile.
+                  </p>
+                </div>
+              </div>
             </q-card-section>
           </q-card>
         </div>
       </section>
 
-      <section class="help-section tips">
-        <div class="section-title">
-          <q-icon name="lightbulb" />
-          <h2>Astuces pour débuter</h2>
-        </div>
-        <q-card class="help-card wide-card">
-          <q-card-section>
-            <ul>
-              <li>Si vous connaissez la prochaine balle, adaptez votre cible (vous ou l'adversaire).</li>
-              <li>Le <strong>Double dégâts</strong> consomme la prochaine balle, même à blanc : gardez-le pour un tir sûr.</li>
-              <li>Gardez une carte défensive pour encaisser un tour difficile.</li>
-            </ul>
-          </q-card-section>
-        </q-card>
-      </section>
     </div>
   </q-page>
 </template>
@@ -194,52 +314,136 @@ const steps = [
 const cards = [
   {
     image: heartImg,
-    name: '+1 Coeur',
+    name: '+1 Cœur',
     description: 'Soigne 1 PV (max 5).',
     tag: 'Défensif',
-    hint: 'Idéal après un tir réel encaissé.'
+    hint: 'Idéal après un tir réel encaissé.',
+    glowClass: 'bg-gradient-to-br from-green-500/20 to-emerald-500/20',
+    bgGradient: 'bg-gradient-to-br from-green-500 to-emerald-500',
+    imageBg: 'bg-gradient-to-br from-green-500/20 to-emerald-500/10',
+    borderClass: 'border-green-500/40',
+    shadowClass: 'shadow-green-500/30',
+    chipBg: 'bg-green-500/20',
+    chipText: 'text-green-300',
+    chipBorder: 'border-green-500/40',
+    hintBg: 'bg-green-500/10',
+    hintBorder: 'border-green-500/30',
+    hintIcon: 'text-green-400',
+    hintText: 'text-green-200'
   },
   {
     image: doubleImg,
     name: 'Double dégâts',
     description: 'Le prochain tir inflige 2 PV si réel (consommé même à blanc).',
     tag: 'Offensif',
-    hint: 'À utiliser quand vous êtes sûr de la prochaine balle.'
+    hint: 'À utiliser quand vous êtes sûr de la prochaine balle.',
+    glowClass: 'bg-gradient-to-br from-red-500/20 to-orange-500/20',
+    bgGradient: 'bg-gradient-to-br from-red-500 to-orange-500',
+    imageBg: 'bg-gradient-to-br from-red-500/20 to-orange-500/10',
+    borderClass: 'border-red-500/40',
+    shadowClass: 'shadow-red-500/30',
+    chipBg: 'bg-red-500/20',
+    chipText: 'text-red-300',
+    chipBorder: 'border-red-500/40',
+    hintBg: 'bg-red-500/10',
+    hintBorder: 'border-red-500/30',
+    hintIcon: 'text-red-400',
+    hintText: 'text-red-200'
   },
   {
     image: peekImg,
     name: 'Voir la prochaine balle',
     description: 'Révèle la cartouche suivante pour vous.',
     tag: 'Information',
-    hint: 'Choisissez votre cible en connaissance de cause.'
+    hint: 'Choisissez votre cible en connaissance de cause.',
+    glowClass: 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20',
+    bgGradient: 'bg-gradient-to-br from-blue-500 to-cyan-500',
+    imageBg: 'bg-gradient-to-br from-blue-500/20 to-cyan-500/10',
+    borderClass: 'border-blue-500/40',
+    shadowClass: 'shadow-blue-500/30',
+    chipBg: 'bg-blue-500/20',
+    chipText: 'text-blue-300',
+    chipBorder: 'border-blue-500/40',
+    hintBg: 'bg-blue-500/10',
+    hintBorder: 'border-blue-500/30',
+    hintIcon: 'text-blue-400',
+    hintText: 'text-blue-200'
   },
   {
     image: ejectImg,
     name: 'Éjecter la prochaine balle',
     description: 'Retire la cartouche suivante sans tirer.',
     tag: 'Contrôle',
-    hint: 'Éliminez une balle réelle dangereuse.'
+    hint: 'Éliminez une balle réelle dangereuse.',
+    glowClass: 'bg-gradient-to-br from-purple-500/20 to-pink-500/20',
+    bgGradient: 'bg-gradient-to-br from-purple-500 to-pink-500',
+    imageBg: 'bg-gradient-to-br from-purple-500/20 to-pink-500/10',
+    borderClass: 'border-purple-500/40',
+    shadowClass: 'shadow-purple-500/30',
+    chipBg: 'bg-purple-500/20',
+    chipText: 'text-purple-300',
+    chipBorder: 'border-purple-500/40',
+    hintBg: 'bg-purple-500/10',
+    hintBorder: 'border-purple-500/30',
+    hintIcon: 'text-purple-400',
+    hintText: 'text-purple-200'
   },
   {
     image: handcuffsImg,
     name: 'Les Menottes',
     description: "Bloque l'adversaire au prochain tour.",
     tag: 'Contrôle',
-    hint: 'Gagnez un tour de répit.'
+    hint: 'Gagnez un tour de répit.',
+    glowClass: 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20',
+    bgGradient: 'bg-gradient-to-br from-indigo-500 to-purple-500',
+    imageBg: 'bg-gradient-to-br from-indigo-500/20 to-purple-500/10',
+    borderClass: 'border-indigo-500/40',
+    shadowClass: 'shadow-indigo-500/30',
+    chipBg: 'bg-indigo-500/20',
+    chipText: 'text-indigo-300',
+    chipBorder: 'border-indigo-500/40',
+    hintBg: 'bg-indigo-500/10',
+    hintBorder: 'border-indigo-500/30',
+    hintIcon: 'text-indigo-400',
+    hintText: 'text-indigo-200'
   },
   {
     image: inverterImg,
     name: "L'Inverseur",
     description: 'Inverse la balle actuelle : blanche ⇄ réelle.',
     tag: 'Chaos',
-    hint: 'Retournez la situation à votre avantage.'
+    hint: 'Retournez la situation à votre avantage.',
+    glowClass: 'bg-gradient-to-br from-orange-500/20 to-yellow-500/20',
+    bgGradient: 'bg-gradient-to-br from-orange-500 to-yellow-500',
+    imageBg: 'bg-gradient-to-br from-orange-500/20 to-yellow-500/10',
+    borderClass: 'border-orange-500/40',
+    shadowClass: 'shadow-orange-500/30',
+    chipBg: 'bg-orange-500/20',
+    chipText: 'text-orange-300',
+    chipBorder: 'border-orange-500/40',
+    hintBg: 'bg-orange-500/10',
+    hintBorder: 'border-orange-500/30',
+    hintIcon: 'text-orange-400',
+    hintText: 'text-orange-200'
   },
   {
     image: scannerImg,
     name: 'Scanner',
     description: "Révèle la position d'une balle réelle dans le barillet.",
     tag: 'Information',
-    hint: 'Planifiez vos prochains tours.'
+    hint: 'Planifiez vos prochains tours.',
+    glowClass: 'bg-gradient-to-br from-cyan-500/20 to-teal-500/20',
+    bgGradient: 'bg-gradient-to-br from-cyan-500 to-teal-500',
+    imageBg: 'bg-gradient-to-br from-cyan-500/20 to-teal-500/10',
+    borderClass: 'border-cyan-500/40',
+    shadowClass: 'shadow-cyan-500/30',
+    chipBg: 'bg-cyan-500/20',
+    chipText: 'text-cyan-300',
+    chipBorder: 'border-cyan-500/40',
+    hintBg: 'bg-cyan-500/10',
+    hintBorder: 'border-cyan-500/30',
+    hintIcon: 'text-cyan-400',
+    hintText: 'text-cyan-200'
   }
 ];
 
@@ -249,300 +453,18 @@ const goBack = () => {
 </script>
 
 <style scoped>
-.help-page {
-  position: relative;
-  min-height: 100vh;
-  color: #f8fafc;
-  background: #0b0a08;
-  overflow: hidden;
+@keyframes float-bullet {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-30px) rotate(90deg); }
+  50% { transform: translateY(0) rotate(180deg); }
+  75% { transform: translateY(30px) rotate(270deg); }
 }
 
-.help-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
+.animate-float-bullet {
+  animation: float-bullet 20s ease-in-out infinite;
 }
 
-.help-gradient {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 178, 102, 0.22), transparent 50%),
-    radial-gradient(circle at 80% 10%, rgba(250, 204, 21, 0.2), transparent 45%),
-    radial-gradient(circle at 50% 80%, rgba(148, 163, 184, 0.12), transparent 55%),
-    linear-gradient(160deg, rgba(7, 7, 7, 0.95), rgba(20, 10, 5, 0.98));
-}
-
-.help-grid {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 120px 120px;
-  opacity: 0.35;
-}
-
-.help-embers {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.ember {
-  position: absolute;
-  font-size: 18px;
-  opacity: 0.5;
-  filter: blur(0.2px);
-  animation: float 6s ease-in-out infinite;
-}
-
-.ember.e1 { top: 20%; left: 10%; animation-delay: 0s; }
-.ember.e2 { top: 70%; left: 15%; animation-delay: 1s; }
-.ember.e3 { top: 25%; right: 12%; animation-delay: 0.5s; }
-.ember.e4 { bottom: 10%; right: 20%; animation-delay: 1.5s; }
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.help-content {
-  position: relative;
-  z-index: 1;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 32px 20px 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 48px;
-}
-
-.help-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-.help-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(15, 23, 42, 0.4);
-  color: #f8fafc;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.help-back:hover {
-  border-color: rgba(251, 191, 36, 0.8);
-  box-shadow: 0 0 14px rgba(251, 191, 36, 0.25);
-  transform: translateY(-1px);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.section-title h2 {
-  margin: 0;
-  font-size: 1.6rem;
-}
-
-.section-title .q-icon {
-  color: #fbbf24;
-  font-size: 22px;
-}
-
-.hero-title h1 {
-  font-size: clamp(2rem, 4vw, 3.1rem);
-  margin: 0;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.hero-title p {
-  margin: 10px 0 0;
-  color: rgba(226, 232, 240, 0.75);
-  max-width: 620px;
-  font-size: 1rem;
-}
-
-.hero-kicker {
-  display: inline-flex;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  background: rgba(251, 191, 36, 0.15);
-  color: #fcd34d;
-  font-weight: 700;
-}
-
-.help-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
-}
-
-.help-card {
-  padding: 18px 20px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.help-card.wide-card {
-  max-width: 900px;
-}
-
-.help-card h3 {
-  margin: 0 0 8px;
-  font-size: 1.1rem;
-}
-
-.help-card p {
-  margin: 0;
-  color: rgba(226, 232, 240, 0.7);
-  line-height: 1.5;
-}
-
-.steps-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.step-card {
-  padding: 16px 18px;
-  border-radius: 14px;
-  background: rgba(2, 6, 23, 0.7);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.step-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.step-head h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.step-card p {
-  margin: 0;
-  color: rgba(226, 232, 240, 0.75);
-}
-
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.game-card {
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.card-row {
-  align-items: center;
-  gap: 12px;
-}
-
-.card-image {
-  width: 88px;
-  height: 88px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  margin: 12px;
-  flex: 0 0 auto;
-}
-
-.card-image :deep(.q-img__image) {
-  object-fit: cover;
-}
-
-.card-body {
-  padding-left: 4px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.card-body h3 {
-  margin: 0 0 6px;
-  font-size: 1rem;
-}
-
-.card-body p {
-  margin: 0 0 8px;
-  color: rgba(226, 232, 240, 0.75);
-}
-
-.card-hint-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.card-hint-icon {
-  color: rgba(148, 163, 184, 0.9);
-}
-
-.card-hint {
-  font-size: 0.78rem;
-  color: rgba(148, 163, 184, 0.9);
-}
-
-.tips ul {
-  margin: 0;
-  padding-left: 20px;
-  color: rgba(226, 232, 240, 0.8);
-  line-height: 1.6;
-}
-
-.tips li + li {
-  margin-top: 10px;
-}
-
-.muted {
-  color: rgba(148, 163, 184, 0.85);
-  margin-top: 10px;
-}
-
-@media (min-width: 900px) {
-  .steps-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 480px) {
-  .card-image {
-    width: 70px;
-    height: 70px;
-    margin: 10px;
-  }
+.animate-float-bullet-delayed {
+  animation: float-bullet 20s ease-in-out infinite;
 }
 </style>
