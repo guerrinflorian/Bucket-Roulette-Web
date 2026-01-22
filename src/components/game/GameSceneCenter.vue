@@ -45,6 +45,7 @@
       <BarrelRevolver
         ref="barrelRef"
         :barrel-data="barrel"
+        :scanner-hint="scannerHint"
         @animation-start="emit('animation-start')"
         @animation-end="emit('animation-end')"
       />
@@ -112,6 +113,10 @@ const props = defineProps({
   totalSlots: {
     type: Number,
     default: 6
+  },
+  scannerHint: {
+    type: [Number, String],
+    default: null
   },
   phase: {
     type: String,
