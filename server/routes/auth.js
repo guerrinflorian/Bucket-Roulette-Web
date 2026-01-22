@@ -9,7 +9,6 @@ const sanitizeUser = (user) => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  avatarUrl: user.avatar_url,
   lastLogin: user.last_login,
   createdAt: user.created_at
 });
@@ -93,8 +92,8 @@ export default async function authRoutes(fastify) {
       const userId = randomUUID();
       const passwordHash = await bcrypt.hash(password, 10);
       const createdUser = await client.query(
-        'INSERT INTO users (id, created_at, last_login, email, username, avatar_url) VALUES ($1, NOW(), NOW(), $2, $3, $4) RETURNING *',
-        [userId, normalizedEmail, username.trim(), null]
+        'INSERT INTO users (id, created_at, last_login, email, username) VALUES ($1, NOW(), NOW(), $2, $3) RETURNING *',
+        [userId, normalizedEmail, username.trim()]
       );
 
       await client.query(
@@ -189,7 +188,6 @@ export default async function authRoutes(fastify) {
       const normalizedEmail = normalizeEmail(payload.email);
       const providerId = payload.sub;
       const displayName = payload.name || payload.given_name || null;
-      const avatarUrl = payload.picture || null;
 
       const client = await pool.connect();
       try {
@@ -213,8 +211,8 @@ export default async function authRoutes(fastify) {
           } else {
             userId = randomUUID();
             const newUser = await client.query(
-              'INSERT INTO users (id, created_at, last_login, email, username, avatar_url) VALUES ($1, NOW(), NOW(), $2, $3, $4) RETURNING *',
-              [userId, normalizedEmail, displayName, avatarUrl]
+              'INSERT INTO users (id, created_at, last_login, email, username) VALUES ($1, NOW(), NOW(), $2, $3) RETURNING *',
+              [userId, normalizedEmail, displayName]
             );
             user = newUser.rows[0];
           }
@@ -226,8 +224,8 @@ export default async function authRoutes(fastify) {
         }
 
         const updatedUser = await client.query(
-          'UPDATE users SET last_login = NOW(), username = COALESCE(username, $1), avatar_url = COALESCE(avatar_url, $2) WHERE id = $3 RETURNING *',
-          [displayName, avatarUrl, userId]
+          'UPDATE users SET last_login = NOW(), username = COALESCE(username, $1) WHERE id = $2 RETURNING *',
+          [displayName, userId]
         );
 
         await client.query('COMMIT');
@@ -252,4 +250,3 @@ export default async function authRoutes(fastify) {
     return reply.send({ user: sanitizeUser(result.rows[0]) });
   });
 }
-

@@ -373,6 +373,7 @@ const startBot = () => {
   if (!netStore.playerName) return;
   gameStore.initGame('bot', { botDifficulty: botDifficulty.value });
   gameStore.players.player.name = netStore.playerName;
+  gameStore.players.player.userId = authStore.user?.id || null;
   showDifficultyModal.value = false;
   router.push('/game');
 };
@@ -463,6 +464,7 @@ const startMultiplayer = async () => {
     if (!playerInfo) return;
     gameStore.players[key].name = playerInfo.name;
     gameStore.players[key].socketId = playerInfo.id;
+    gameStore.players[key].userId = playerInfo.userId || null;
     gameStore.players[key].isActive = true;
   });
 
@@ -513,8 +515,12 @@ onMounted(() => {
 watch(
   () => authStore.user,
   (user) => {
-    if (!user) return;
+    if (!user) {
+      netStore.userId = null;
+      return;
+    }
     netStore.playerName = displayName.value;
+    netStore.userId = user.id;
   },
   { immediate: true }
 );

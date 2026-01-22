@@ -23,6 +23,7 @@ export const useNetStore = defineStore('net', {
     isHost: false,
     hostName: null,
     playerName: null,
+    userId: null,
     roomPlayers: [],
     opponentLeft: null,
     roomReady: false,
@@ -201,7 +202,7 @@ export const useNetStore = defineStore('net', {
       
       try {
         await this.connect();
-        this.socket.emit('room:create', { playerName: this.playerName });
+        this.socket.emit('room:create', { playerName: this.playerName, userId: this.userId });
         this.isHost = true;
         this.hostName = this.playerName;
         this.roomPlayers = [];
@@ -225,7 +226,8 @@ export const useNetStore = defineStore('net', {
         await this.connect();
         this.socket.emit('room:join', { 
           roomId: roomId.toUpperCase(),
-          playerName: this.playerName
+          playerName: this.playerName,
+          userId: this.userId
         });
         this.isHost = false;
         this.roomPlayers = [];

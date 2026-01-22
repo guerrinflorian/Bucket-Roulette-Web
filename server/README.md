@@ -24,6 +24,13 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 - `POST /api/auth/google` { idToken }
 - `GET /api/auth/me` (Authorization: Bearer <token>)
 
+## Matchs & stats API
+- `POST /api/matches/solo` { victoryType, botLevel?, roundsPlayed?, participants?, difficulty?, isDefeated? }
+- `POST /api/matches/multiplayer` { mode: '1v1' | '1v1v1', victoryType, roundsPlayed?, participants, winnerId? }
+- `GET /api/matches/history?mode=&limit=` (Authorization: Bearer <token>)
+- `GET /api/stats/me` (Authorization: Bearer <token>)
+- `GET /api/solo/progress` (Authorization: Bearer <token>)
+
 ## Events Socket
 - `room:create` → `room:created`
 - `room:join` → `room:joined`

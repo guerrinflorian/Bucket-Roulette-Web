@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
+import gameRoutes from './routes/game.js';
 
 const fastify = Fastify({ logger: true });
 
@@ -27,6 +28,7 @@ fastify.decorate('authenticate', async (request, reply) => {
 
 fastify.get('/api/health', async () => ({ status: 'ok' }));
 await fastify.register(authRoutes, { prefix: '/api/auth' });
+await fastify.register(gameRoutes, { prefix: '/api' });
 
 await fastify.ready();
 
@@ -54,6 +56,7 @@ function serializePlayers(room) {
   return room.players.map((player) => ({
     id: player.id,
     name: player.name,
+    userId: player.userId || null,
     isHost: player.id === room.host
   }));
 }
@@ -72,11 +75,12 @@ io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
 
   // Create a new room
-  socket.on('room:create', ({ playerName }) => {
+  socket.on('room:create', ({ playerName, userId }) => {
     if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
       socket.emit('room:error', { message: 'Nom de joueur requis' });
       return;
     }
+    const normalizedUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null;
     let roomId = generateRoomCode();
     // Ensure unique
     while (rooms.has(roomId)) {
@@ -87,7 +91,7 @@ io.on('connection', (socket) => {
       host: socket.id,
       hostName: playerName,
       gameState: null,
-      players: [{ id: socket.id, name: playerName }],
+      players: [{ id: socket.id, name: playerName, userId: normalizedUserId }],
       gameStarted: false,
       gameEnded: false
     });
@@ -107,7 +111,7 @@ io.on('connection', (socket) => {
   });
 
   // Join an existing room
-  socket.on('room:join', ({ roomId, playerName }) => {
+  socket.on('room:join', ({ roomId, playerName, userId }) => {
     if (!roomId || typeof roomId !== 'string' || roomId.trim().length < 4) {
       socket.emit('room:error', { message: 'Code de room invalide' });
       return;
@@ -116,6 +120,7 @@ io.on('connection', (socket) => {
       socket.emit('room:error', { message: 'Nom de joueur requis' });
       return;
     }
+    const normalizedUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null;
     const normalizedRoomId = roomId.trim().toUpperCase();
     const room = rooms.get(normalizedRoomId);
 
@@ -139,7 +144,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    room.players.push({ id: socket.id, name: playerName });
+    room.players.push({ id: socket.id, name: playerName, userId: normalizedUserId });
     socket.join(normalizedRoomId);
     socket.roomId = normalizedRoomId;
     socket.isHost = false;
