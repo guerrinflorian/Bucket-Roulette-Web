@@ -4,6 +4,7 @@ import { pool } from '../db.js';
 const MAX_HISTORY_LIMIT = 50;
 const DEFAULT_HISTORY_LIMIT = 20;
 const MULTIPLAYER_MODES = new Set(['1v1', '1v1v1']);
+const MODE_STAT_KEYS = ['solo', '1v1', '1v1v1'];
 const BOT_DIFFICULTY_TO_DB = {
   peasant: 'Paysan',
   prince: 'Prince',
@@ -48,16 +49,11 @@ const ensureUserStats = async (client, userId) => {
   );
 };
 
-const getEloDelta = (mode, rank) => {
-  if (mode === '1v1') {
-    return rank === 1 ? 15 : -15;
-  }
-  if (mode === '1v1v1') {
-    if (rank === 1) return 20;
-    if (rank === 2) return 5;
-    return -15;
-  }
-  return 0;
+const ensureUserModeStats = async (client, userId, mode) => {
+  await client.query(
+    'INSERT INTO user_mode_stats (user_id, mode) VALUES ($1, $2) ON CONFLICT (user_id, mode) DO NOTHING',
+    [userId, mode]
+  );
 };
 
 const normalizeParticipants = ({
@@ -73,6 +69,7 @@ const normalizeParticipants = ({
         rank: fallbackRank,
         finalHp: null,
         shotsFired: null,
+        shotsTaken: null,
         itemsUsed: null,
         isBot: false
       }
@@ -83,6 +80,7 @@ const normalizeParticipants = ({
     rank: participant?.rank,
     finalHp: participant?.finalHp ?? null,
     shotsFired: participant?.shotsFired ?? null,
+    shotsTaken: participant?.shotsTaken ?? null,
     itemsUsed: participant?.itemsUsed ?? null,
     isBot: Boolean(participant?.isBot)
   }));
@@ -197,6 +195,7 @@ export default async function gameRoutes(fastify) {
         ...participant,
         finalHp: toOptionalInt(participant.finalHp),
         shotsFired: toOptionalInt(participant.shotsFired, 0),
+        shotsTaken: toOptionalInt(participant.shotsTaken, 0),
         itemsUsed: toOptionalInt(participant.itemsUsed, 0)
       }));
 
@@ -204,15 +203,37 @@ export default async function gameRoutes(fastify) {
 
       if (userParticipant) {
         await ensureUserStats(client, userId);
+        await ensureUserModeStats(client, userId, 'solo');
         await client.query(
           `UPDATE user_stats
            SET total_shots_fired = total_shots_fired + $1,
-               items_used_count = items_used_count + $2
-           WHERE user_id = $3`,
+               total_shots_taken = total_shots_taken + $2,
+               total_items_used = total_items_used + $3,
+               total_games_played = total_games_played + 1
+           WHERE user_id = $4`,
           [
             toOptionalInt(userParticipant.shotsFired, 0),
+            toOptionalInt(userParticipant.shotsTaken, 0),
             toOptionalInt(userParticipant.itemsUsed, 0),
             userId
+          ]
+        );
+        await client.query(
+          `UPDATE user_mode_stats
+           SET wins = wins + $1,
+               losses = losses + $2,
+               shots_fired = shots_fired + $3,
+               shots_taken = shots_taken + $4,
+               items_used = items_used + $5
+           WHERE user_id = $6 AND mode = $7`,
+          [
+            userParticipant.rank === 1 ? 1 : 0,
+            userParticipant.rank === 1 ? 0 : 1,
+            toOptionalInt(userParticipant.shotsFired, 0),
+            toOptionalInt(userParticipant.shotsTaken, 0),
+            toOptionalInt(userParticipant.itemsUsed, 0),
+            userId,
+            'solo'
           ]
         );
       }
@@ -270,6 +291,7 @@ export default async function gameRoutes(fastify) {
       rank: toOptionalInt(participant?.rank),
       finalHp: toOptionalInt(participant?.finalHp),
       shotsFired: toOptionalInt(participant?.shotsFired, 0),
+      shotsTaken: toOptionalInt(participant?.shotsTaken, 0),
       itemsUsed: toOptionalInt(participant?.itemsUsed, 0),
       isBot: Boolean(participant?.isBot)
     }));
@@ -311,31 +333,42 @@ export default async function gameRoutes(fastify) {
 
       for (const participant of normalizedParticipants) {
         await ensureUserStats(client, participant.userId);
+        await ensureUserModeStats(client, participant.userId, mode);
         const winIncrement = participant.rank === 1 ? 1 : 0;
         const lossIncrement = participant.rank === 1 ? 0 : 1;
-        const wins1v1v1Increment = mode === '1v1v1' && participant.rank === 1 ? 1 : 0;
-        const top2Increment = mode === '1v1v1' && participant.rank <= 2 ? 1 : 0;
-        const eloDelta = getEloDelta(mode, participant.rank);
 
         await client.query(
           `UPDATE user_stats
-           SET total_wins_online = total_wins_online + $1,
-               total_losses_online = total_losses_online + $2,
-               total_shots_fired = total_shots_fired + $3,
-               items_used_count = items_used_count + $4,
-               wins_1v1v1 = wins_1v1v1 + $5,
-               top2_1v1v1 = top2_1v1v1 + $6,
-               elo_rating = GREATEST(0, elo_rating + $7)
-           WHERE user_id = $8`,
+           SET total_shots_fired = total_shots_fired + $1,
+               total_shots_taken = total_shots_taken + $2,
+               total_items_used = total_items_used + $3,
+               total_games_played = total_games_played + 1
+           WHERE user_id = $4`,
+          [
+            participant.shotsFired,
+            participant.shotsTaken,
+            participant.itemsUsed,
+            participant.userId
+          ]
+        );
+        await client.query(
+          `UPDATE user_mode_stats
+           SET wins = wins + $1,
+               losses = losses + $2,
+               top2_finishes = top2_finishes + $3,
+               shots_fired = shots_fired + $4,
+               shots_taken = shots_taken + $5,
+               items_used = items_used + $6
+           WHERE user_id = $7 AND mode = $8`,
           [
             winIncrement,
             lossIncrement,
+            mode === '1v1v1' && participant.rank <= 2 ? 1 : 0,
             participant.shotsFired,
+            participant.shotsTaken,
             participant.itemsUsed,
-            wins1v1v1Increment,
-            top2Increment,
-            eloDelta,
-            participant.userId
+            participant.userId,
+            mode
           ]
         );
       }
@@ -429,11 +462,22 @@ export default async function gameRoutes(fastify) {
     const client = await pool.connect();
     try {
       await ensureUserStats(client, userId);
+      for (const mode of MODE_STAT_KEYS) {
+        await ensureUserModeStats(client, userId, mode);
+      }
       const statsResult = await client.query(
         'SELECT * FROM user_stats WHERE user_id = $1 LIMIT 1',
         [userId]
       );
-      return reply.send({ stats: statsResult.rows[0] });
+      const modeStatsResult = await client.query(
+        'SELECT * FROM user_mode_stats WHERE user_id = $1',
+        [userId]
+      );
+      const modeStats = modeStatsResult.rows.reduce((acc, row) => {
+        acc[row.mode] = row;
+        return acc;
+      }, {});
+      return reply.send({ stats: { ...statsResult.rows[0], modes: modeStats } });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors de la récupération des stats.' });
@@ -451,6 +495,9 @@ export default async function gameRoutes(fastify) {
     const client = await pool.connect();
     try {
       await ensureUserStats(client, userId);
+      for (const mode of MODE_STAT_KEYS) {
+        await ensureUserModeStats(client, userId, mode);
+      }
       const statsResult = await client.query(
         'SELECT * FROM user_stats WHERE user_id = $1 LIMIT 1',
         [userId]
@@ -458,7 +505,15 @@ export default async function gameRoutes(fastify) {
       if (!statsResult.rows[0]) {
         return reply.code(404).send({ error: 'Stats utilisateur introuvables.' });
       }
-      return reply.send({ stats: statsResult.rows[0] });
+      const modeStatsResult = await client.query(
+        'SELECT * FROM user_mode_stats WHERE user_id = $1',
+        [userId]
+      );
+      const modeStats = modeStatsResult.rows.reduce((acc, row) => {
+        acc[row.mode] = row;
+        return acc;
+      }, {});
+      return reply.send({ stats: { ...statsResult.rows[0], modes: modeStats } });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors de la récupération des stats.' });
