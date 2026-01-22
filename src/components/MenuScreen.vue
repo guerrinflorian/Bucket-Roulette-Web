@@ -334,48 +334,110 @@
       </footer>
     </div>
 
-    <q-dialog v-model="showDifficultyModal">
+    <q-dialog v-model="showDifficultyModal" persistent>
       <q-card class="difficulty-modal-card">
         <q-card-section class="difficulty-modal-header">
-          <h2>Choisir la difficulté</h2>
+          <div class="modal-icon-wrapper">
+            <q-icon name="psychology" size="48px" class="modal-icon" />
+          </div>
+          <h2 class="modal-title">Choisir la difficulté</h2>
+          <p class="modal-subtitle">Testez vos compétences contre l'IA</p>
         </q-card-section>
-        <q-card-section>
+
+        <q-separator dark class="q-my-md" />
+
+        <q-card-section class="difficulty-content">
           <div class="difficulty-grid">
-            <button
+            <q-card
               v-for="level in botLevels"
               :key="level.id"
-              class="difficulty-card"
-              :class="{ selected: botDifficulty === level.id }"
+              class="difficulty-option"
+              :class="{ 
+                'difficulty-selected': botDifficulty === level.id,
+                'difficulty-locked': isLevelLocked(level),
+                [`difficulty-level-${level.id}`]: true
+              }"
               @click="selectBotDifficulty(level.id)"
             >
-              <div class="difficulty-stars">{{ level.stars }}</div>
-              <div class="difficulty-name">{{ level.name }}</div>
-              <div class="difficulty-tag">{{ level.tag }}</div>
-              <div class="difficulty-status" v-if="authStore.isAuthenticated">
-                <q-badge
-                  v-if="soloProgressStatus(level).label"
-                  :color="soloProgressStatus(level).color"
-                  class="status-badge"
-                  rounded
+              <q-card-section class="difficulty-option-content">
+                <div class="difficulty-stars">{{ level.stars }}</div>
+                <div class="difficulty-name">{{ level.name }}</div>
+                <q-chip 
+                  :color="getDifficultyColor(level.id)" 
+                  text-color="white" 
+                  size="sm"
+                  class="difficulty-chip"
                 >
-                  <q-icon :name="soloProgressStatus(level).icon" size="14px" class="q-mr-xs" />
-                  {{ soloProgressStatus(level).label }}
-                </q-badge>
-              </div>
-            </button>
+                  {{ level.tag }}
+                </q-chip>
+                
+                <div class="difficulty-status" v-if="authStore.isAuthenticated">
+                  <q-badge
+                    v-if="!isLevelLocked(level) && soloProgressStatus(level).label"
+                    :color="soloProgressStatus(level).color"
+                    class="status-badge"
+                    rounded
+                  >
+                    <q-icon :name="soloProgressStatus(level).icon" size="12px" class="q-mr-xs" />
+                    {{ soloProgressStatus(level).label }}
+                  </q-badge>
+                  <q-badge
+                    v-else-if="isLevelLocked(level)"
+                    color="grey-8"
+                    class="status-badge"
+                    rounded
+                  >
+                    <q-icon name="lock" size="12px" class="q-mr-xs" />
+                    Verrouillé
+                  </q-badge>
+                </div>
+
+                <div class="difficulty-check" v-if="botDifficulty === level.id && !isLevelLocked(level)">
+                  <q-icon name="check_circle" size="24px" color="positive" />
+                </div>
+
+                <div class="difficulty-lock-overlay" v-if="isLevelLocked(level)">
+                  <q-icon name="lock" size="48px" color="grey-5" />
+                </div>
+              </q-card-section>
+
+              <q-inner-loading :showing="false" />
+            </q-card>
           </div>
-          <div v-if="!authStore.isAuthenticated" class="difficulty-hint">
-            Connectez-vous pour suivre votre progression contre les bots.
-          </div>
+
+          <q-banner v-if="!authStore.isAuthenticated" rounded class="auth-hint-banner q-mt-md">
+            <template v-slot:avatar>
+              <q-icon name="info" color="blue-4" />
+            </template>
+            Connectez-vous pour débloquer tous les niveaux et suivre votre progression.
+          </q-banner>
+          <q-banner v-else rounded class="progression-hint-banner q-mt-md">
+            <template v-slot:avatar>
+              <q-icon name="emoji_events" color="amber-6" />
+            </template>
+            Battez chaque niveau pour débloquer le suivant !
+          </q-banner>
         </q-card-section>
-        <q-card-actions align="center">
-          <q-btn
-            unelevated
-            color="positive"
-            label="Lancer la partie"
-            class="start-bot-btn"
+
+        <q-separator dark class="q-my-md" />
+
+        <q-card-actions class="difficulty-actions q-px-lg q-pb-lg q-pt-md">
+          <button
+            type="button"
+            class="px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-gray-700 hover:bg-gray-600 text-gray-200 hover:text-white"
+            @click="showDifficultyModal = false"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            class="px-8 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2"
             @click="startBot"
-          />
+          >
+            <span>Lancer la partie</span>
+            <q-icon name="play_arrow" size="18px" />
+            <q-tooltip>Commencer le duel contre {{ botLevels.find(l => l.id === botDifficulty)?.name }}</q-tooltip>
+          </button>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -465,6 +527,16 @@ const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 
 const leaderboardUserId = computed(() => authStore.user?.id || '');
 
+const getDifficultyColor = (levelId) => {
+  const colors = {
+    1: 'green-6',
+    2: 'blue-6',
+    3: 'orange-6',
+    4: 'red-6'
+  };
+  return colors[levelId] || 'grey-6';
+};
+
 const lobbySlots = computed(() => {
   const slots = netStore.roomPlayers.map((player) => ({
     ...player,
@@ -489,8 +561,25 @@ const soloProgressMap = computed(
   () => new Map(soloProgress.value.map((entry) => [entry.difficulty, entry]))
 );
 
+const isLevelLocked = (level) => {
+  if (level.id === 1) return false; // Level 1 always unlocked
+  if (!authStore.isAuthenticated) return true; // Lock all except 1 if not authenticated
+  
+  // Find previous level
+  const prevLevel = botLevels.find(l => l.id === level.id - 1);
+  if (!prevLevel) return false;
+  
+  const entry = soloProgressMap.value.get(prevLevel.key);
+  
+  // Locked if no entry (never played) OR is_defeated is true (player lost last time)
+  if (!entry) return true;
+  return entry.is_defeated;
+};
 
 const selectBotDifficulty = (levelId) => {
+  const level = botLevels.find(l => l.id === levelId);
+  if (level && isLevelLocked(level)) return; // Prevent selection if locked
+  
   botDifficulty.value = levelId;
   gameStore.setBotDifficulty(levelId);
 };
@@ -1516,78 +1605,410 @@ const cleanupMenuModel = () => {
 
 /* Difficulty modal */
 .difficulty-modal-card {
-  width: min(90vw, 360px);
-  border-radius: 20px;
-  padding: 8px 4px 16px;
+  width: min(95vw, 600px);
+  max-width: 600px;
+  max-height: 90vh;
+  border-radius: 24px;
   background: linear-gradient(145deg, rgba(15, 15, 20, 0.98), rgba(8, 8, 12, 0.98));
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(245, 158, 11, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .difficulty-modal-header {
   text-align: center;
-  padding: 16px 18px 8px;
+  padding: 24px 24px 16px;
+  flex-shrink: 0;
 }
 
-.difficulty-modal-header h2 {
-  margin: 0;
-  font-size: 14px;
+.modal-icon-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.modal-icon {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.5));
+  animation: pulse-icon 2s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.modal-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #fef3c7;
+  letter-spacing: 0.1em;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.modal-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #a1a1aa;
+  letter-spacing: 0.05em;
+}
+
+.difficulty-content {
+  padding: 16px 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.difficulty-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.difficulty-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.difficulty-content::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+}
+
+.difficulty-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.5);
 }
 
 .difficulty-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.difficulty-card {
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: #fef3c7;
+.difficulty-option {
+  position: relative;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(30, 30, 40, 0.6), rgba(20, 20, 28, 0.6));
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.difficulty-option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.05));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.difficulty-option:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.2);
+}
+
+.difficulty-option:hover::before {
+  opacity: 1;
+}
+
+.difficulty-selected {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.25));
+  border-color: rgba(245, 158, 11, 0.8) !important;
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: scale(1.03);
+}
+
+.difficulty-selected::before {
+  opacity: 1;
+}
+
+.difficulty-locked {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.difficulty-locked:hover {
+  transform: none !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+}
+
+.difficulty-locked::before {
+  opacity: 0 !important;
+}
+
+.difficulty-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.difficulty-option-content {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
   align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
   text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.difficulty-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
-}
-
-.difficulty-card.selected {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(180, 83, 9, 0.2));
-  border-color: rgba(245, 158, 11, 0.6);
-  box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
 }
 
 .difficulty-stars {
-  font-size: 13px;
-  color: #fbbf24;
+  font-size: 18px;
   letter-spacing: 0.1em;
+  filter: drop-shadow(0 2px 8px rgba(251, 191, 36, 0.5));
 }
 
 .difficulty-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+  color: #fef3c7;
+  letter-spacing: 0.05em;
 }
 
-.difficulty-tag {
+.difficulty-chip {
+  font-weight: 600;
   font-size: 10px;
-  color: #a1a1aa;
 }
 
-.start-bot-btn {
-  width: 100%;
-  font-weight: 700;
+.difficulty-status {
+  margin-top: 4px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-badge {
+  font-size: 9px;
+  padding: 3px 6px;
+}
+
+.difficulty-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  animation: check-appear 0.3s ease-out;
+}
+
+@keyframes check-appear {
+  from {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.auth-hint-banner {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  font-size: 12px;
+}
+
+.progression-hint-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fef3c7;
+  font-size: 12px;
+}
+
+.difficulty-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.difficulty-actions button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.difficulty-actions button:focus-visible {
+  outline: 2px solid rgba(245, 158, 11, 0.5);
+  outline-offset: 2px;
+}
+
+/* Level-specific accent colors */
+.difficulty-level-1:hover {
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.2);
+}
+
+.difficulty-level-2:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+}
+
+.difficulty-level-3:hover {
+  border-color: rgba(249, 115, 22, 0.5);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.2);
+}
+
+.difficulty-level-4:hover {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.2);
+}
+
+/* Tablet and larger */
+@media (min-width: 600px) {
+  .difficulty-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .difficulty-option-content {
+    padding: 18px 12px;
+  }
+
+  .modal-title {
+    font-size: 24px;
+  }
+
+  .modal-subtitle {
+    font-size: 14px;
+  }
+
+  .difficulty-stars {
+    font-size: 20px;
+  }
+
+  .difficulty-name {
+    font-size: 14px;
+  }
+
+  .difficulty-chip {
+    font-size: 11px;
+  }
+
+  .start-bot-btn {
+    min-width: 180px;
+    flex: 0;
+  }
+}
+
+/* Mobile optimization */
+@media (max-width: 599px) {
+  .difficulty-modal-card {
+    width: 96vw;
+    max-height: 85vh;
+    border-radius: 20px;
+  }
+
+  .difficulty-modal-header {
+    padding: 20px 16px 12px;
+  }
+
+  .modal-icon {
+    font-size: 40px !important;
+  }
+
+  .modal-title {
+    font-size: 18px;
+  }
+
+  .modal-subtitle {
+    font-size: 12px;
+  }
+
+  .difficulty-content {
+    padding: 12px 16px;
+  }
+
+  .difficulty-grid {
+    gap: 10px;
+  }
+
+  .difficulty-option-content {
+    padding: 14px 8px;
+    gap: 5px;
+  }
+
+  .difficulty-stars {
+    font-size: 16px;
+  }
+
+  .difficulty-name {
+    font-size: 12px;
+  }
+
+  .difficulty-chip {
+    font-size: 9px;
+  }
+
+  .status-badge {
+    font-size: 8px;
+    padding: 2px 5px;
+  }
+
+  .difficulty-check {
+    top: 4px;
+    right: 4px;
+  }
+
+  .difficulty-check .q-icon {
+    font-size: 20px !important;
+  }
+
+  .difficulty-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .difficulty-actions button {
+    width: 100%;
+  }
+
+  .auth-hint-banner {
+    font-size: 11px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 380px) {
+  .difficulty-modal-card {
+    max-height: 80vh;
+  }
+
+  .difficulty-option-content {
+    padding: 12px 6px;
+  }
+
+  .difficulty-name {
+    font-size: 11px;
+  }
 }
 
 /* Menu buttons */

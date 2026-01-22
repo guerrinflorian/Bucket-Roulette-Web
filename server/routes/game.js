@@ -90,7 +90,7 @@ const normalizeParticipants = ({
 const insertParticipants = async (client, matchId, participants) => {
   const values = [];
   const placeholders = participants.map((participant, index) => {
-    const baseIndex = index * 8;
+    const baseIndex = index * 9;
     values.push(
       randomUUID(),
       matchId,
@@ -98,10 +98,11 @@ const insertParticipants = async (client, matchId, participants) => {
       participant.rank,
       participant.finalHp,
       participant.shotsFired,
+      participant.shotsTaken,
       participant.itemsUsed,
       participant.isBot
     );
-    return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8})`;
+    return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9})`;
   });
 
   if (placeholders.length === 0) {
@@ -109,9 +110,55 @@ const insertParticipants = async (client, matchId, participants) => {
   }
 
   await client.query(
-    `INSERT INTO match_participants (id, match_id, user_id, rank, final_hp, shots_fired, items_used, is_bot)
+    `INSERT INTO match_participants (id, match_id, user_id, rank, final_hp, shots_fired, shots_taken, items_used, is_bot)
      VALUES ${placeholders.join(', ')}`,
     values
+  );
+};
+
+const updateWinStreak = async (client, userId, isWin) => {
+  if (!isWin) return;
+
+  // Find the date of the last non-win (rank > 1)
+  const lastLossResult = await client.query(
+    `SELECT mh.created_at
+     FROM match_history mh
+     JOIN match_participants mp ON mp.match_id = mh.id
+     WHERE mp.user_id = $1 AND mp.rank > 1
+     ORDER BY mh.created_at DESC
+     LIMIT 1`,
+    [userId]
+  );
+
+  const lastLossDate = lastLossResult.rows[0]?.created_at || null;
+
+  // Count wins since the last loss
+  const streakResult = await client.query(
+    `SELECT COUNT(*) as streak
+     FROM match_history mh
+     JOIN match_participants mp ON mp.match_id = mh.id
+     WHERE mp.user_id = $1 AND mp.rank = 1
+       AND ($2::timestamptz IS NULL OR mh.created_at > $2::timestamptz)`,
+    [userId, lastLossDate]
+  );
+
+  // Current match (which we just inserted) + previous consecutive wins
+  // Wait, if we call this AFTER inserting the current match (which is a win),
+  // then the query above ALREADY includes the current match because created_at > lastLossDate.
+  // We need to valid verify transaction visibility. We are in the same transaction.
+  // However, match_history uses DEFAULT current_timestamp for created_at if not provided?
+  // No, the schema says created_at (timestamp with time zone). The INSERT query does NOT provide it, so it uses DEFAULT or NULL.
+  // Wait, the INSERT query in routes/game.js does NOT list created_at. So it defaults to NOW().
+  // So the current match IS in the table.
+  // So streakResult includes the current match.
+
+  const currentStreak = parseInt(streakResult.rows[0]?.streak || 0, 10);
+
+  await client.query(
+    `UPDATE user_stats
+     SET highest_win_streak = GREATEST(highest_win_streak, $1)
+     WHERE user_id = $2`,
+    [currentStreak, userId]
   );
 };
 
@@ -141,15 +188,15 @@ export default async function gameRoutes(fastify) {
       participants: Array.isArray(participants) && participants.length > 0
         ? participants
         : [
-            {
-              userId,
-              rank: winnerId && winnerId !== userId ? 2 : 1,
-              finalHp,
-              shotsFired,
-              itemsUsed,
-              isBot: false
-            }
-          ],
+          {
+            userId,
+            rank: winnerId && winnerId !== userId ? 2 : 1,
+            finalHp,
+            shotsFired,
+            itemsUsed,
+            isBot: false
+          }
+        ],
       fallbackUserId: userId,
       fallbackRank: 1
     }).map((participant) => ({
@@ -237,6 +284,7 @@ export default async function gameRoutes(fastify) {
             'solo'
           ]
         );
+        await updateWinStreak(client, userId, userParticipant.rank === 1);
       }
 
       if (normalizedDifficulty) {
@@ -372,6 +420,7 @@ export default async function gameRoutes(fastify) {
             mode
           ]
         );
+        await updateWinStreak(client, participant.userId, participant.rank === 1);
       }
 
       await client.query('COMMIT');

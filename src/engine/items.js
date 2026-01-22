@@ -5,11 +5,11 @@ export const ITEM_DEFS = [
   {
     id: 'heart',
     name: '+1 Coeur',
-    description: 'Soigne 1 PV (max 5).',
-    canUse: (state, actorKey) => state.players[actorKey].hp < MAX_HP,
+    description: 'Soigne 1 PV (max PV actuel).',
+    canUse: (state, actorKey) => state.players[actorKey].hp < state.players[actorKey].maxHp,
     apply: (state, actorKey) => {
       const actor = state.players[actorKey];
-      actor.hp = Math.min(actor.hp + 1, MAX_HP);
+      actor.hp = Math.min(actor.hp + 1, actor.maxHp);
       return { message: `${actor.name} regagne 1 PV.` };
     }
   },
@@ -93,21 +93,21 @@ export const ITEM_DEFS = [
       const realIndices = remaining
         .map((round, idx) => (round === 'real' ? idx : null))
         .filter((idx) => idx !== null);
-  
+
       if (!realIndices.length) {
         return { message: 'Aucune balle réelle détectée.' };
       }
-  
+
       const picked = realIndices[Math.floor(Math.random() * realIndices.length)];
       const position = picked + 1;
-      
+
       // détermine le suffixe (ère pour 1, ème pour le reste)
       const suffix = position === 1 ? 'ère' : 'ème';
-      
+
       state.players[actorKey].scannerHint = position;
-      
-      return { 
-        message: `📡 Scanner : la ${position}${suffix} balle est réelle.` 
+
+      return {
+        message: `📡 Scanner : la ${position}${suffix} balle est réelle.`
       };
     }
   }

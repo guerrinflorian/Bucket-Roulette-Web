@@ -15,6 +15,11 @@ app.use(createPinia());
 app.use(router);
 app.use(Quasar, {
   plugins: { Notify },
+  config: {
+    notify: {
+      position: 'top'
+    }
+  },
   lang: quasarLang,
   iconSet: quasarIconSet
 });

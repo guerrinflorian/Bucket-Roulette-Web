@@ -87,7 +87,7 @@ const ratioValue = (wins, losses) => {
   if (losses > 0) {
     return (wins / losses).toFixed(2);
   }
-  return wins > 0 ? '∞' : '0';
+  return wins > 0 ? wins.toFixed(2) : '0.00';
 };
 
 const top2Count = (entry) => Math.max(0, (entry.top2_finishes ?? 0) - (entry.wins ?? 0));
@@ -197,13 +197,35 @@ const tableClass = computed(() => ({
 }
 
 @media (max-width: 700px) {
+  .leaderboard-table-inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .leaderboard-row {
-    font-size: 12px;
-    padding: 8px 10px;
+    font-size: 11px;
+    padding: 8px 8px;
+    grid-template-columns: 50px 1.2fr repeat(3, minmax(70px, 0.9fr));
+    min-width: 480px;
+    gap: 6px;
+  }
+
+  .leaderboard-table-inner.is-trio .leaderboard-row {
+    grid-template-columns: 50px 1.2fr repeat(5, minmax(70px, 0.9fr));
+    min-width: 600px;
   }
 
   .leaderboard-header {
-    font-size: 10px;
+    font-size: 9px;
+    letter-spacing: 0.4px;
+  }
+
+  .cell.rank {
+    font-size: 12px;
+  }
+
+  .cell.name {
+    font-size: 12px;
   }
 }
 </style>

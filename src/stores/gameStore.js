@@ -37,6 +37,7 @@ export const useGameStore = defineStore('game', {
         maxHp: MAX_HP,
         items: [],
         shotsFired: 0,
+        shotsTaken: 0,
         itemsUsed: 0,
         doubleDamageNextShot: false,
         peekedNext: null,
@@ -53,6 +54,7 @@ export const useGameStore = defineStore('game', {
         maxHp: MAX_HP,
         items: [],
         shotsFired: 0,
+        shotsTaken: 0,
         itemsUsed: 0,
         doubleDamageNextShot: false,
         peekedNext: null,
@@ -69,6 +71,7 @@ export const useGameStore = defineStore('game', {
         maxHp: MAX_HP,
         items: [],
         shotsFired: 0,
+        shotsTaken: 0,
         itemsUsed: 0,
         doubleDamageNextShot: false,
         peekedNext: null,
@@ -127,6 +130,19 @@ export const useGameStore = defineStore('game', {
       this.lastReloadAt = Date.now();
       const playerKeys = options.playerKeys ?? DEFAULT_TURN_ORDER;
       this.turnOrder = [...playerKeys];
+
+      // Determine HP settings based on mode and difficulty
+      let playerMaxHp = MAX_HP;
+      let botMaxHp = MAX_HP;
+
+      if (mode === 'bot') {
+        const level = getBotLevel(this.botDifficulty);
+        if (level.hp) {
+          playerMaxHp = level.hp.player;
+          botMaxHp = level.hp.bot;
+        }
+      }
+
       PLAYER_KEYS.forEach((key) => {
         const isActive = playerKeys.includes(key);
         const player = this.players[key];
@@ -135,10 +151,21 @@ export const useGameStore = defineStore('game', {
         player.socketId = null;
         player.userId = null;
         player.name = key === 'player' ? 'Vous' : key === 'enemy2' ? 'Adversaire 2' : 'Adversaire';
-        player.hp = isActive ? MAX_HP : 0;
-        player.maxHp = MAX_HP;
+
+        // Set HP based on role (player vs enemy)
+        const roleMaxHp = key === 'player' ? playerMaxHp : botMaxHp;
+
+        // In multiplayer, everyone gets standard MAX_HP (which is playerMaxHp default)
+        // unless we want custom multiplayer rules later.
+        // But for now, if not bot mode, playerMaxHp is MAX_HP anyway.
+        // Wait, if mode != bot, botMaxHp is MAX_HP. So logic works for both.
+
+        player.maxHp = roleMaxHp;
+        player.hp = isActive ? roleMaxHp : 0;
+
         player.items = [];
         player.shotsFired = 0;
+        player.shotsTaken = 0;
         player.itemsUsed = 0;
         player.doubleDamageNextShot = false;
         player.peekedNext = null;
@@ -419,9 +446,9 @@ export const useGameStore = defineStore('game', {
         const actor = this.players[actorKey];
         if (!actor) return;
 
-      if (isEmpty(this.barrel)) {
-        this.reloadBarrel({ notify: true });
-      }
+        if (isEmpty(this.barrel)) {
+          this.reloadBarrel({ notify: true });
+        }
 
         this.phase = PHASES.ANIMATING;
         let targetKey = target || actorKey;
@@ -456,6 +483,7 @@ export const useGameStore = defineStore('game', {
 
         if (damage > 0) {
           this.players[targetKey].hp = Math.max(0, this.players[targetKey].hp - damage);
+          this.players[targetKey].shotsTaken = (this.players[targetKey].shotsTaken || 0) + 1;
         }
 
         this.lastAction = {
@@ -465,7 +493,9 @@ export const useGameStore = defineStore('game', {
           shot,
           damage
         };
-        actor.shotsFired += 1;
+        if (damage > 0) {
+          actor.shotsFired += 1;
+        }
 
         this.lastResult = {
           text: isReal ? 'BALLE RÉELLE !' : 'À BLANC...'
@@ -538,7 +568,7 @@ export const useGameStore = defineStore('game', {
       if (this.mode !== 'bot' || this.botActionQueued) return;
       this.botActionQueued = true;
       let shouldRepeat = false;
-      
+
       try {
         // Safety check: if phase is ANIMATING, wait and check again
         if (this.phase === PHASES.ANIMATING) {
@@ -548,7 +578,7 @@ export const useGameStore = defineStore('game', {
             this.setTurnByKey('enemy');
           }
         }
-        
+
         if (this.currentTurn !== 'enemy') return;
 
         // Delay so player can see it's enemy turn
@@ -557,25 +587,25 @@ export const useGameStore = defineStore('game', {
         const timeSinceReload = this.lastReloadAt ? Date.now() - this.lastReloadAt : reloadPauseMs;
         const reloadDelay = timeSinceReload < reloadPauseMs ? reloadPauseMs - timeSinceReload : 0;
         await sleep(baseDelay + reloadDelay);
-        
+
         // Double check phase hasn't changed
         if (this.currentTurn !== 'enemy') return;
-        
+
         const decision = decideBotAction(this.$state);
-        
+
         if (decision.type === 'item') {
           // Signal item use to UI
           this.pendingBotItem = decision.itemId;
           await sleep(100);
           const targetKey = decision.itemId === 'handcuffs' ? 'player' : null;
           await this.useItem(decision.itemId, 'enemy', targetKey);
-          
+
           // Clear pending item
           this.pendingBotItem = null;
-          
+
           // Delay after item use
           await sleep(800);
-          
+
           // Check if bot should act again
           if (this.currentTurn === 'enemy') {
             shouldRepeat = true;
@@ -585,7 +615,7 @@ export const useGameStore = defineStore('game', {
           const targetText = decision.target === 'self' ? 'sur lui-même' : 'sur vous';
           this.lastResult = { text: `💀 L'ennemi tire ${targetText}...` };
           await sleep(800);
-          
+
           // Set pending action for UI to process with animation
           this.pendingBotAction = {
             type: 'shoot',
@@ -600,7 +630,7 @@ export const useGameStore = defineStore('game', {
         this.queueBotAction();
       }
     },
-    
+
     clearPendingBotAction() {
       this.pendingBotAction = null;
     }

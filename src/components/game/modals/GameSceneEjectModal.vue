@@ -9,6 +9,9 @@
       <q-card-section class="text-center">
         <div class="eject-modal-icon">⏏️</div>
         <div class="eject-modal-title">Cartouche éjectée</div>
+        <div class="eject-modal-bullet">
+          {{ isReal ? 'BALLE RÉELLE' : 'BALLE BLANCHE' }}
+        </div>
         <div class="eject-modal-result">
           {{ isReal ? '🔴 RÉELLE' : '⚪ BLANCHE' }}
         </div>
@@ -57,6 +60,12 @@ const emit = defineEmits(['update:modelValue']);
 .eject-modal-icon {
   font-size: 40px;
   margin-bottom: 8px;
+}
+
+.eject-modal-bullet {
+  font-size: 14px;
+  color: #d1d5db;
+  margin-bottom: 6px;
 }
 
 .eject-modal-title {

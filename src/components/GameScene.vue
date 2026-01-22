@@ -224,7 +224,8 @@ const notifyScannerHint = (scannerHint) => {
     timeout: 4000,
     color: 'blue-6',
     textColor: 'white',
-    icon: 'sensors'
+    icon: 'sensors',
+    position: 'top'
   });
 };
 

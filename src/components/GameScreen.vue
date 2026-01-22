@@ -246,6 +246,7 @@ const buildParticipantsPayload = (entries) =>
     rank,
     finalHp: player.hp,
     shotsFired: player.shotsFired ?? 0,
+    shotsTaken: player.shotsTaken ?? 0,
     itemsUsed: player.itemsUsed ?? 0,
     isBot: !isOnlineMode.value && key !== 'player'
   }));

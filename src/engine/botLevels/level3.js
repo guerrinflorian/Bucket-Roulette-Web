@@ -4,6 +4,10 @@ export const botLevel3 = {
   name: '⭐⭐⭐ Bot Tsar',
   label: 'Bot Tsar',
   stars: 3,
+  hp: {
+    player: 5,
+    bot: 5
+  },
   behavior: {
     usesProbability: true,
     randomTarget: false,

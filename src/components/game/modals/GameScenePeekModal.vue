@@ -6,7 +6,8 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card class="peek-modal-card" :class="isReal ? 'peek-modal-real' : 'peek-modal-blank'">
-      <q-card-section class="text-center">
+      <q-card-section class="peek-modal-content">
+        <div class="peek-modal-glow"></div>
         <div class="peek-modal-icon">🔍</div>
         <div class="peek-modal-title">Prochaine balle</div>
         <div class="peek-modal-result">
@@ -37,72 +38,126 @@ const emit = defineEmits(['update:modelValue']);
 
 <style scoped>
 .peek-modal-card {
-  border-radius: 20px;
-  padding: 24px 32px;
-  width: 240px;
-  max-width: 240px;
-  border: 2px solid;
-  backdrop-filter: blur(16px);
+  position: relative;
+  border-radius: 24px;
+  padding: 0;
+  width: 280px;
+  max-width: 280px;
+  background: linear-gradient(145deg, rgba(15, 15, 20, 0.97), rgba(8, 8, 12, 0.99));
+  border: 1px solid;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.peek-modal-content {
+  position: relative;
+  text-align: center;
+  padding: 28px 24px;
+  z-index: 1;
+}
+
+.peek-modal-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  pointer-events: none;
+  border-radius: 24px;
+  transition: opacity 0.3s ease;
 }
 
 .peek-modal-real {
-  background: linear-gradient(145deg, rgba(239, 68, 68, 0.15), rgba(28, 5, 5, 0.95));
-  border-color: rgba(239, 68, 68, 0.6);
-  box-shadow: 0 0 50px rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(239, 68, 68, 0.2);
+}
+
+.peek-modal-real .peek-modal-glow {
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.3) 0%, transparent 70%);
 }
 
 .peek-modal-blank {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(15, 15, 20, 0.95));
-  border-color: rgba(168, 162, 158, 0.4);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(161, 161, 170, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(161, 161, 170, 0.1);
+}
+
+.peek-modal-blank .peek-modal-glow {
+  background: radial-gradient(ellipse at center, rgba(161, 161, 170, 0.3) 0%, transparent 70%);
 }
 
 .peek-modal-icon {
-  font-size: 40px;
-  margin-bottom: 8px;
+  font-size: 48px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  animation: peek-rotate 3s ease-in-out infinite;
+}
+
+@keyframes peek-rotate {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-15deg);
+  }
+  75% {
+    transform: rotate(15deg);
+  }
 }
 
 .peek-modal-title {
-  font-size: 11px;
-  color: #a1a1aa;
+  font-size: 12px;
+  color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
 }
 
 .peek-modal-result {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 .peek-modal-real .peek-modal-result {
   color: #fca5a5;
-  text-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .peek-modal-blank .peek-modal-result {
-  color: #f4f4f5;
-  text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  color: #e5e7eb;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .peek-modal-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: #71717a;
   font-style: italic;
+  line-height: 1.4;
 }
 
 @media (max-width: 420px) {
   .peek-modal-card {
     min-width: 0;
-    width: min(90vw, 320px);
-    max-width: 90vw;
-    padding: 16px 18px;
+    width: min(92vw, 320px);
+    max-width: 92vw;
+  }
+
+  .peek-modal-content {
+    padding: 24px 20px;
+  }
+
+  .peek-modal-icon {
+    font-size: 42px;
   }
 
   .peek-modal-result {
-    font-size: 16px;
+    font-size: 20px;
+  }
+
+  .peek-modal-hint {
+    font-size: 11px;
   }
 }
 </style>

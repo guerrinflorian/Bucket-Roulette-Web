@@ -144,6 +144,11 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (normalizedUserId && room.players.some(p => p.userId === normalizedUserId)) {
+      socket.emit('room:error', { message: 'Vous êtes déjà présent dans cette room avec un autre appareil.' });
+      return;
+    }
+
     room.players.push({ id: socket.id, name: playerName, userId: normalizedUserId });
     socket.join(normalizedRoomId);
     socket.roomId = normalizedRoomId;
@@ -189,10 +194,10 @@ io.on('connection', (socket) => {
     room.gameStarted = true;
     console.log(`🎮 Game started in room ${roomId} by host ${socket.id}`);
     console.log(`📤 Broadcasting game:state to room ${roomId} (${room.players.length} players)`);
-    
+
     // Send state to all players in the room
     io.to(roomId).emit('game:state', gameState);
-    
+
     console.log(`✅ game:state sent to room ${roomId}`);
   });
 
@@ -207,10 +212,10 @@ io.on('connection', (socket) => {
     console.log(`🎯 Action in room ${roomId}:`, action.type);
 
     // Broadcast action to all players in room (including sender for confirmation)
-    io.to(roomId).emit('game:action', { 
-      action, 
+    io.to(roomId).emit('game:action', {
+      action,
       playerId: socket.id,
-      isHost: socket.isHost 
+      isHost: socket.isHost
     });
   });
 
@@ -220,7 +225,7 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
 
     room.gameState = gameState;
-    
+
     // Check if game ended
     if (gameState.winner) {
       room.gameEnded = true;
@@ -238,7 +243,7 @@ io.on('connection', (socket) => {
 
     room.gameEnded = true;
     console.log(`🏁 Game ended in room ${roomId}`);
-    
+
     // Notify all players
     io.to(roomId).emit('room:game-ended', { roomId });
   });
@@ -304,8 +309,8 @@ io.on('connection', (socket) => {
           if (room.gameStarted && !room.gameEnded) {
             // Game in progress, end it
             room.gameEnded = true;
-            io.to(socket.roomId).emit('room:host-left', { 
-              message: "L'hôte a quitté la partie" 
+            io.to(socket.roomId).emit('room:host-left', {
+              message: "L'hôte a quitté la partie"
             });
             console.log(`🚪 Host left during game in room ${socket.roomId}`);
           } else if (!room.gameStarted) {
@@ -342,7 +347,7 @@ io.on('connection', (socket) => {
       const room = rooms.get(socket.roomId);
       if (room) {
         const wasHost = socket.isHost;
-        
+
         // Notify other player
         socket.to(socket.roomId).emit('room:player-left', {
           playerId: socket.id,
@@ -376,7 +381,7 @@ io.on('connection', (socket) => {
           }
         }
       }
-      
+
       socket.roomId = null;
       socket.isHost = false;
     }

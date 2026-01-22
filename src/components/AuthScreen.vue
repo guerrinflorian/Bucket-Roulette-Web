@@ -257,7 +257,7 @@ const initGoogle = async () => {
   if (!clientId) {
     const message = 'Google non configuré sur le client.';
     authStore.setError(message);
-    Notify.create({ type: 'negative', message, icon: 'warning' });
+    Notify.create({ type: 'negative', message, icon: 'warning', position: 'top' });
     return;
   }
   try {
@@ -279,7 +279,7 @@ const initGoogle = async () => {
   } catch (error) {
     const message = 'Impossible de charger Google.';
     authStore.setError(message);
-    Notify.create({ type: 'negative', message, icon: 'cloud_off' });
+    Notify.create({ type: 'negative', message, icon: 'cloud_off', position: 'top' });
   }
 };
 
@@ -310,7 +310,7 @@ const notifyAuthState = (status, message) => {
     type: status,
     message,
     icon: status === 'positive' ? 'check_circle' : 'error',
-    position: 'top-right'
+    position: 'top'
   });
 };
 
