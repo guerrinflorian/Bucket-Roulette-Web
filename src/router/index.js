@@ -4,11 +4,13 @@ import { useAuthStore } from '../stores/authStore.js';
 import MenuScreen from '../components/MenuScreen.vue';
 import GameScreen from '../components/GameScreen.vue';
 import AuthScreen from '../components/AuthScreen.vue';
+import HelpScreen from '../components/HelpScreen.vue';
 
 const routes = [
   { path: '/', redirect: '/menu' },
   { path: '/menu', component: MenuScreen },
   { path: '/auth', component: AuthScreen },
+  { path: '/help', component: HelpScreen },
   { path: '/game', component: GameScreen, meta: { requiresGame: true } }
 ];
 
