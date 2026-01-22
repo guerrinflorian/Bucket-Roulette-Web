@@ -4,6 +4,34 @@ import { pool } from '../db.js';
 const MAX_HISTORY_LIMIT = 50;
 const DEFAULT_HISTORY_LIMIT = 20;
 const MULTIPLAYER_MODES = new Set(['1v1', '1v1v1']);
+const BOT_DIFFICULTY_TO_DB = {
+  peasant: 'Paysan',
+  prince: 'Prince',
+  tsar: 'Tsar',
+  emperor: 'Empereur'
+};
+const BOT_DIFFICULTY_FROM_DB = {
+  paysan: 'peasant',
+  prince: 'prince',
+  tsar: 'tsar',
+  empereur: 'emperor'
+};
+
+const normalizeDifficultyInput = (value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const key = value.toLowerCase();
+  return BOT_DIFFICULTY_TO_DB[key] || value;
+};
+
+const normalizeDifficultyOutput = (value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const key = value.toLowerCase();
+  return BOT_DIFFICULTY_FROM_DB[key] || value;
+};
 
 const toOptionalInt = (value, fallback = null) => {
   if (value === undefined || value === null || value === '') {
@@ -102,6 +130,8 @@ export default async function gameRoutes(fastify) {
       shotsFired,
       itemsUsed
     } = request.body || {};
+    const normalizedBotLevel = normalizeDifficultyInput(botLevel);
+    const normalizedDifficulty = normalizeDifficultyInput(difficulty);
 
     if (!victoryType || typeof victoryType !== 'string') {
       return reply.code(400).send({ error: 'Type de victoire requis.' });
@@ -157,7 +187,7 @@ export default async function gameRoutes(fastify) {
           matchId,
           'solo',
           victoryType,
-          botLevel || null,
+          normalizedBotLevel || null,
           toOptionalInt(roundsPlayed),
           resolvedWinnerId
         ]
@@ -187,7 +217,7 @@ export default async function gameRoutes(fastify) {
         );
       }
 
-      if (difficulty) {
+      if (normalizedDifficulty) {
         const defeated = typeof isDefeated === 'boolean'
           ? isDefeated
           : userParticipant
@@ -196,7 +226,7 @@ export default async function gameRoutes(fastify) {
 
         const progressResult = await client.query(
           'SELECT id FROM solo_progress WHERE user_id = $1 AND difficulty = $2 LIMIT 1',
-          [userId, difficulty]
+          [userId, normalizedDifficulty]
         );
         if (progressResult.rowCount > 0) {
           await client.query(
@@ -206,7 +236,7 @@ export default async function gameRoutes(fastify) {
         } else {
           await client.query(
             'INSERT INTO solo_progress (id, user_id, difficulty, is_defeated) VALUES ($1, $2, $3, $4)',
-            [randomUUID(), userId, difficulty, defeated]
+            [randomUUID(), userId, normalizedDifficulty, defeated]
           );
         }
       }
@@ -378,7 +408,7 @@ export default async function gameRoutes(fastify) {
         id: match.id,
         mode: match.mode,
         victoryType: match.victory_type,
-        botLevel: match.bot_level,
+        botLevel: normalizeDifficultyOutput(match.bot_level),
         roundsPlayed: match.rounds_played,
         createdAt: match.created_at,
         winnerId: match.winner_id,
@@ -444,7 +474,11 @@ export default async function gameRoutes(fastify) {
         'SELECT * FROM solo_progress WHERE user_id = $1 ORDER BY difficulty ASC',
         [userId]
       );
-      return reply.send({ progress: progressResult.rows });
+      const progress = progressResult.rows.map((row) => ({
+        ...row,
+        difficulty: normalizeDifficultyOutput(row.difficulty)
+      }));
+      return reply.send({ progress });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors de la récupération du solo.' });
