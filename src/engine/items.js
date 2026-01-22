@@ -118,13 +118,13 @@ export function getItemById(id) {
 }
 
 const ITEM_WEIGHTS = {
-  heart: 1,
-  double: 0.55,
-  peek: 0.8,
-  eject: 0.75,
-  handcuffs: 0.7,
-  inverter: 0.6,
-  scanner: 0.65
+  heart: 0.9,
+  double: 0.5,
+  peek: 0.9,
+  eject: 0.7,
+  handcuffs: 0.4,
+  inverter: 0.55,
+  scanner: 0.7
 };
 
 function rollWeightedItemId() {
