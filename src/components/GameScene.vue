@@ -31,13 +31,13 @@
           :current-chamber-number="currentChamberNumber"
           :total-slots="totalSlots"
           :phase="phase"
+          :scanner-hint="player.scannerHint"
           @animation-start="onBarrelAnimStart"
           @animation-end="onBarrelAnimEnd"
         />
 
         <GameSceneStatusBanners
           :peeked-next="player.peekedNext"
-          :scanner-hint="player.scannerHint"
         />
       </section>
 
@@ -79,7 +79,8 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Notify } from 'quasar';
 import { gsap } from 'gsap';
 import GameSceneBackground from './game/GameSceneBackground.vue';
 import GameSceneCenter from './game/GameSceneCenter.vue';
@@ -212,6 +213,31 @@ const blankCount = computed(() => counts.value.blank);
 const totalSlots = computed(() => props.barrel?.chambers?.length ?? 6);
 const currentChamberNumber = computed(() => Math.min((props.barrel?.index ?? 0) + 1, totalSlots.value));
 const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel.firstShotFired);
+
+const notifyScannerHint = (scannerHint) => {
+  const hintValue = Number(scannerHint);
+  if (!Number.isFinite(hintValue) || hintValue <= 0) return;
+  const baseIndex = props.barrel?.index ?? 0;
+  const chamberNumber = Math.min(baseIndex + hintValue, totalSlots.value);
+  Notify.create({
+    message: `📡 Scanner : chambre n°${chamberNumber} réelle.`,
+    timeout: 4000,
+    color: 'blue-6',
+    textColor: 'white',
+    icon: 'sensors'
+  });
+};
+
+watch(
+  () => props.player?.scannerHint,
+  (next, prev) => {
+    if (!next || next === prev) return;
+    if (prev && next < prev && props.lastAction?.itemId !== 'scanner') {
+      return;
+    }
+    notifyScannerHint(next);
+  }
+);
 
 function handleUseItem(itemId) {
   if (itemId === 'handcuffs' && itemTargets.value.length) {

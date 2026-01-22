@@ -24,7 +24,13 @@
           :class="getSlotClass(i)"
           :style="getSlotPosition(i)"
         >
-          <span class="chamber-number" aria-hidden="true">{{ i + 1 }}</span>
+          <span
+            class="chamber-number"
+            :class="{ 'chamber-number-scanner': scannerTargetIndex === i }"
+            aria-hidden="true"
+          >
+            {{ i + 1 }}
+          </span>
           <div class="chamber-inner">
             <!-- Revealed bullet (real or blank) -->
             <span
@@ -53,7 +59,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { gsap } from 'gsap';
 
 const props = defineProps({
-  barrelData: Object
+  barrelData: Object,
+  scannerHint: {
+    type: [Number, String],
+    default: null
+  }
 });
 
 const emit = defineEmits(['animation-start', 'animation-end']);
@@ -65,6 +75,14 @@ const slotCount = computed(() => props.barrelData?.chambers?.length || 6);
 const slotAngle = computed(() => 360 / slotCount.value);
 const barrelSize = ref(140);
 const barrelRadius = computed(() => barrelSize.value * 0.38);
+const scannerTargetIndex = computed(() => {
+  const hintValue = Number(props.scannerHint);
+  if (!Number.isFinite(hintValue) || hintValue <= 0) return null;
+  const baseIndex = props.barrelData?.index ?? 0;
+  const target = baseIndex + hintValue - 1;
+  if (target < 0 || target >= slotCount.value) return null;
+  return target;
+});
 
 // Manual rotation control - only rotates when we tell it to
 const rotationAngle = ref(360); // Start at 360 (one full turn back from 0)
@@ -117,7 +135,8 @@ function getSlotClass(index) {
     'chamber-spent': isSpent(index),
     'chamber-reveal': showRevealBullet.value && index === currentRevealIndex.value,
     'chamber-reveal-real': showRevealBullet.value && index === currentRevealIndex.value && revealIsReal.value,
-    'chamber-reveal-blank': showRevealBullet.value && index === currentRevealIndex.value && !revealIsReal.value
+    'chamber-reveal-blank': showRevealBullet.value && index === currentRevealIndex.value && !revealIsReal.value,
+    'chamber-scanner': scannerTargetIndex.value === index
   };
 }
 
@@ -381,6 +400,13 @@ defineExpose({
   line-height: 1;
 }
 
+.chamber-number-scanner {
+  color: #7dd3fc;
+  text-shadow:
+    0 0 6px rgba(56, 189, 248, 0.9),
+    0 0 12px rgba(14, 116, 144, 0.8);
+}
+
 .chamber-inner {
   font-size: 13px;
   font-weight: 700;
@@ -497,6 +523,13 @@ defineExpose({
 .chamber-spent {
   opacity: 0.5;
   background: linear-gradient(145deg, #151210, #0a0806);
+}
+
+.chamber-scanner {
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.6),
+    0 0 12px rgba(56, 189, 248, 0.5);
 }
 
 /* Falling bullet */
