@@ -1,77 +1,91 @@
 <template>
   <div class="mode-panel">
-    <div class="stats-section">
-      <div class="section-header" :class="sectionHeaderClass">
-        <div>
-          <div class="section-title">{{ title }}</div>
-          <div class="section-subtitle">{{ subtitle }}</div>
+    <div class="stats-section shadow-5">
+      <div class="accent-line"></div>
+
+      <div class="section-header q-pa-md" :class="sectionHeaderClass">
+        <div class="row items-center full-width justify-between">
+          <div class="column">
+            <div class="section-title text-uppercase">{{ title }}</div>
+            <div class="section-subtitle">{{ subtitle }}</div>
+          </div>
+          <q-badge :color="badgeColor" class="mode-badge q-py-xs q-px-sm">
+            {{ badgeLabel }}
+          </q-badge>
         </div>
-        <q-badge :color="badgeColor" text-color="white">{{ badgeLabel }}</q-badge>
       </div>
 
-      <div class="profile-stats-grid">
-        <q-card class="profile-stat-card stat-card-primary">
-          <q-card-section>
-            <div class="stat-title">Matchs joués</div>
-            <div class="stat-value">{{ matches }}</div>
-            <div class="stat-sub">Victoires: {{ wins }} · Défaites: {{ losses }}</div>
-            <q-linear-progress :value="winRate" color="positive" track-color="dark" rounded />
-          </q-card-section>
-        </q-card>
-
+      <div class="profile-stats-grid q-px-md q-pb-md">
         <q-card class="profile-stat-card">
           <q-card-section>
-            <div class="stat-title">Taux de victoire</div>
-            <div class="stat-center">
-              <q-circular-progress
-                :value="winRate * 100"
-                size="86px"
-                :thickness="0.18"
-                color="amber"
-                track-color="grey-9"
-                show-value
-              >
-                {{ Math.round(winRate * 100) }}%
-              </q-circular-progress>
+            <div class="row justify-between items-center q-mb-xs">
+              <div class="stat-title">Matchs joués</div>
+              <q-icon name="style" color="orange-8" size="20px" />
             </div>
-            <div class="stat-sub">Ratio W/L: {{ winLossRatio }}</div>
+            <div class="stat-value">{{ matches }}</div>
+            <div class="stat-sub">Victoires: {{ wins }} · Défaites: {{ losses }}</div>
+            <q-linear-progress :value="winRate" color="deep-orange-6" track-color="grey-9" rounded height="6px" class="q-mt-sm" />
           </q-card-section>
         </q-card>
 
-        <q-card v-if="showTop2" class="profile-stat-card stat-card-alt">
+        <q-card class="profile-stat-card highlight-orange">
+          <q-card-section class="column items-center">
+            <div class="stat-title self-start q-mb-sm">Taux de victoire</div>
+            <q-circular-progress
+              show-value
+              font-size="16px"
+              :value="winRate * 100"
+              size="80px"
+              :thickness="0.2"
+              color="deep-orange"
+              track-color="grey-9"
+              class="text-white win-rate-circle"
+            >
+              {{ Math.round(winRate * 100) }}%
+            </q-circular-progress>
+            <div class="stat-sub q-mt-sm">Ratio W/L: {{ winLossRatio }}</div>
+          </q-card-section>
+        </q-card>
+
+        <q-card v-if="showTop2" class="profile-stat-card special-top2">
           <q-card-section>
-            <div class="stat-title">Top 2</div>
-            <div class="stat-value">{{ top2Finishes }}</div>
-            <div class="stat-sub">Présence dans le top 2</div>
-            <q-linear-progress :value="top2Rate" color="deep-purple-4" track-color="dark" rounded />
+            <div class="row justify-between items-center q-mb-xs">
+              <div class="stat-title text-orange-2">Top 2</div>
+              <q-icon name="military_tech" color="orange-3" size="24px" />
+            </div>
+            <div class="stat-value text-white">{{ top2Finishes }}</div>
+            <q-linear-progress :value="top2Rate" color="white" track-color="orange-9" rounded height="6px" class="q-mt-sm" />
           </q-card-section>
         </q-card>
 
         <q-card v-if="showTop2" class="profile-stat-card">
-          <q-card-section>
-            <div class="stat-title">Taux Top 2</div>
-            <div class="stat-center">
-              <q-circular-progress
-                :value="top2Rate * 100"
-                size="86px"
-                :thickness="0.18"
-                color="deep-purple-4"
-                track-color="grey-9"
-                show-value
-              >
-                {{ Math.round(top2Rate * 100) }}%
-              </q-circular-progress>
-            </div>
-            <div class="stat-sub">Finitions top 2</div>
+          <q-card-section class="column items-center">
+            <div class="stat-title self-start q-mb-sm">Efficacité Top 2</div>
+            <q-circular-progress
+              show-value
+              font-size="16px"
+              :value="top2Rate * 100"
+              size="80px"
+              :thickness="0.2"
+              color="orange-8"
+              track-color="grey-9"
+              class="text-white"
+            >
+              {{ Math.round(top2Rate * 100) }}%
+            </q-circular-progress>
+            <div class="stat-sub q-mt-sm">Fréquence podium</div>
           </q-card-section>
         </q-card>
 
         <q-card class="profile-stat-card">
           <q-card-section>
-            <div class="stat-title">Activité</div>
+            <div class="row justify-between items-center q-mb-xs">
+              <div class="stat-title">Activité</div>
+              <q-icon name="bolt" color="amber-7" size="20px" />
+            </div>
             <div class="stat-value">{{ shotsFired }}</div>
-            <div class="stat-sub">Tirs · Objets: {{ itemsUsed }}</div>
-            <q-linear-progress :value="shotsProgress" color="amber" track-color="dark" rounded />
+            <div class="stat-sub">Tirs · Items: {{ itemsUsed }}</div>
+            <q-linear-progress :value="shotsProgress" color="amber-7" track-color="grey-9" rounded height="6px" class="q-mt-sm" />
           </q-card-section>
         </q-card>
       </div>
@@ -102,7 +116,7 @@ const losses = computed(() => stats.value?.losses ?? 0);
 const matches = computed(() => wins.value + losses.value);
 const winRate = computed(() => (matches.value > 0 ? wins.value / matches.value : 0));
 const winLossRatio = computed(() =>
-  losses.value > 0 ? (wins.value / losses.value).toFixed(2) : '∞'
+  losses.value > 0 ? (wins.value / losses.value).toFixed(2) : '0'
 );
 const shotsFired = computed(() => stats.value?.shots_fired ?? 0);
 const itemsUsed = computed(() => stats.value?.items_used ?? 0);
@@ -113,9 +127,9 @@ const top2Rate = computed(() =>
 const shotsProgress = computed(() => Math.min(1, Math.max(0, shotsFired.value / 200)));
 
 const sectionHeaderClass = computed(() => ({
-  'section-header-solo': props.highlight === 'solo',
-  'section-header-duel': props.highlight === 'duel',
-  'section-header-trio': props.highlight === 'trio'
+  'header-solo': props.highlight === 'solo',
+  'header-duel': props.highlight === 'duel',
+  'header-trio': props.highlight === 'trio'
 }));
 </script>
 
@@ -123,102 +137,112 @@ const sectionHeaderClass = computed(() => ({
 .mode-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .stats-section {
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(8, 12, 20, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  position: relative;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 120, 40, 0.15);
+  border-radius: 20px;
+  overflow: hidden;
 }
 
+.accent-line {
+  height: 4px;
+  background: linear-gradient(90deg, #f97316, #ea580c);
+  width: 100%;
+}
+
+/* Header Variations */
 .section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.section-header-solo {
-  background: linear-gradient(120deg, rgba(16, 185, 129, 0.15), transparent);
-  border-radius: 12px;
-  padding: 8px 10px;
-}
-
-.section-header-duel {
-  background: linear-gradient(120deg, rgba(59, 130, 246, 0.18), transparent);
-  border-radius: 12px;
-  padding: 8px 10px;
-}
-
-.section-header-trio {
-  background: linear-gradient(120deg, rgba(88, 28, 135, 0.2), transparent);
-  border-radius: 12px;
-  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #f8fafc;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.5px;
 }
 
 .section-subtitle {
-  font-size: 12px;
+  font-size: 11px;
   color: #94a3b8;
 }
 
+.mode-badge {
+  font-weight: 800;
+  border-radius: 6px;
+  letter-spacing: 1px;
+}
+
+/* Grid & Cards */
 .profile-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .profile-stat-card {
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: all 0.3s ease;
 }
 
-.stat-card-primary {
-  background: linear-gradient(150deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.55));
-  border-color: rgba(16, 185, 129, 0.3);
+.profile-stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(249, 115, 22, 0.4);
+  background: rgba(30, 41, 59, 0.6);
 }
 
-.stat-card-alt {
-  background: linear-gradient(150deg, rgba(99, 102, 241, 0.12), rgba(15, 23, 42, 0.55));
-  border-color: rgba(99, 102, 241, 0.35);
+.highlight-orange {
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+/* Carte spéciale Top 2 (Degradé orange) */
+.special-top2 {
+  background: linear-gradient(135deg, #ea580c 0%, #9a3412 100%);
+  border: none;
+}
+
+.win-rate-circle {
+  text-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+  font-weight: 800;
 }
 
 .stat-title {
   font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
   color: #94a3b8;
+  letter-spacing: 0.8px;
 }
 
 .stat-value {
-  font-size: 26px;
-  font-weight: 700;
-  margin-top: 6px;
-  color: #f8fafc;
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
 }
 
 .stat-sub {
-  font-size: 12px;
-  color: #94a3b8;
-  margin: 6px 0 10px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
 }
 
-.stat-center {
-  display: flex;
-  justify-content: center;
-  margin: 10px 0;
-}
-
+/* Slot Style */
 .mode-extras {
-  padding: 0 4px;
+  border-radius: 16px;
+  overflow: hidden;
 }
+
+/* Couleurs de Header par mode (subtil) */
+.header-solo { background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), transparent); }
+.header-duel { background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent); }
+.header-trio { background: linear-gradient(90deg, rgba(168, 85, 247, 0.1), transparent); }
 </style>

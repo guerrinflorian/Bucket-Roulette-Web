@@ -1,72 +1,89 @@
 <template>
   <div class="global-panel">
-    <div class="profile-identity">
-      <q-avatar size="80px" color="dark" text-color="white">
-        <q-icon name="person" />
+    <div class="profile-identity shadow-2">
+      <q-avatar size="80px" class="profile-avatar-styled">
+        <q-icon name="person" color="white" size="45px" />
+        <q-badge floating color="deep-orange" rounded border />
       </q-avatar>
+      
       <div class="profile-identity-text">
-        <div class="profile-name">{{ displayName }}</div>
+        <div class="row items-center q-gutter-x-sm">
+          <div class="profile-name">{{ displayName }}</div>
+          <q-badge v-if="profile?.isSelf" color="deep-orange" label="VOUS" outline />
+        </div>
         <div class="profile-meta">
-          <q-badge v-if="profile?.isSelf" color="amber" text-color="black">
-            Vous
-          </q-badge>
-          <span class="profile-subtitle">Pseudo : {{ pseudo }}</span>
+          <q-icon name="alternate_email" color="orange-5" size="14px" />
+          <span class="profile-subtitle">{{ pseudo }}</span>
         </div>
       </div>
     </div>
 
-    <div class="stats-section">
-      <div class="section-header">
+    <div class="stats-container">
+      <div class="section-header q-mb-lg">
         <div>
-          <div class="section-title">Statistiques globales</div>
-          <div class="section-subtitle">Tous modes confondus</div>
+          <div class="section-title text-uppercase">Tableau de Bord</div>
+          <div class="section-subtitle">Statistiques globales du compte</div>
         </div>
-        <q-badge color="blue-grey-8" text-color="white">Global</q-badge>
       </div>
 
       <div class="profile-stats-grid">
-        <q-card class="profile-stat-card stat-card-primary">
+        <q-card class="stat-card">
           <q-card-section>
-            <div class="stat-title">Parties jouées</div>
+            <div class="row justify-between items-center q-mb-sm">
+              <div class="stat-label">Parties</div>
+              <q-icon name="sports_esports" color="deep-orange" size="24px" />
+            </div>
             <div class="stat-value">{{ totalGames }}</div>
-            <div class="stat-sub">Matchs terminés</div>
-            <q-linear-progress :value="gamesProgress" color="positive" track-color="dark" rounded />
+            <div class="stat-sub q-mb-sm">Matchs terminés</div>
+            <q-linear-progress :value="gamesProgress" color="deep-orange" track-color="grey-9" rounded height="6px" />
           </q-card-section>
         </q-card>
 
-        <q-card class="profile-stat-card">
+        <q-card class="stat-card">
           <q-card-section>
-            <div class="stat-title">Tirs infligés</div>
-            <div class="stat-value">{{ totalShots }}</div>
-            <div class="stat-sub">Balles tirées</div>
-            <q-linear-progress :value="shotsProgress" color="amber" track-color="dark" rounded />
+            <div class="row justify-between items-center q-mb-sm">
+              <div class="stat-label">Tirs Infligés</div>
+              <q-icon name="gps_fixed" color="orange-8" size="24px" />
+            </div>
+            <div class="stat-value text-orange-5">{{ totalShots }}</div>
+            <div class="stat-sub q-mb-sm">Balles tirées</div>
+            <q-linear-progress :value="shotsProgress" color="orange-8" track-color="grey-9" rounded height="6px" />
           </q-card-section>
         </q-card>
 
-        <q-card class="profile-stat-card">
+        <q-card class="stat-card">
           <q-card-section>
-            <div class="stat-title">Tirs subis</div>
+            <div class="row justify-between items-center q-mb-sm">
+              <div class="stat-label">Tirs Subis</div>
+              <q-icon name="shield" color="red-5" size="24px" />
+            </div>
             <div class="stat-value">{{ totalShotsTaken }}</div>
-            <div class="stat-sub">Balles encaissées</div>
-            <q-linear-progress :value="shotsTakenProgress" color="deep-orange" track-color="dark" rounded />
+            <div class="stat-sub q-mb-sm">Balles encaissées</div>
+            <q-linear-progress :value="shotsTakenProgress" color="red-5" track-color="grey-9" rounded height="6px" />
           </q-card-section>
         </q-card>
 
-        <q-card class="profile-stat-card">
+        <q-card class="stat-card">
           <q-card-section>
-            <div class="stat-title">Objets utilisés</div>
+            <div class="row justify-between items-center q-mb-sm">
+              <div class="stat-label">Items</div>
+              <q-icon name="inventory_2" color="amber-7" size="24px" />
+            </div>
             <div class="stat-value">{{ totalItems }}</div>
-            <div class="stat-sub">Tous modes</div>
-            <q-linear-progress :value="itemsProgress" color="light-green-4" track-color="dark" rounded />
+            <div class="stat-sub q-mb-sm">Objets activés</div>
+            <q-linear-progress :value="itemsProgress" color="amber-7" track-color="grey-9" rounded height="6px" />
           </q-card-section>
         </q-card>
 
-        <q-card class="profile-stat-card stat-card-alt">
+        <q-card class="stat-card special-card">
           <q-card-section>
-            <div class="stat-title">Série record</div>
-            <div class="stat-value">{{ highestWinStreak }}</div>
-            <div class="stat-sub">Meilleure série de victoires</div>
-            <q-linear-progress :value="winStreakProgress" color="cyan-6" track-color="dark" rounded />
+            <div class="row justify-between items-center q-mb-sm">
+              <div class="stat-label text-white">Série Record</div>
+              <q-icon name="military_tech" color="white" size="28px" />
+            </div>
+            <div class="stat-value text-white">{{ highestWinStreak }}</div>
+            <div class="stat-sub text-orange-1 q-mb-sm">Meilleure série</div>
+            <q-linear-progress :value="winStreakProgress" color="white" track-color="orange-9" rounded height="6px" />
           </q-card-section>
         </q-card>
       </div>
@@ -83,7 +100,7 @@ const props = defineProps({
 });
 
 const statsPayload = computed(() => props.stats || {});
-const displayName = computed(() => props.profile?.name || 'Profil');
+const displayName = computed(() => props.profile?.name || 'Joueur');
 const pseudo = computed(() =>
   props.profile?.username || props.profile?.pseudo || props.profile?.name || 'Inconnu'
 );
@@ -94,11 +111,11 @@ const totalItems = computed(() => statsPayload.value?.total_items_used ?? 0);
 const totalGames = computed(() => statsPayload.value?.total_games_played ?? 0);
 const highestWinStreak = computed(() => statsPayload.value?.highest_win_streak ?? 0);
 
-const gamesProgress = computed(() => Math.min(1, Math.max(0, totalGames.value / 100)));
-const shotsProgress = computed(() => Math.min(1, Math.max(0, totalShots.value / 500)));
-const shotsTakenProgress = computed(() => Math.min(1, Math.max(0, totalShotsTaken.value / 500)));
-const itemsProgress = computed(() => Math.min(1, Math.max(0, totalItems.value / 200)));
-const winStreakProgress = computed(() => Math.min(1, Math.max(0, highestWinStreak.value / 20)));
+const gamesProgress = computed(() => Math.min(1, totalGames.value / 100));
+const shotsProgress = computed(() => Math.min(1, totalShots.value / 1000));
+const shotsTakenProgress = computed(() => Math.min(1, totalShotsTaken.value / 1000));
+const itemsProgress = computed(() => Math.min(1, totalItems.value / 500));
+const winStreakProgress = computed(() => Math.min(1, highestWinStreak.value / 20));
 </script>
 
 <style scoped>
@@ -106,107 +123,88 @@ const winStreakProgress = computed(() => Math.min(1, Math.max(0, highestWinStrea
   display: flex;
   flex-direction: column;
   gap: 20px;
+  color: #e2e8f0;
+}
+
+/* Nouvel Avatar sans photo */
+.profile-avatar-styled {
+  background: linear-gradient(135deg, #f97316 0%, #7c2d12 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
 }
 
 .profile-identity {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(8, 12, 20, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.profile-identity-text {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 120, 40, 0.15);
 }
 
 .profile-name {
-  font-size: 22px;
-  font-weight: 700;
-  color: #f8fafc;
-}
-
-.profile-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
 }
 
 .profile-subtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: #94a3b8;
 }
 
-.stats-section {
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(8, 12, 20, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #f8fafc;
-}
-
-.section-subtitle {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
+/* Grille de stats */
 .profile-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
-.profile-stat-card {
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 14px;
+.stat-card {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: transform 0.2s ease;
 }
 
-.stat-card-primary {
-  background: linear-gradient(150deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.55));
-  border-color: rgba(16, 185, 129, 0.3);
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(249, 115, 22, 0.3);
 }
 
-.stat-card-alt {
-  background: linear-gradient(150deg, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.55));
-  border-color: rgba(56, 189, 248, 0.35);
+.special-card {
+  background: linear-gradient(135deg, #ea580c 0%, #9a3412 100%);
 }
 
-.stat-title {
+.stat-label {
   font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
   color: #94a3b8;
+  letter-spacing: 0.8px;
 }
 
 .stat-value {
   font-size: 28px;
-  font-weight: 700;
-  margin-top: 6px;
-  color: #f8fafc;
+  font-weight: 800;
 }
 
 .stat-sub {
-  font-size: 12px;
-  color: #94a3b8;
-  margin: 6px 0 10px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #f8fafc;
+  opacity: 0.9;
+}
+
+.section-subtitle {
+  font-size: 11px;
+  color: #64748b;
 }
 </style>
