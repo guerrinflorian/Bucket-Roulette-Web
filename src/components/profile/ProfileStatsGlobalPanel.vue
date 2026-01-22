@@ -2,7 +2,12 @@
   <div class="global-panel">
     <div class="profile-identity shadow-2">
       <q-avatar size="80px" class="profile-avatar-styled">
-        <q-icon name="person" color="white" size="45px" />
+        <Avatar
+          :name="avatarSeed"
+          variant="beam"
+          :size="80"
+          :colors="avatarColors"
+        />
         <q-badge floating color="deep-orange" rounded border />
       </q-avatar>
       
@@ -93,6 +98,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import Avatar from 'vue-boring-avatars';
 
 const props = defineProps({
   profile: { type: Object, default: null },
@@ -101,6 +107,8 @@ const props = defineProps({
 
 const statsPayload = computed(() => props.stats || {});
 const displayName = computed(() => props.profile?.name || 'Joueur');
+const avatarSeed = computed(() => displayName.value.split(' ')[0] || displayName.value);
+const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 const pseudo = computed(() =>
   props.profile?.username || props.profile?.pseudo || props.profile?.name || 'Inconnu'
 );
