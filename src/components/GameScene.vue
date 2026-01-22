@@ -215,6 +215,10 @@ const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel.firs
 
 function handleUseItem(itemId) {
   if (itemId === 'handcuffs' && itemTargets.value.length) {
+    if (itemTargets.value.length === 1) {
+      emit('use-item', itemId, itemTargets.value[0].key);
+      return;
+    }
     modalsRef.value?.openTargetPicker?.(itemId);
     return;
   }
