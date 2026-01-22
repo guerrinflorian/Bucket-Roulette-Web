@@ -36,49 +36,106 @@
         </div>
 
         <div v-else class="profile-content">
-          <div class="profile-stats-grid">
-            <q-card class="profile-stat-card">
-              <q-card-section>
-                <div class="stat-title">Matchs en ligne</div>
-                <div class="stat-value">{{ onlineMatches }}</div>
-                <div class="stat-sub">Victoires: {{ onlineWins }} · Défaites: {{ onlineLosses }}</div>
-                <q-linear-progress :value="winRate" color="positive" track-color="dark" rounded />
-              </q-card-section>
-            </q-card>
-            <q-card class="profile-stat-card">
-              <q-card-section>
-                <div class="stat-title">Taux de victoire</div>
-                <div class="stat-center">
-                  <q-circular-progress
-                    :value="winRate * 100"
-                    size="80px"
-                    thickness="0.18"
-                    color="amber"
-                    track-color="grey-9"
-                    show-value
-                  >
-                    {{ Math.round(winRate * 100) }}%
-                  </q-circular-progress>
-                </div>
-                <div class="stat-sub">Ratio W/L: {{ winLossRatio }}</div>
-              </q-card-section>
-            </q-card>
-            <q-card class="profile-stat-card">
-              <q-card-section>
-                <div class="stat-title">1v1v1</div>
-                <div class="stat-value">{{ wins1v1v1 }}</div>
-                <div class="stat-sub">Victoires · Top 2: {{ top2_1v1v1 }}</div>
-                <q-linear-progress :value="top2Rate" color="deep-purple-4" track-color="dark" rounded />
-              </q-card-section>
-            </q-card>
-            <q-card class="profile-stat-card">
-              <q-card-section>
-                <div class="stat-title">ELO</div>
-                <div class="stat-value">{{ eloRating }}</div>
-                <div class="stat-sub">Classement en ligne</div>
-                <q-linear-progress :value="eloProgress" color="cyan-6" track-color="dark" rounded />
-              </q-card-section>
-            </q-card>
+          <div class="stats-section">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Multijoueur 1v1</div>
+                <div class="section-subtitle">Duels classiques</div>
+              </div>
+              <q-badge color="positive" text-color="black">Duel</q-badge>
+            </div>
+            <div class="profile-stats-grid">
+              <q-card class="profile-stat-card stat-card-primary">
+                <q-card-section>
+                  <div class="stat-title">Matchs joués</div>
+                  <div class="stat-value">{{ onlineMatches }}</div>
+                  <div class="stat-sub">Victoires: {{ onlineWins }} · Défaites: {{ onlineLosses }}</div>
+                  <q-linear-progress :value="winRate" color="positive" track-color="dark" rounded />
+                </q-card-section>
+              </q-card>
+              <q-card class="profile-stat-card">
+                <q-card-section>
+                  <div class="stat-title">Taux de victoire</div>
+                  <div class="stat-center">
+                    <q-circular-progress
+                      :value="winRate * 100"
+                      size="80px"
+                      :thickness="0.18"
+                      color="amber"
+                      track-color="grey-9"
+                      show-value
+                    >
+                      {{ Math.round(winRate * 100) }}%
+                    </q-circular-progress>
+                  </div>
+                  <div class="stat-sub">Ratio W/L: {{ winLossRatio }}</div>
+                </q-card-section>
+              </q-card>
+              <q-card class="profile-stat-card">
+                <q-card-section>
+                  <div class="stat-title">ELO</div>
+                  <div class="stat-value">{{ eloRating }}</div>
+                  <div class="stat-sub">Classement en ligne</div>
+                  <q-linear-progress :value="eloProgress" color="cyan-6" track-color="dark" rounded />
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-header section-header-alt">
+              <div>
+                <div class="section-title">Multijoueur 1v1v1</div>
+                <div class="section-subtitle">Trio stratégique</div>
+              </div>
+              <q-badge color="deep-purple-4" text-color="white">1v1v1</q-badge>
+            </div>
+            <div class="profile-stats-grid">
+              <q-card class="profile-stat-card stat-card-alt">
+                <q-card-section>
+                  <div class="stat-title">Matchs joués</div>
+                  <div class="stat-value">{{ matches1v1v1 }}</div>
+                  <div class="stat-sub">Top 2: {{ top2_1v1v1 }} · Victoires: {{ wins1v1v1 }}</div>
+                  <q-linear-progress :value="top2Rate" color="deep-purple-4" track-color="dark" rounded />
+                </q-card-section>
+              </q-card>
+              <q-card class="profile-stat-card">
+                <q-card-section>
+                  <div class="stat-title">Taux Top 2</div>
+                  <div class="stat-center">
+                    <q-circular-progress
+                      :value="top2Rate * 100"
+                      size="80px"
+                      :thickness="0.18"
+                      color="deep-purple-4"
+                      track-color="grey-9"
+                      show-value
+                    >
+                      {{ Math.round(top2Rate * 100) }}%
+                    </q-circular-progress>
+                  </div>
+                  <div class="stat-sub">Présence dans le top 2</div>
+                </q-card-section>
+              </q-card>
+              <q-card class="profile-stat-card">
+                <q-card-section>
+                  <div class="stat-title">Taux de victoire</div>
+                  <div class="stat-center">
+                    <q-circular-progress
+                      :value="winRate1v1v1 * 100"
+                      size="80px"
+                      :thickness="0.18"
+                      color="pink-4"
+                      track-color="grey-9"
+                      show-value
+                    >
+                      {{ Math.round(winRate1v1v1 * 100) }}%
+                    </q-circular-progress>
+                  </div>
+                  <div class="stat-sub">Victoires en 1v1v1</div>
+                </q-card-section>
+              </q-card>
+            </div>
           </div>
 
           <div class="profile-metrics">
@@ -148,8 +205,21 @@ const totalShots = computed(() => statsPayload.value?.total_shots_fired ?? 0);
 const totalItems = computed(() => statsPayload.value?.items_used_count ?? 0);
 const wins1v1v1 = computed(() => statsPayload.value?.wins_1v1v1 ?? 0);
 const top2_1v1v1 = computed(() => statsPayload.value?.top2_1v1v1 ?? 0);
+const matches1v1v1 = computed(() => {
+  const rawMatches = statsPayload.value?.matches_1v1v1
+    ?? statsPayload.value?.total_matches_1v1v1
+    ?? statsPayload.value?.games_1v1v1
+    ?? statsPayload.value?.total_games_1v1v1;
+  if (rawMatches !== null && rawMatches !== undefined) {
+    return rawMatches;
+  }
+  return Math.max(wins1v1v1.value, top2_1v1v1.value);
+});
 const top2Rate = computed(() =>
-  onlineMatches.value > 0 ? top2_1v1v1.value / onlineMatches.value : 0
+  matches1v1v1.value > 0 ? top2_1v1v1.value / matches1v1v1.value : 0
+);
+const winRate1v1v1 = computed(() =>
+  matches1v1v1.value > 0 ? wins1v1v1.value / matches1v1v1.value : 0
 );
 const eloRating = computed(() => statsPayload.value?.elo_rating ?? 0);
 const eloProgress = computed(() => Math.min(1, Math.max(0, eloRating.value / 3000)));
@@ -232,10 +302,53 @@ const soloProgressStatus = (level) => {
   gap: 12px;
 }
 
+.stats-section {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(8, 12, 20, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  margin-bottom: 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-header-alt {
+  background: linear-gradient(120deg, rgba(88, 28, 135, 0.2), transparent);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.section-subtitle {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
 .profile-stat-card {
   background: rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 14px;
+}
+
+.stat-card-primary {
+  background: linear-gradient(150deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.55));
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.stat-card-alt {
+  background: linear-gradient(150deg, rgba(99, 102, 241, 0.12), rgba(15, 23, 42, 0.55));
+  border-color: rgba(99, 102, 241, 0.35);
 }
 
 .stat-title {

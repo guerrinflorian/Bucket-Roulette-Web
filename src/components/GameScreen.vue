@@ -149,6 +149,7 @@ const EMOJI_DISPLAY_MS = 3000;
 let turnTimer = null;
 let turnTick = null;
 let emojiTick = null;
+let visibilityHandler = null;
 const emojiNow = ref(Date.now());
 const playerEmojis = ref({});
 const emojiLastSentAt = ref({});
@@ -241,7 +242,7 @@ const shouldSubmitOnlineMatch = () => {
 
 const buildParticipantsPayload = (entries) =>
   entries.map(({ key, player, rank }) => ({
-    userId: player.userId || null,
+    userId: player.userId || (key === localPlayerKey.value ? authStore.user?.id : null),
     rank,
     finalHp: player.hp,
     shotsFired: player.shotsFired ?? 0,
@@ -273,12 +274,13 @@ const submitMatchResult = async () => {
       });
     } else {
       const botLevel = getBotLevel(gameStore.botDifficulty);
+      const soloParticipants = buildParticipantsPayload(entries).filter((participant) => !participant.isBot);
       await matchStore.recordSoloMatch({
         victoryType,
         botLevel: botLevel.key,
         roundsPlayed,
         winnerId,
-        participants: buildParticipantsPayload(entries),
+        participants: soloParticipants,
         difficulty: botLevel.key,
         isDefeated: gameStore.winner !== 'player'
       });
@@ -806,6 +808,17 @@ onMounted(() => {
   }
 
   audioManager.startBackground();
+
+  visibilityHandler = () => {
+    if (document.visibilityState !== 'visible') return;
+    if (gameStore.mode !== 'bot') return;
+    if (gameStore.currentTurn !== 'enemy') return;
+    if (gameStore.pendingBotAction || gameStore.pendingBotItem) return;
+    if (gameStore.isAnimating) return;
+    gameStore.queueBotAction();
+  };
+  document.addEventListener('visibilitychange', visibilityHandler);
+  window.addEventListener('focus', visibilityHandler);
   
   // Online mode: listen for game state updates and actions
   if (isOnlineMode.value) {
@@ -897,6 +910,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   audioManager.stopBackground();
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler);
+    window.removeEventListener('focus', visibilityHandler);
+  }
   if (isOnlineMode.value) {
     netStore.offGameState();
     netStore.offGameAction();
