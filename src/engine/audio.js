@@ -42,6 +42,9 @@ class AudioManager {
       audio = this.createAudio(baseAudio.src, baseAudio.volume);
       pool.push(audio);
     }
+    if (!audio.src || !audio.canPlayType('audio/mpeg')) {
+      return;
+    }
     if (audio.currentTime !== 0) {
       audio.currentTime = 0;
     }

@@ -375,6 +375,15 @@ const orderModalEntries = computed(() => gameStore.turnOrder.map((key) => ({
   name: gameStore.players[key]?.name || 'Joueur'
 })));
 
+const settleWithTimeout = async (promise, timeoutMs, label = 'animation') => {
+  if (!promise || typeof promise.then !== 'function') return;
+  try {
+    await Promise.race([promise, sleep(timeoutMs)]);
+  } catch (error) {
+    console.warn(`Animation "${label}" failed:`, error);
+  }
+};
+
 // Watch for pending bot shoot action
 watch(() => gameStore.pendingBotAction, async (action) => {
   if (action && action.type === 'shoot') {
@@ -400,7 +409,7 @@ watch(() => gameStore.pendingBotItem, async (itemId) => {
     }
     
     if (gameSceneRef.value?.showEnemyUsingItem) {
-      await gameSceneRef.value.showEnemyUsingItem(itemId);
+      await settleWithTimeout(gameSceneRef.value.showEnemyUsingItem(itemId), 2800, 'showEnemyUsingItem');
     } else {
       // Fallback: just wait
       await sleep(2000);
@@ -522,9 +531,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // FAST MODE: No zoom, quick spin, minimal delay
       
       // Quick action text
-      if (gameSceneRef.value?.showActionChoice) {
-        await gameSceneRef.value.showActionChoice(actionData);
-      }
+      await settleWithTimeout(gameSceneRef.value?.showActionChoice?.(actionData), 2200, 'showActionChoice');
       
       // Fast spin (no zoom)
       if (gameSceneRef.value?.rotateBarrel) {
@@ -540,9 +547,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       }
       
       // Quick result (just after reveal)
-      if (gameSceneRef.value?.showShotResult) {
-        await gameSceneRef.value.showShotResult(actionData);
-      }
+      await settleWithTimeout(gameSceneRef.value?.showShotResult?.(actionData), 2600, 'showShotResult');
       
       // Apply game logic
       await gameStore.shoot(targetKey, actorKey);
@@ -554,9 +559,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       // NORMAL MODE: Full dramatic animation
       
       // 3. Show action choice modal
-      if (gameSceneRef.value?.showActionChoice) {
-        await gameSceneRef.value.showActionChoice(actionData);
-      }
+      await settleWithTimeout(gameSceneRef.value?.showActionChoice?.(actionData), 2200, 'showActionChoice');
       
       // 4. Zoom on barrel (start sound slightly earlier)
       if (gameSceneRef.value?.startZoom) {
@@ -579,7 +582,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       
       // 7. Show result modal (just after reveal)
       if (gameSceneRef.value?.showShotResult) {
-        await gameSceneRef.value.showShotResult(actionData);
+        await settleWithTimeout(gameSceneRef.value.showShotResult(actionData), 3000, 'showShotResult');
       } else {
         await sleep(1500);
       }
@@ -600,9 +603,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       await sleep(400);
       
       // 12. End zoom
-      if (gameSceneRef.value?.endZoom) {
-        await gameSceneRef.value.endZoom();
-      }
+      await settleWithTimeout(gameSceneRef.value?.endZoom?.(), 1200, 'endZoom');
     }
   } catch (error) {
     console.error('Error during shot:', error);
@@ -642,7 +643,11 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
       
       // Show peek result modal
       if (gameSceneRef.value && nextBullet) {
-        await gameSceneRef.value.showPeekResult(nextBullet === 'real');
+        await settleWithTimeout(
+          gameSceneRef.value.showPeekResult(nextBullet === 'real'),
+          3000,
+          'showPeekResult'
+        );
       }
       return;
     }
@@ -671,9 +676,11 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
         await sleep(1500);
         
         // Show eject modal
-        if (gameSceneRef.value?.showEjectResult) {
-          await gameSceneRef.value.showEjectResult(isReal);
-        }
+        await settleWithTimeout(
+          gameSceneRef.value?.showEjectResult?.(isReal),
+          2800,
+          'showEjectResult'
+        );
         
         // Drop animation if real
         if (isReal && gameSceneRef.value?.dropBullet) {
