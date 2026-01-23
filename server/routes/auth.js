@@ -2,6 +2,7 @@ import { randomUUID, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 import { pool } from '../db.js';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -126,41 +127,49 @@ const renderVerificationPage = ({ title, message, buttonLabel, buttonUrl }) => `
 
 const EMAIL_TIMEOUT_MS = Number.parseInt(process.env.EMAIL_TIMEOUT_MS || '8000', 10);
 const EMAIL_FROM = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 
-const createMailer = () => {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_APP_PASSWORD;
-  if (!user || !pass) return null;
-  const host = process.env.EMAIL_HOST;
-  const port = Number.parseInt(process.env.EMAIL_PORT || '', 10);
-  const secureEnv = process.env.EMAIL_SECURE;
-  const secure = secureEnv ? secureEnv === 'true' : port === 465;
+const oauth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+if (GOOGLE_REFRESH_TOKEN) {
+  oauth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+}
 
-  const baseConfig = {
-    auth: { user, pass },
+const createOAuthTransport = async () => {
+  if (!EMAIL_FROM || !GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+    throw new Error('Service email non configuré.');
+  }
+  const accessTokenResponse = await oauth2Client.getAccessToken();
+  const accessToken = accessTokenResponse?.token || accessTokenResponse;
+  if (!accessToken) {
+    throw new Error('Impossible de générer un access token Gmail.');
+  }
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user: EMAIL_FROM,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      refreshToken: GOOGLE_REFRESH_TOKEN,
+      accessToken
+    },
     connectionTimeout: EMAIL_TIMEOUT_MS,
     greetingTimeout: EMAIL_TIMEOUT_MS,
     socketTimeout: EMAIL_TIMEOUT_MS
-  };
-
-  if (host) {
-    return nodemailer.createTransport({
-      ...baseConfig,
-      host,
-      port: Number.isFinite(port) ? port : 465,
-      secure
-    });
-  }
-
-  return nodemailer.createTransport({
-    ...baseConfig,
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true
   });
 };
 
-const mailer = createMailer();
+const sendEmail = async ({ to, subject, html }) => {
+  const transport = await createOAuthTransport();
+  return transport.sendMail({
+    from: `Revolver Gambit <${EMAIL_FROM}>`,
+    to,
+    subject,
+    html
+  });
+};
 
 const withTimeout = (promise, timeoutMs, timeoutMessage) => {
   if (!timeoutMs || timeoutMs <= 0) return promise;
@@ -173,13 +182,9 @@ const withTimeout = (promise, timeoutMs, timeoutMessage) => {
 };
 
 const sendVerificationEmail = async ({ email, token, username }) => {
-  if (!mailer) {
-    throw new Error('Service email non configuré.');
-  }
   const url = `${verificationBaseUrl()}/api/auth/verify-email?token=${token}`;
   const displayName = username || 'joueur';
-  await withTimeout(mailer.sendMail({
-    from: `Revolver Gambit <${EMAIL_FROM}>`,
+  await withTimeout(sendEmail({
     to: email,
     subject: '🎯 Activez votre compte - Revolver Gambit',
     html: `
@@ -271,14 +276,10 @@ const validateUsername = async (client, userId, username) => {
 };
 
 const sendPasswordResetEmail = async ({ email, token, username }) => {
-  if (!mailer) {
-    throw new Error('Service email non configuré.');
-  }
   const url = `${clientBaseUrl()}/reset-password?token=${token}`;
   const displayName = username || 'joueur';
   const year = new Date().getFullYear();
-  await withTimeout(mailer.sendMail({
-    from: EMAIL_FROM,
+  await withTimeout(sendEmail({
     to: email,
     subject: 'Réinitialisez votre mot de passe',
     html: `
@@ -662,9 +663,6 @@ export default async function authRoutes(fastify) {
           error: 'Ce compte utilise la connexion Google. Le mot de passe se gère depuis Google.'
         });
       }
-      if (!mailer) {
-        return reply.code(500).send({ error: 'Service email non configuré.' });
-      }
       const resetToken = fastify.jwt.sign(
         { userId, type: 'password_reset' },
         { expiresIn: '1h' }
@@ -699,9 +697,6 @@ export default async function authRoutes(fastify) {
     const trimmedEmail = email?.trim?.() ?? '';
     if (!trimmedEmail) {
       return reply.code(400).send({ error: 'Email requis.' });
-    }
-    if (!mailer) {
-      return reply.code(500).send({ error: 'Service email non configuré.' });
     }
     const client = await pool.connect();
     try {
