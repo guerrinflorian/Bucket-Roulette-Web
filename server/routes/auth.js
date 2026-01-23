@@ -1,7 +1,6 @@
 import { randomUUID, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
-import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
 import { pool } from '../db.js';
 
@@ -136,38 +135,37 @@ if (GOOGLE_REFRESH_TOKEN) {
   oauth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
 }
 
-const createOAuthTransport = async () => {
+const sendEmail = async ({ to, subject, html }) => {
   if (!EMAIL_FROM || !GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
     throw new Error('Service email non configuré.');
   }
+
   const accessTokenResponse = await oauth2Client.getAccessToken();
   const accessToken = accessTokenResponse?.token || accessTokenResponse;
   if (!accessToken) {
     throw new Error('Impossible de générer un access token Gmail.');
   }
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: EMAIL_FROM,
-      clientId: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      refreshToken: GOOGLE_REFRESH_TOKEN,
-      accessToken
-    },
-    connectionTimeout: EMAIL_TIMEOUT_MS,
-    greetingTimeout: EMAIL_TIMEOUT_MS,
-    socketTimeout: EMAIL_TIMEOUT_MS
-  });
-};
 
-const sendEmail = async ({ to, subject, html }) => {
-  const transport = await createOAuthTransport();
-  return transport.sendMail({
-    from: `Revolver Gambit <${EMAIL_FROM}>`,
-    to,
-    subject,
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const message = [
+    `From: Revolver Gambit <${EMAIL_FROM}>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset="UTF-8"',
+    '',
     html
+  ].join('\n');
+
+  const raw = Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  return gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw }
   });
 };
 
