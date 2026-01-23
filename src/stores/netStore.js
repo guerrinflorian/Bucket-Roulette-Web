@@ -53,7 +53,28 @@ export const useNetStore = defineStore('net', {
         // Connect to server
         const defaultProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
         const defaultHost = `${defaultProtocol}://${window.location.hostname}:3001`;
-        const serverUrl = import.meta.env.VITE_SOCKET_URL || defaultHost;
+        const fallbackUrl = import.meta.env.PROD ? window.location.origin : defaultHost;
+        const envSocketUrl = import.meta.env.VITE_SOCKET_URL?.trim();
+        let serverUrl = fallbackUrl;
+
+        if (envSocketUrl) {
+          if (envSocketUrl.startsWith('/')) {
+            serverUrl = `${window.location.origin}${envSocketUrl}`;
+          } else {
+            try {
+              const parsedUrl = new URL(envSocketUrl);
+              const isSameHost = parsedUrl.hostname === window.location.hostname;
+              const isDefaultSocketPort = parsedUrl.port === '3001';
+              if (import.meta.env.PROD && isSameHost && isDefaultSocketPort) {
+                serverUrl = window.location.origin;
+              } else {
+                serverUrl = envSocketUrl;
+              }
+            } catch (error) {
+              serverUrl = envSocketUrl;
+            }
+          }
+        }
         console.log('🔌 Connecting to server at:', serverUrl);
         this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'],
