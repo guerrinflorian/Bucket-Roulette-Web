@@ -162,6 +162,22 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = false;
       }
     },
+    requestPasswordResetByEmail: async (email) => {
+      loading.value = true;
+      setError('');
+      try {
+        const data = await request('/api/auth/password-reset-request', {
+          method: 'POST',
+          body: JSON.stringify({ email })
+        });
+        return data;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      } finally {
+        loading.value = false;
+      }
+    },
     resetPassword: async ({ token, password }) => {
       loading.value = true;
       setError('');
