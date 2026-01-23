@@ -15,6 +15,7 @@ const buildAllowedOrigins = () => {
   addOrigin(process.env.FRONTEND_URL);
   addOrigin(process.env.VERCEL_URL);
   addOrigin(process.env.CORS_ORIGIN);
+  addOrigin('https://revolver-gambit.vercel.app');
   origins.add('http://localhost:5173');
   origins.add('http://localhost:3000');
 
