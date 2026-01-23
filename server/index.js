@@ -1,36 +1,8 @@
 import 'dotenv/config';
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
-import jwt from '@fastify/jwt';
 import { Server } from 'socket.io';
-import authRoutes from './routes/auth.js';
-import gameRoutes from './routes/game.js';
+import buildApp from './app.js';
 
-const fastify = Fastify({ logger: true });
-
-await fastify.register(cors, {
-  origin: true,
-  credentials: true
-});
-
-await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'dev-secret',
-  sign: { expiresIn: '48h' }
-});
-
-fastify.decorate('authenticate', async (request, reply) => {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.code(401).send({ error: 'Non autorisé.' });
-  }
-});
-
-fastify.get('/api/health', async () => ({ status: 'ok' }));
-await fastify.register(authRoutes, { prefix: '/api/auth' });
-await fastify.register(gameRoutes, { prefix: '/api' });
-
-await fastify.ready();
+const fastify = await buildApp();
 
 const httpServer = fastify.server;
 const io = new Server(httpServer, {
