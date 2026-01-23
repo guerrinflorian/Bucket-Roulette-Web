@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import buildApp from './app.js';
 
 const fastify = await buildApp();
+await fastify.ready();
 
 const httpServer = fastify.server;
 const io = new Server(httpServer, {
