@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { io } from 'socket.io-client';
 import { Notify } from 'quasar';
+import { audioManager } from '../engine/audio.js';
 
 const notifyDeparture = (message) => {
   if (!message) return;
@@ -489,9 +490,7 @@ export const useNetStore = defineStore('net', {
 
       // Play notification sound if not self and not system
       if (!entry.isSelf && !isSystem) {
-        const audio = new Audio(new URL('../assets/audio/notification.mp3', import.meta.url).href);
-        audio.volume = 0.5;
-        audio.play().catch(() => { });
+        audioManager.play('notification');
       }
     }
   }

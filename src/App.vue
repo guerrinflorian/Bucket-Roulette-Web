@@ -26,4 +26,23 @@ const connectionState = computed(() => {
   if (netStore.connectionStatus === 'reconnecting') return 'reconnecting';
   return 'disconnected';
 });
+
+import { onMounted, onUnmounted } from 'vue';
+import { audioManager } from './engine/audio.js';
+
+const unlockAudio = () => {
+  audioManager.unlock();
+  document.removeEventListener('click', unlockAudio);
+  document.removeEventListener('touchstart', unlockAudio);
+};
+
+onMounted(() => {
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('touchstart', unlockAudio);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', unlockAudio);
+  document.removeEventListener('touchstart', unlockAudio);
+});
 </script>

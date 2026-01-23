@@ -3,13 +3,15 @@ import reloadSrc from '../assets/audio/revolver_reload.mp3';
 import shotSrc from '../assets/audio/revolver_shot.mp3';
 import blankSrc from '../assets/audio/revolver_no_ammo_shot.mp3';
 import backgroundSrc from '../assets/audio/background.mp3';
+import notificationSrc from '../assets/audio/notification.mp3';
 
 const SOUND_MAP = {
   spin: spinSrc,
   shot: shotSrc,
   blank: blankSrc,
   reload: reloadSrc,
-  click: reloadSrc // Fallback pour les items
+  click: reloadSrc, // Fallback pour les items
+  notification: notificationSrc
 };
 
 class AudioManager {
@@ -64,6 +66,20 @@ class AudioManager {
     if (!this.background) return;
     this.background.pause();
     this.background.currentTime = 0;
+  }
+
+  unlock() {
+    // Attempt to unlock audio context on mobile
+    const unlockSound = (audio) => {
+      if (!audio) return;
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(() => { });
+    };
+
+    unlockSound(this.background);
+    Object.values(this.sounds).forEach(audio => unlockSound(audio));
   }
 }
 

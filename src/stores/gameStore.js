@@ -223,7 +223,8 @@ export const useGameStore = defineStore('game', {
       if (state.phase) this.phase = state.phase;
       if (state.currentTurn) this.currentTurn = state.currentTurn;
       if (state.turnOrder) this.turnOrder = [...state.turnOrder];
-      if (state.barrel) this.barrel = state.barrel;
+      // Only hydrate barrel if not animating to avoid race conditions/jumps
+      if (state.barrel && !this.isAnimating) this.barrel = state.barrel;
       if (state.players) {
         if (state.players.player) Object.assign(this.players.player, state.players.player);
         if (state.players.enemy) Object.assign(this.players.enemy, state.players.enemy);
