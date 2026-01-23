@@ -51,7 +51,9 @@ export const useNetStore = defineStore('net', {
 
       return new Promise((resolve, reject) => {
         // Connect to server
-        const serverUrl = `http://${window.location.hostname}:3001`;
+        const defaultProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
+        const defaultHost = `${defaultProtocol}://${window.location.hostname}:3001`;
+        const serverUrl = import.meta.env.VITE_SOCKET_URL || defaultHost;
         console.log('🔌 Connecting to server at:', serverUrl);
         this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'],
