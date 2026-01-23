@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <div class="auth-container">
+    <div class="auth-container w-full max-w-[440px] max-h-[94vh] px-3 py-2 sm:px-4 sm:py-3">
       <!-- Logo / Header -->
       <header class="auth-header">
         <div class="logo-icon">🎯</div>
@@ -22,7 +22,7 @@
       </header>
 
       <!-- Auth Card -->
-      <div class="auth-card">
+      <div class="auth-card max-h-[72vh] overflow-y-auto px-4 py-4 sm:px-5 sm:py-4">
         <!-- Tabs -->
         <q-tabs
           v-model="activeTab"
@@ -39,7 +39,11 @@
         <q-separator color="white" class="q-mb-lg" style="opacity: 0.08" />
 
         <!-- Login Form -->
-        <q-form v-if="activeTab === 'login'" class="auth-form" @submit.prevent="handleLogin">
+        <q-form
+          v-if="activeTab === 'login'"
+          class="auth-form flex flex-col gap-3 sm:gap-4"
+          @submit.prevent="handleLogin"
+        >
           <q-input
             v-model="loginEmail"
             type="email"
@@ -99,7 +103,11 @@
         </q-form>
 
         <!-- Register Form -->
-        <q-form v-else class="auth-form" @submit.prevent="handleRegister">
+        <q-form
+          v-else
+          class="auth-form flex flex-col gap-3 sm:gap-4"
+          @submit.prevent="handleRegister"
+        >
           <q-input
             v-model="registerEmail"
             type="email"
@@ -285,8 +293,15 @@ const initGoogle = async () => {
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: async (response) => {
-        await authStore.loginWithGoogle(response.credential);
-        router.push('/menu');
+        try {
+          await authStore.loginWithGoogle(response.credential);
+          notifyAuthState('positive', 'Connexion Google réussie. Bon jeu !');
+          router.push('/menu');
+        } catch (error) {
+          const message = resolveAuthMessage(error?.message || authStore.error);
+          authStore.setError(message);
+          notifyAuthState('negative', message);
+        }
       }
     });
     window.google.accounts.id.renderButton(googleButtonRef.value, {
@@ -307,6 +322,15 @@ const resolveAuthMessage = (message) => {
   const normalized = String(message || '').toLowerCase();
   if (!normalized) {
     return 'Une erreur est survenue. Merci de réessayer.';
+  }
+  if (normalized.includes('email déjà utilisé')) {
+    return message;
+  }
+  if (normalized.includes('utilise google')) {
+    return 'Ce compte est lié à Google. Connectez-vous via Google.';
+  }
+  if (normalized.includes('email non vérifié')) {
+    return 'Email non vérifié. Vérifiez votre boîte mail pour valider votre compte.';
   }
   if (
     normalized.includes('identifiant')
@@ -452,12 +476,12 @@ watch(activeTab, () => {
 .auth-container {
   position: relative;
   z-index: 1;
-  width: min(400px, 90vw);
-  max-height: 95vh;
+  width: min(420px, 94vw);
+  max-height: 94vh;
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 2vh, 20px);
-  padding: clamp(8px, 2vh, 16px);
+  gap: clamp(10px, 1.8vh, 16px);
+  padding: clamp(6px, 1.5vh, 12px);
 }
 
 /* Header */
@@ -491,7 +515,9 @@ watch(activeTab, () => {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%);
   border: 1px solid rgba(245, 158, 11, 0.2);
   border-radius: 16px;
-  padding: clamp(16px, 3vh, 20px);
+  padding: clamp(12px, 2.2vh, 16px);
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
   box-shadow: 
     0 20px 50px rgba(0, 0, 0, 0.5),
     0 0 80px rgba(245, 158, 11, 0.05);
@@ -520,7 +546,7 @@ watch(activeTab, () => {
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 2vh, 14px);
+  gap: clamp(8px, 1.6vh, 12px);
 }
 
 .auth-input {
@@ -530,7 +556,7 @@ watch(activeTab, () => {
 .auth-input :deep(.q-field__control) {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.4);
-  min-height: clamp(48px, 7vh, 56px);
+  min-height: clamp(42px, 6vh, 50px);
 }
 
 .auth-input :deep(.q-field__control:before) {
@@ -548,17 +574,17 @@ watch(activeTab, () => {
 .auth-input :deep(.q-field__native),
 .auth-input :deep(.q-field__input) {
   color: #fef3c7;
-  font-size: clamp(13px, 2vh, 15px);
+  font-size: clamp(12px, 1.8vh, 14px);
 }
 
 .auth-input :deep(.q-field__label) {
-  font-size: clamp(12px, 2vh, 14px);
+  font-size: clamp(11px, 1.7vh, 13px);
 }
 
 .auth-input :deep(.q-field__bottom) {
   padding-top: 4px;
   min-height: 16px;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .rgpd-consent {
@@ -584,9 +610,9 @@ watch(activeTab, () => {
 
 .auth-submit-btn {
   margin-top: clamp(4px, 1vh, 6px);
-  padding: clamp(10px, 2vh, 12px) clamp(16px, 3vh, 20px);
+  padding: clamp(8px, 1.6vh, 10px) clamp(14px, 2.4vh, 18px);
   border-radius: 10px;
-  font-size: clamp(13px, 2vh, 15px);
+  font-size: clamp(12px, 1.8vh, 14px);
   font-weight: 700;
   letter-spacing: 0.05em;
   box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
@@ -663,18 +689,18 @@ watch(activeTab, () => {
 
   .auth-container {
     width: 94vw;
-    max-height: 98vh;
-    padding: 8px;
-    gap: 10px;
+    max-height: 96vh;
+    padding: 6px;
+    gap: 8px;
   }
 
   .auth-card {
-    padding: 14px 12px;
+    padding: 12px 10px;
     border-radius: 14px;
   }
 
   .auth-form {
-    gap: 10px;
+    gap: 8px;
   }
 
   .auth-input :deep(.q-field__bottom) {
@@ -687,7 +713,7 @@ watch(activeTab, () => {
 @media (max-height: 700px) {
   .auth-container {
     gap: 8px;
-    max-height: 96vh;
+    max-height: 94vh;
   }
 
   .logo-icon {
@@ -705,7 +731,8 @@ watch(activeTab, () => {
   }
 
   .auth-card {
-    padding: 14px;
+    padding: 12px;
+    max-height: min(68vh, 520px);
   }
 
   .auth-form {
@@ -713,7 +740,7 @@ watch(activeTab, () => {
   }
 
   .auth-input :deep(.q-field__control) {
-    min-height: 48px;
+    min-height: 40px;
   }
 
   .auth-input :deep(.q-field__bottom) {
@@ -722,7 +749,7 @@ watch(activeTab, () => {
   }
 
   .auth-submit-btn {
-    padding: 10px 16px;
+    padding: 8px 14px;
     margin-top: 4px;
   }
 }
@@ -747,7 +774,8 @@ watch(activeTab, () => {
   }
 
   .auth-card {
-    padding: 12px;
+    padding: 10px;
+    max-height: min(64vh, 480px);
   }
 
   .auth-tabs {
@@ -764,7 +792,7 @@ watch(activeTab, () => {
   }
 
   .auth-input :deep(.q-field__control) {
-    min-height: 44px;
+    min-height: 38px;
   }
 
   .auth-input :deep(.q-field__bottom) {

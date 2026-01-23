@@ -124,63 +124,10 @@ export default async function authRoutes(fastify) {
 
       const user = userResult.rows[0];
       if (user) {
-        const passwordAccount = await client.query(
-          'SELECT id FROM accounts WHERE user_id = $1 AND provider_type = $2 LIMIT 1',
-          [user.id, 'password']
-        );
-
-        if (passwordAccount.rowCount > 0) {
-          await client.query('ROLLBACK');
-          return reply.code(409).send({ error: 'Un compte avec cet email existe déjà.' });
-        }
-
-        const passwordHash = await bcrypt.hash(password, 10);
-        await client.query(
-          'INSERT INTO accounts (id, user_id, provider_type, provider_id, password_hash) VALUES ($1, $2, $3, $4, $5)',
-          [randomUUID(), user.id, 'password', normalizedEmail, passwordHash]
-        );
-
-        const token = createVerificationToken();
-        const expiresAt = getVerificationExpiry();
-
-        const updatedUser = await client.query(
-          `UPDATE users
-           SET last_login = NOW(),
-               username = COALESCE(username, $1),
-               verification_token = CASE WHEN email_verified_at IS NULL THEN $2 ELSE verification_token END,
-               token_expires_at = CASE WHEN email_verified_at IS NULL THEN $3 ELSE token_expires_at END
-           WHERE id = $4
-           RETURNING *`,
-          [username.trim(), token, expiresAt, user.id]
-        );
-
-        await client.query('COMMIT');
-
-        const isVerified = !!updatedUser.rows[0].email_verified_at;
-        let emailSent = true;
-        if (!isVerified) {
-          try {
-            await sendVerificationEmail({
-              email: normalizedEmail,
-              token: updatedUser.rows[0].verification_token,
-              username: updatedUser.rows[0].username
-            });
-          } catch (mailError) {
-            emailSent = false;
-            fastify.log.error(mailError);
-          }
-        }
-
-        if (!isVerified) {
-          return reply.send({
-            requiresVerification: true,
-            emailSent,
-            user: sanitizeUser(updatedUser.rows[0])
-          });
-        }
-
-        const sessionToken = fastify.jwt.sign({ userId: user.id });
-        return reply.send({ token: sessionToken, user: sanitizeUser(updatedUser.rows[0]) });
+        await client.query('ROLLBACK');
+        return reply.code(409).send({
+          error: 'Email déjà utilisé. Si vous avez oublié votre mot de passe ou utilisé un compte social, passez par la page de connexion.'
+        });
       }
 
       const userId = randomUUID();
@@ -344,6 +291,7 @@ export default async function authRoutes(fastify) {
         let userId = accountResult.rows[0]?.user_id;
         let user;
         let desiredUsername = null;
+        let shouldCreateGoogleAccount = false;
 
         if (!userId) {
           const existingUser = await client.query(
@@ -370,12 +318,8 @@ export default async function authRoutes(fastify) {
               [userId, normalizedEmail, uniqueUsername]
             );
             user = newUser.rows[0];
+            shouldCreateGoogleAccount = true;
           }
-
-          await client.query(
-            'INSERT INTO accounts (id, user_id, provider_type, provider_id, password_hash) VALUES ($1, $2, $3, $4, $5)',
-            [randomUUID(), userId, 'google', providerId, null]
-          );
         }
 
         if (!user && userId) {
@@ -387,6 +331,13 @@ export default async function authRoutes(fastify) {
               displayName || normalizedEmail.split('@')[0]
             );
           }
+        }
+
+        if (shouldCreateGoogleAccount) {
+          await client.query(
+            'INSERT INTO accounts (id, user_id, provider_type, provider_id, password_hash) VALUES ($1, $2, $3, $4, $5)',
+            [randomUUID(), userId, 'google', providerId, null]
+          );
         }
 
         const updatedUser = await client.query(
