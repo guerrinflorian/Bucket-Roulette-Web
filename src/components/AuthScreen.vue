@@ -165,6 +165,25 @@
             </template>
           </q-input>
 
+          <q-checkbox
+            v-model="registerConsent"
+            class="rgpd-consent"
+            color="amber"
+            dark
+            :rules="[val => val || 'Consentement requis']"
+            lazy-rules
+          >
+            <span class="rgpd-label">
+              J’accepte la politique de confidentialité (RGPD)
+            </span>
+            <q-icon name="info" size="16px" class="q-ml-xs rgpd-icon">
+              <q-tooltip class="rgpd-tooltip">
+                Vos données sont utilisées pour créer votre compte, vous contacter en cas de besoin
+                et assurer le bon fonctionnement du service.
+              </q-tooltip>
+            </q-icon>
+          </q-checkbox>
+
           <q-btn
             type="submit"
             label="Créer un compte"
@@ -232,8 +251,9 @@ const loginPassword = ref('');
 const registerEmail = ref('');
 const registerPassword = ref('');
 const registerUsername = ref('');
+const registerConsent = ref(false);
 const showPassword = ref(false);
-const enableGoogle = false;
+const enableGoogle = true;
 const googleButtonRef = ref(null);
 const googleReady = ref(false);
 
@@ -327,6 +347,12 @@ const handleLogin = async () => {
 };
 
 const handleRegister = async () => {
+  if (!registerConsent.value) {
+    const message = 'Merci de valider votre consentement RGPD pour continuer.';
+    authStore.setError(message);
+    notifyAuthState('negative', message);
+    return;
+  }
   try {
     const data = await authStore.register({
       email: registerEmail.value,
@@ -351,7 +377,7 @@ const handleRegister = async () => {
 };
 
 onMounted(() => {
-  if (enableGoogle) {
+  if (enableGoogle && clientId) {
     initGoogle();
   }
 });
@@ -533,6 +559,27 @@ watch(activeTab, () => {
   padding-top: 4px;
   min-height: 16px;
   font-size: 11px;
+}
+
+.rgpd-consent {
+  margin-top: 2px;
+  align-items: flex-start;
+}
+
+.rgpd-label {
+  font-size: 12px;
+  color: #e4e4e7;
+  line-height: 1.3;
+}
+
+.rgpd-icon {
+  color: #a1a1aa;
+}
+
+.rgpd-tooltip {
+  max-width: 220px;
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .auth-submit-btn {
