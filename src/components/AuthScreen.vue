@@ -344,7 +344,14 @@ const resolveAuthMessage = (message) => {
   if (!normalized) {
     return 'Une erreur est survenue. Merci de réessayer.';
   }
-  if (normalized.includes('connexion') || normalized.includes('network') || normalized.includes('fetch')) {
+  const isNetworkError = (
+    normalized.includes('failed to fetch') ||
+    normalized.includes('networkerror') ||
+    normalized.includes('network error') ||
+    normalized.includes('connexion au serveur') ||
+    normalized.includes('impossible de se connecter')
+  );
+  if (isNetworkError) {
     return 'Connexion au serveur impossible. Vérifiez votre réseau et réessayez.';
   }
   return message;

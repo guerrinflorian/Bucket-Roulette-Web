@@ -124,18 +124,39 @@ const renderVerificationPage = ({ title, message, buttonLabel, buttonUrl }) => `
   </html>
 `;
 
-const EMAIL_TIMEOUT_MS = Number.parseInt(process.env.EMAIL_TIMEOUT_MS || '10000', 10);
+const EMAIL_TIMEOUT_MS = Number.parseInt(process.env.EMAIL_TIMEOUT_MS || '8000', 10);
+const EMAIL_FROM = process.env.EMAIL_FROM || process.env.EMAIL_USER;
 
 const createMailer = () => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_APP_PASSWORD;
   if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    service: 'gmail',
+  const host = process.env.EMAIL_HOST;
+  const port = Number.parseInt(process.env.EMAIL_PORT || '', 10);
+  const secureEnv = process.env.EMAIL_SECURE;
+  const secure = secureEnv ? secureEnv === 'true' : port === 465;
+
+  const baseConfig = {
     auth: { user, pass },
     connectionTimeout: EMAIL_TIMEOUT_MS,
     greetingTimeout: EMAIL_TIMEOUT_MS,
     socketTimeout: EMAIL_TIMEOUT_MS
+  };
+
+  if (host) {
+    return nodemailer.createTransport({
+      ...baseConfig,
+      host,
+      port: Number.isFinite(port) ? port : 465,
+      secure
+    });
+  }
+
+  return nodemailer.createTransport({
+    ...baseConfig,
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true
   });
 };
 
@@ -158,7 +179,7 @@ const sendVerificationEmail = async ({ email, token, username }) => {
   const url = `${verificationBaseUrl()}/api/auth/verify-email?token=${token}`;
   const displayName = username || 'joueur';
   await withTimeout(mailer.sendMail({
-    from: `Revolver Gambit <${process.env.EMAIL_USER}>`,
+    from: `Revolver Gambit <${EMAIL_FROM}>`,
     to: email,
     subject: '🎯 Activez votre compte - Revolver Gambit',
     html: `
@@ -257,7 +278,7 @@ const sendPasswordResetEmail = async ({ email, token, username }) => {
   const displayName = username || 'joueur';
   const year = new Date().getFullYear();
   await withTimeout(mailer.sendMail({
-    from: process.env.EMAIL_USER,
+    from: EMAIL_FROM,
     to: email,
     subject: 'Réinitialisez votre mot de passe',
     html: `
@@ -648,12 +669,23 @@ export default async function authRoutes(fastify) {
         { userId, type: 'password_reset' },
         { expiresIn: '1h' }
       );
-      await sendPasswordResetEmail({
-        email: user.email,
-        token: resetToken,
-        username: user.username
+      let emailSent = true;
+      try {
+        await sendPasswordResetEmail({
+          email: user.email,
+          token: resetToken,
+          username: user.username
+        });
+      } catch (mailError) {
+        emailSent = false;
+        fastify.log.error(mailError);
+      }
+      return reply.send({
+        message: emailSent
+          ? 'Email de réinitialisation envoyé.'
+          : 'Compte trouvé, mais l’email n’a pas pu être envoyé. Contactez le support.',
+        emailSent
       });
-      return reply.send({ message: 'Email de réinitialisation envoyé.' });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors de la réinitialisation.' });
@@ -692,11 +724,15 @@ export default async function authRoutes(fastify) {
           { userId: user.id, type: 'password_reset' },
           { expiresIn: '1h' }
         );
-        await sendPasswordResetEmail({
-          email: user.email,
-          token: resetToken,
-          username: user.username
-        });
+        try {
+          await sendPasswordResetEmail({
+            email: user.email,
+            token: resetToken,
+            username: user.username
+          });
+        } catch (mailError) {
+          fastify.log.error(mailError);
+        }
       }
       return reply.send({
         message: 'Si un compte existe, un email de réinitialisation a été envoyé.'
