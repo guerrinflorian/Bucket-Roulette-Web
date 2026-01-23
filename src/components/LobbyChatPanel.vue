@@ -44,16 +44,18 @@
     <form class="chat-input-row" @submit.prevent="sendChatMessage">
       <q-btn
         ref="emojiButtonRef"
+        type="button"
         flat
         dense
         class="chat-emoji-btn"
         :disable="!netStore.roomId"
         aria-label="Ajouter un emoji"
-        @click="showEmojiPicker = true"
       >
         😊
         <q-menu v-model="showEmojiPicker" anchor="top left" self="bottom left">
-          <EmojiPicker :native="true" @select="handleEmojiSelect" />
+          <div class="rounded-2xl border border-white/10 bg-black/80 p-2 backdrop-blur">
+            <EmojiPicker :native="true" theme="dark" @select="handleEmojiSelect" />
+          </div>
         </q-menu>
       </q-btn>
       <input
@@ -61,12 +63,15 @@
         type="text"
         class="chat-input"
         placeholder="Écrivez un message..."
-        maxlength="150"
+        :maxlength="CHAT_MAX_LENGTH"
         :disabled="!netStore.roomId"
       />
-      <button type="submit" class="chat-send-btn" :disabled="!canSendChat">
-        {{ chatCooldownLeft > 0 ? `Attendre ${chatCooldownLeft}s` : 'Envoyer' }}
-      </button>
+      <div class="ml-auto flex items-center gap-2 text-[10px] text-slate-400">
+        <span>{{ chatCharCount }}/{{ CHAT_MAX_LENGTH }}</span>
+        <button type="submit" class="chat-send-btn" :disabled="!canSendChat">
+          {{ chatCooldownLeft > 0 ? `Attendre ${chatCooldownLeft}s` : 'Envoyer' }}
+        </button>
+      </div>
     </form>
   </div>
 </template>
@@ -80,6 +85,7 @@ import 'vue3-emoji-picker/css';
 
 const netStore = useNetStore();
 const CHAT_COOLDOWN_MS = 3000;
+const CHAT_MAX_LENGTH = 150;
 
 const chatInput = ref('');
 const showEmojiPicker = ref(false);
@@ -87,6 +93,7 @@ const emojiButtonRef = ref(null);
 const chatScrollRef = ref(null);
 const nowTick = ref(Date.now());
 const lobbyChatMessages = computed(() => netStore.lobbyChatMessages);
+const chatCharCount = computed(() => chatInput.value.length);
 const chatCooldownLeft = computed(() => {
   const remaining = CHAT_COOLDOWN_MS - (nowTick.value - (netStore.lastLobbyChatSentAt || 0));
   if (remaining <= 0) return 0;
