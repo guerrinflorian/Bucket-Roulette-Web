@@ -27,7 +27,8 @@
     "vue": "^3.4.27",
     "vue-boring-avatars": "^1.4.0",
     "vue-router": "^4.3.2",
-    "vue3-emoji-picker": "^1.1.8"
+    "vue3-emoji-picker": "^1.1.8",
+    "nodemailer": "^6.9.14"
   },
   "devDependencies": {
     "@quasar/vite-plugin": "^1.6.0",
