@@ -30,7 +30,8 @@ export const useNetStore = defineStore('net', {
     gameEnded: false,
     error: null,
     lastPing: null,
-    lobbyChatMessages: []
+    lobbyChatMessages: [],
+    lastLobbyChatSentAt: 0
   }),
 
   getters: {
@@ -75,6 +76,7 @@ export const useNetStore = defineStore('net', {
           this.roomReady = false;
           this.roomPlayers = [];
           this.lobbyChatMessages = [];
+          this.lastLobbyChatSentAt = 0;
         });
 
         this.socket.on('connect_error', (err) => {
@@ -94,10 +96,11 @@ export const useNetStore = defineStore('net', {
           this.error = null;
           this.gameEnded = false;
           this.lobbyChatMessages = [];
+          this.lastLobbyChatSentAt = 0;
           if (this.playerName) {
             this.addLobbyMessage({
               type: 'system',
-              name: this.playerName,
+              name: 'Système',
               text: `${this.playerName} a rejoint la room.`
             });
           }
@@ -112,10 +115,11 @@ export const useNetStore = defineStore('net', {
           this.error = null;
           this.gameEnded = false;
           this.lobbyChatMessages = [];
+          this.lastLobbyChatSentAt = 0;
           if (this.playerName) {
             this.addLobbyMessage({
               type: 'system',
-              name: this.playerName,
+              name: 'Système',
               text: `${this.playerName} a rejoint la room.`
             });
           }
@@ -212,6 +216,7 @@ export const useNetStore = defineStore('net', {
           this.roomPlayers = [];
           this.roomReady = false;
           this.lobbyChatMessages = [];
+          this.lastLobbyChatSentAt = 0;
         });
 
         this.socket.on('room:chat', ({ playerId, playerName, userId, message, timestamp }) => {
@@ -299,7 +304,20 @@ export const useNetStore = defineStore('net', {
       if (!this.socket || !this.roomId) return;
       const trimmed = message?.trim();
       if (!trimmed) return;
-      this.socket.emit('room:chat', { roomId: this.roomId, message: trimmed });
+      const now = Date.now();
+      if (now - this.lastLobbyChatSentAt < 3000) {
+        Notify.create({
+          message: 'Veuillez attendre avant de renvoyer un message.',
+          color: 'warning',
+          position: 'top',
+          timeout: 1500,
+          icon: 'schedule'
+        });
+        return;
+      }
+      const limited = trimmed.slice(0, 150);
+      this.lastLobbyChatSentAt = now;
+      this.socket.emit('room:chat', { roomId: this.roomId, message: limited });
     },
 
     // Host sends game state to sync
@@ -401,6 +419,7 @@ export const useNetStore = defineStore('net', {
       this.gameEnded = false;
       this.error = null;
       this.lobbyChatMessages = [];
+      this.lastLobbyChatSentAt = 0;
     },
 
     // Clear error
@@ -414,15 +433,16 @@ export const useNetStore = defineStore('net', {
 
     addLobbyMessage(payload) {
       if (!payload?.text) return;
+      const isSystem = payload.type === 'system';
       const entry = {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         type: payload.type || 'chat',
-        name: payload.name || 'Système',
+        name: isSystem ? 'Système' : payload.name || 'Système',
         text: payload.text,
         playerId: payload.playerId || null,
         userId: payload.userId || null,
         timestamp: payload.timestamp || Date.now(),
-        isSelf: payload.isSelf || false
+        isSelf: isSystem ? false : payload.isSelf || false
       };
       const next = [...this.lobbyChatMessages, entry];
       this.lobbyChatMessages = next.slice(-120);
