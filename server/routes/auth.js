@@ -34,8 +34,10 @@ const createVerificationToken = () => randomBytes(32).toString('hex');
 
 const getVerificationExpiry = () => new Date(Date.now() + 1000 * 60 * 60 * 24);
 
+const API_BASE_URL = process.env.API_BASE_URL || process.env.APP_BASE_URL;
+
 const verificationBaseUrl = () => {
-  return process.env.APP_BASE_URL;
+  return API_BASE_URL;
 };
 
 const clientBaseUrl = () => {
@@ -135,6 +137,15 @@ if (GOOGLE_REFRESH_TOKEN) {
   oauth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
 }
 
+const encodeSubject = (subject) => {
+  const text = String(subject ?? '');
+  if (!/[^\x00-\x7F]/.test(text)) {
+    return text;
+  }
+  const encoded = Buffer.from(text, 'utf8').toString('base64');
+  return `=?UTF-8?B?${encoded}?=`;
+};
+
 const sendEmail = async ({ to, subject, html }) => {
   if (!EMAIL_FROM || !GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
     throw new Error('Service email non configuré.');
@@ -150,7 +161,7 @@ const sendEmail = async ({ to, subject, html }) => {
   const message = [
     `From: Revolver Gambit <${EMAIL_FROM}>`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeSubject(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset="UTF-8"',
     '',
