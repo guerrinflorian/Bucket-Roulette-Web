@@ -42,53 +42,60 @@
     </div>
 
     <form class="chat-input-row" @submit.prevent="sendChatMessage">
-      <button
+      <q-btn
         ref="emojiButtonRef"
-        type="button"
+        flat
+        dense
         class="chat-emoji-btn"
-        :disabled="!netStore.roomId"
+        :disable="!netStore.roomId"
+        aria-label="Ajouter un emoji"
         @click="showEmojiPicker = true"
       >
         😊
-      </button>
-      <q-menu
-        v-model="showEmojiPicker"
-        :target="emojiButtonRef"
-        anchor="top left"
-        self="bottom left"
-      >
-        <EmojiPicker :native="true" @select="handleEmojiSelect" />
-      </q-menu>
+        <q-menu v-model="showEmojiPicker" anchor="top left" self="bottom left">
+          <EmojiPicker :native="true" @select="handleEmojiSelect" />
+        </q-menu>
+      </q-btn>
       <input
         v-model="chatInput"
         type="text"
         class="chat-input"
         placeholder="Écrivez un message..."
-        maxlength="240"
+        maxlength="150"
         :disabled="!netStore.roomId"
       />
       <button type="submit" class="chat-send-btn" :disabled="!canSendChat">
-        Envoyer
+        {{ chatCooldownLeft > 0 ? `Attendre ${chatCooldownLeft}s` : 'Envoyer' }}
       </button>
     </form>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue';
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useNetStore } from '../stores/netStore.js';
 import Avatar from 'vue-boring-avatars';
 import EmojiPicker from 'vue3-emoji-picker';
 import 'vue3-emoji-picker/css';
 
 const netStore = useNetStore();
+const CHAT_COOLDOWN_MS = 3000;
 
 const chatInput = ref('');
 const showEmojiPicker = ref(false);
 const emojiButtonRef = ref(null);
 const chatScrollRef = ref(null);
+const nowTick = ref(Date.now());
 const lobbyChatMessages = computed(() => netStore.lobbyChatMessages);
-const canSendChat = computed(() => chatInput.value.trim().length > 0 && !!netStore.roomId);
+const chatCooldownLeft = computed(() => {
+  const remaining = CHAT_COOLDOWN_MS - (nowTick.value - (netStore.lastLobbyChatSentAt || 0));
+  if (remaining <= 0) return 0;
+  return Math.ceil(remaining / 1000);
+});
+const canSendChat = computed(() => {
+  const hasMessage = chatInput.value.trim().length > 0;
+  return hasMessage && !!netStore.roomId && chatCooldownLeft.value === 0;
+});
 const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 
 const getAvatarSeed = (name) => name?.split(' ')[0] || name || 'Joueur';
@@ -131,6 +138,18 @@ watch(
     showEmojiPicker.value = false;
   }
 );
+
+let tickInterval = null;
+
+onMounted(() => {
+  tickInterval = setInterval(() => {
+    nowTick.value = Date.now();
+  }, 250);
+});
+
+onBeforeUnmount(() => {
+  if (tickInterval) clearInterval(tickInterval);
+});
 </script>
 
 <style scoped>
@@ -234,10 +253,12 @@ watch(
   border: 1px solid rgba(148, 163, 184, 0.2);
   padding: 10px 12px;
   border-radius: 14px;
+  flex-wrap: wrap;
 }
 
 .chat-input {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   color: #f8fafc;
@@ -257,6 +278,7 @@ watch(
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 32px;
 }
 
 .chat-emoji-btn:hover:not(:disabled) {
@@ -274,8 +296,10 @@ watch(
   color: white;
   font-weight: 600;
   font-size: 13px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 10px;
+  min-width: 110px;
+  white-space: nowrap;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
