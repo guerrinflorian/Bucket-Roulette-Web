@@ -15,6 +15,19 @@ const sanitizeUser = (user) => ({
   emailVerifiedAt: user.email_verified_at
 });
 
+const fetchAuthProviders = async (client, userId) => {
+  const result = await client.query(
+    'SELECT provider_type FROM accounts WHERE user_id = $1',
+    [userId]
+  );
+  return result.rows.map((row) => row.provider_type);
+};
+
+const buildUserPayload = async (client, user) => ({
+  ...sanitizeUser(user),
+  authProviders: await fetchAuthProviders(client, user.id)
+});
+
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
 const createVerificationToken = () => randomBytes(32).toString('hex');
@@ -362,10 +375,11 @@ export default async function authRoutes(fastify) {
         fastify.log.error(mailError);
       }
 
+      const userPayload = await buildUserPayload(client, createdUser.rows[0]);
       return reply.send({
         requiresVerification: true,
         emailSent,
-        user: sanitizeUser(createdUser.rows[0])
+        user: userPayload
       });
     } catch (error) {
       await client.query('ROLLBACK');
@@ -451,7 +465,8 @@ export default async function authRoutes(fastify) {
       await client.query('COMMIT');
 
       const token = fastify.jwt.sign({ userId: user.id });
-      return reply.send({ token, user: sanitizeUser(updatedUser.rows[0]) });
+      const userPayload = await buildUserPayload(client, updatedUser.rows[0]);
+      return reply.send({ token, user: userPayload });
     } catch (error) {
       await client.query('ROLLBACK');
       fastify.log.error(error);
@@ -548,7 +563,8 @@ export default async function authRoutes(fastify) {
         await client.query('COMMIT');
 
         const token = fastify.jwt.sign({ userId });
-        return reply.send({ token, user: sanitizeUser(updatedUser.rows[0]) });
+        const userPayload = await buildUserPayload(client, updatedUser.rows[0]);
+        return reply.send({ token, user: userPayload });
       } finally {
         client.release();
       }
@@ -581,7 +597,8 @@ export default async function authRoutes(fastify) {
       );
 
       await client.query('COMMIT');
-      return reply.send({ user: sanitizeUser(updatedUser.rows[0]) });
+      const userPayload = await buildUserPayload(client, updatedUser.rows[0]);
+      return reply.send({ user: userPayload });
     } catch (error) {
       await client.query('ROLLBACK');
       fastify.log.error(error);
@@ -599,6 +616,15 @@ export default async function authRoutes(fastify) {
       const user = userResult.rows[0];
       if (!user) {
         return reply.code(404).send({ error: 'Utilisateur introuvable.' });
+      }
+      const passwordAccount = await client.query(
+        'SELECT id FROM accounts WHERE user_id = $1 AND provider_type = $2 LIMIT 1',
+        [userId, 'password']
+      );
+      if (passwordAccount.rowCount === 0) {
+        return reply.code(403).send({
+          error: 'Ce compte utilise la connexion Google. Le mot de passe se gère depuis Google.'
+        });
       }
       if (!mailer) {
         return reply.code(500).send({ error: 'Service email non configuré.' });
@@ -638,6 +664,15 @@ export default async function authRoutes(fastify) {
       );
       const user = userResult.rows[0];
       if (user) {
+        const passwordAccount = await client.query(
+          'SELECT id FROM accounts WHERE user_id = $1 AND provider_type = $2 LIMIT 1',
+          [user.id, 'password']
+        );
+        if (passwordAccount.rowCount === 0) {
+          return reply.send({
+            message: 'Si un compte existe, un email de réinitialisation a été envoyé.'
+          });
+        }
         const resetToken = fastify.jwt.sign(
           { userId: user.id, type: 'password_reset' },
           { expiresIn: '1h' }
@@ -854,13 +889,19 @@ export default async function authRoutes(fastify) {
 
   fastify.get('/me', { preValidation: [fastify.authenticate] }, async (request, reply) => {
     const { userId } = request.user;
-    const result = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
-    if (!result.rows[0]) {
-      return reply.code(404).send({ error: 'Utilisateur introuvable.' });
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
+      if (!result.rows[0]) {
+        return reply.code(404).send({ error: 'Utilisateur introuvable.' });
+      }
+      if (!result.rows[0].email_verified_at) {
+        return reply.code(403).send({ error: 'Email non vérifié.' });
+      }
+      const userPayload = await buildUserPayload(client, result.rows[0]);
+      return reply.send({ user: userPayload });
+    } finally {
+      client.release();
     }
-    if (!result.rows[0].email_verified_at) {
-      return reply.code(403).send({ error: 'Email non vérifié.' });
-    }
-    return reply.send({ user: sanitizeUser(result.rows[0]) });
   });
 }

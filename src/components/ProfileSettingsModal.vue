@@ -43,6 +43,13 @@
         <div class="profile-settings-section">
           <div class="section-title">Mot de passe</div>
           <div class="section-hint">
+            Connecté avec :
+            <strong>{{ authProviderLabel }}</strong>
+          </div>
+          <div v-if="!hasPasswordProvider" class="section-hint">
+            Votre compte utilise Google. Le mot de passe est géré depuis Google.
+          </div>
+          <div v-else class="section-hint">
             Un lien sécurisé sera envoyé à <strong>{{ authStore.user?.email }}</strong>.
           </div>
           <q-btn
@@ -50,6 +57,7 @@
             color="amber"
             class="w-full font-bold"
             :loading="authStore.loading"
+            :disable="!hasPasswordProvider"
             no-caps
             @click="requestPasswordReset"
           >
@@ -81,6 +89,21 @@ const emit = defineEmits(['update:modelValue']);
 
 const authStore = useAuthStore();
 const username = ref('');
+const authProviders = computed(() => authStore.user?.authProviders || []);
+const hasPasswordProvider = computed(() => authProviders.value.includes('password'));
+const hasGoogleProvider = computed(() => authProviders.value.includes('google'));
+const authProviderLabel = computed(() => {
+  if (hasPasswordProvider.value && hasGoogleProvider.value) {
+    return 'Email + Google';
+  }
+  if (hasGoogleProvider.value) {
+    return 'Google';
+  }
+  if (hasPasswordProvider.value) {
+    return 'Email';
+  }
+  return 'Inconnu';
+});
 
 const isOpen = computed({
   get: () => props.modelValue,
