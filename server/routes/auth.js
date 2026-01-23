@@ -29,6 +29,88 @@ const clientBaseUrl = () => {
   return process.env.APP_BASE_URL;
 };
 
+const renderVerificationPage = ({ title, message, buttonLabel, buttonUrl }) => `
+  <!doctype html>
+  <html lang="fr">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>${title}</title>
+      <style>
+        :root {
+          color-scheme: dark;
+          --bg: #0a0a0f;
+          --panel: #0d1117;
+          --panel-border: #f59e0b;
+          --text: #fef3c7;
+          --muted: #a1a1aa;
+          --button: #f59e0b;
+          --button-hover: #d97706;
+        }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+          background: radial-gradient(circle at top, rgba(245, 158, 11, 0.2), transparent 45%), var(--bg);
+          color: var(--text);
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+        }
+        .card {
+          max-width: 520px;
+          width: 100%;
+          background: linear-gradient(145deg, #161b22 0%, var(--panel) 100%);
+          border: 1px solid var(--panel-border);
+          border-radius: 20px;
+          padding: 32px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          text-align: center;
+        }
+        h1 {
+          margin: 0 0 12px;
+          font-size: 26px;
+          letter-spacing: 1px;
+        }
+        p {
+          margin: 0 0 24px;
+          font-size: 16px;
+          color: var(--muted);
+          line-height: 1.6;
+        }
+        .button {
+          display: inline-block;
+          padding: 14px 28px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, var(--button) 0%, var(--button-hover) 100%);
+          color: #1f1300;
+          font-weight: 700;
+          text-decoration: none;
+          box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+        }
+        .button:hover {
+          filter: brightness(1.05);
+        }
+        .footer {
+          margin-top: 20px;
+          font-size: 12px;
+          color: #52525b;
+        }
+      </style>
+    </head>
+    <body>
+      <main class="card">
+        <div style="font-size: 42px; margin-bottom: 8px;">🎯</div>
+        <h1>${title}</h1>
+        <p>${message}</p>
+        ${buttonUrl ? `<a class="button" href="${buttonUrl}">${buttonLabel}</a>` : ''}
+        <div class="footer">© 2026 Revolver Gambit</div>
+      </main>
+    </body>
+  </html>
+`;
+
 const createMailer = () => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_APP_PASSWORD;
@@ -634,7 +716,17 @@ export default async function authRoutes(fastify) {
   fastify.get('/verify-email', async (request, reply) => {
     const { token } = request.query || {};
     if (!token) {
-      return reply.code(400).send({ error: 'Token de vérification manquant.' });
+      return reply
+        .code(400)
+        .type('text/html')
+        .send(
+          renderVerificationPage({
+            title: 'Lien manquant',
+            message: 'Le lien de vérification est incomplet. Veuillez relancer une demande.',
+            buttonLabel: 'Retour à l’accueil',
+            buttonUrl: clientBaseUrl()
+          })
+        );
     }
 
     const client = await pool.connect();
@@ -653,7 +745,17 @@ export default async function authRoutes(fastify) {
       const user = result.rows[0];
       if (!user) {
         await client.query('ROLLBACK');
-        return reply.code(400).send({ error: 'Lien de vérification invalide ou expiré.' });
+        return reply
+          .code(400)
+          .type('text/html')
+          .send(
+            renderVerificationPage({
+              title: 'Lien expiré',
+              message: 'Ce lien de vérification est invalide ou a expiré.',
+              buttonLabel: 'Retour à l’accueil',
+              buttonUrl: clientBaseUrl()
+            })
+          );
       }
 
       const updatedUser = await client.query(
@@ -667,11 +769,30 @@ export default async function authRoutes(fastify) {
       );
 
       await client.query('COMMIT');
-      return reply.send({ message: 'Email vérifié avec succès.', user: sanitizeUser(updatedUser.rows[0]) });
+      return reply
+        .type('text/html')
+        .send(
+          renderVerificationPage({
+            title: 'Email vérifié',
+            message: 'Votre email est vérifié, vous pouvez vous connecter maintenant.',
+            buttonLabel: 'Se connecter',
+            buttonUrl: clientBaseUrl()
+          })
+        );
     } catch (error) {
       await client.query('ROLLBACK');
       fastify.log.error(error);
-      return reply.code(500).send({ error: 'Erreur serveur lors de la vérification.' });
+      return reply
+        .code(500)
+        .type('text/html')
+        .send(
+          renderVerificationPage({
+            title: 'Erreur serveur',
+            message: 'Une erreur est survenue pendant la vérification. Réessayez plus tard.',
+            buttonLabel: 'Retour à l’accueil',
+            buttonUrl: clientBaseUrl()
+          })
+        );
     } finally {
       client.release();
     }
