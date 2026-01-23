@@ -4,12 +4,13 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
+import { getCorsOriginValidator } from './cors.js';
 
 const buildApp = async () => {
   const fastify = Fastify({ logger: true });
 
   await fastify.register(cors, {
-    origin: true,
+    origin: getCorsOriginValidator(),
     credentials: true
   });
 
@@ -26,6 +27,7 @@ const buildApp = async () => {
     }
   });
 
+  fastify.get('/health', { logLevel: 'silent' }, async () => ({ status: 'ok' }));
   fastify.get('/api/health', async () => ({ status: 'ok' }));
   await fastify.register(authRoutes, { prefix: '/api/auth' });
   await fastify.register(gameRoutes, { prefix: '/api' });
