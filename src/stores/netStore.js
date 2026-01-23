@@ -19,6 +19,8 @@ export const useNetStore = defineStore('net', {
     socketId: null,
     connected: false,
     connecting: false,
+    connectionStatus: 'disconnected',
+    connectionMessage: '',
     roomId: null,
     isHost: false,
     hostName: null,
@@ -47,6 +49,8 @@ export const useNetStore = defineStore('net', {
       if (this.connecting) return Promise.resolve();
 
       this.connecting = true;
+      this.connectionStatus = 'connecting';
+      this.connectionMessage = 'Connexion au serveur...';
       this.error = null;
 
       return new Promise((resolve, reject) => {
@@ -80,7 +84,7 @@ export const useNetStore = defineStore('net', {
           transports: ['websocket', 'polling'],
           timeout: 10000,
           reconnection: true,
-          reconnectionAttempts: 5,
+          reconnectionAttempts: Infinity,
           reconnectionDelay: 1000
         });
 
@@ -88,6 +92,8 @@ export const useNetStore = defineStore('net', {
           console.log('✅ Connected to server');
           this.connected = true;
           this.connecting = false;
+          this.connectionStatus = 'connected';
+          this.connectionMessage = '';
           this.socketId = this.socket.id;
           resolve();
         });
@@ -95,6 +101,8 @@ export const useNetStore = defineStore('net', {
         this.socket.on('disconnect', (reason) => {
           console.log('❌ Disconnected:', reason);
           this.connected = false;
+          this.connectionStatus = 'disconnected';
+          this.connectionMessage = 'Connexion perdue, reconnexion en cours...';
           this.socketId = null;
           this.roomReady = false;
           this.roomPlayers = [];
@@ -102,9 +110,16 @@ export const useNetStore = defineStore('net', {
           this.lastLobbyChatSentAt = 0;
         });
 
+        this.socket.on('reconnect_attempt', () => {
+          this.connectionStatus = 'reconnecting';
+          this.connectionMessage = 'Connexion perdue, reconnexion en cours...';
+        });
+
         this.socket.on('connect_error', (err) => {
           console.error('Connection error:', err.message);
           this.connecting = false;
+          this.connectionStatus = 'disconnected';
+          this.connectionMessage = 'Connexion impossible. Nouvelle tentative...';
           this.error = 'Impossible de se connecter au serveur';
           reject(err);
         });
@@ -433,6 +448,8 @@ export const useNetStore = defineStore('net', {
       this.socket = null;
       this.socketId = null;
       this.connected = false;
+      this.connectionStatus = 'disconnected';
+      this.connectionMessage = '';
       this.roomId = null;
       this.isHost = false;
       this.hostName = null;
