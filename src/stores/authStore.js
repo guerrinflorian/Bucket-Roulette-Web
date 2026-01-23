@@ -152,7 +152,8 @@ export const useAuthStore = defineStore('auth', () => {
       setError('');
       try {
         const data = await request('/api/auth/password-reset', {
-          method: 'POST'
+          method: 'POST',
+          body: JSON.stringify({})
         });
         return data;
       } catch (err) {
