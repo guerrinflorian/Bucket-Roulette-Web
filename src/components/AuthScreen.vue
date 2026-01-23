@@ -239,17 +239,6 @@
           </div>
         </template>
 
-        <!-- Error message -->
-        <q-banner 
-          v-if="authStore.error" 
-          class="mt-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300"
-          dense
-        >
-          <template v-slot:avatar>
-            <q-icon name="warning" color="negative" />
-          </template>
-          {{ authStore.error }}
-        </q-banner>
       </div>
     </div>
   </q-page>
@@ -304,8 +293,15 @@ const initGoogle = async () => {
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: async (response) => {
-        await authStore.loginWithGoogle(response.credential);
-        router.push('/menu');
+        try {
+          await authStore.loginWithGoogle(response.credential);
+          notifyAuthState('positive', 'Connexion Google réussie. Bon jeu !');
+          router.push('/menu');
+        } catch (error) {
+          const message = resolveAuthMessage(error?.message || authStore.error);
+          authStore.setError(message);
+          notifyAuthState('negative', message);
+        }
       }
     });
     window.google.accounts.id.renderButton(googleButtonRef.value, {
@@ -326,17 +322,6 @@ const resolveAuthMessage = (message) => {
   const normalized = String(message || '').toLowerCase();
   if (!normalized) {
     return 'Une erreur est survenue. Merci de réessayer.';
-  }
-  if (
-    normalized.includes('identifiant')
-    || normalized.includes('invalid')
-    || normalized.includes('incorrect')
-    || normalized.includes('password')
-  ) {
-    return 'Identifiants invalides. Vérifiez votre email et votre mot de passe.';
-  }
-  if (normalized.includes('existe') || normalized.includes('already')) {
-    return 'Ce compte existe déjà. Essayez de vous connecter.';
   }
   if (normalized.includes('connexion') || normalized.includes('network') || normalized.includes('fetch')) {
     return 'Connexion au serveur impossible. Vérifiez votre réseau et réessayez.';
