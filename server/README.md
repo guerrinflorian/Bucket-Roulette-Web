@@ -21,13 +21,20 @@ EMAIL_APP_PASSWORD=app_password
 APP_BASE_URL=http://localhost:3001
 ```
 
-### Production (Vercel)
-Sur Vercel, définis ces variables d’environnement pour éviter les erreurs 500 :
+### Production (Render, monorepo)
+Sur Render, crée un **Web Service** pointant vers `server/` :
+- **Build Command** : `npm install`
+- **Start Command** : `npm start`
+- **Root Directory** : `server`
+- **Auto Deploy** : activé si tu veux déployer à chaque push.
+
+Variables d’environnement côté API (Render) :
 - `DATABASE_URL` (+ `DATABASE_SSL=true` si ta base l’exige)
 - `JWT_SECRET`
 - `GOOGLE_CLIENT_ID`
 - `EMAIL_USER` / `EMAIL_APP_PASSWORD`
 - `APP_BASE_URL` (URL publique de ton front, ex: `https://revolver-gambit.vercel.app`)
+- `PORT` **inutile** sur Render (il est injecté automatiquement)
 
 ## Auth API
 - `POST /api/auth/register` { email, password, username }
