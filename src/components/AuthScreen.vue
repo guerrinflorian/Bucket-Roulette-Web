@@ -1,49 +1,61 @@
 <template>
-  <q-page class="auth-page">
+  <q-page class="min-h-screen bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden">
     <!-- Background effects -->
-    <div class="auth-bg">
-      <div class="bg-gradient"></div>
-      <div class="bg-grid"></div>
-      <div class="floating-bullets">
-        <div class="bullet b1">🔴</div>
-        <div class="bullet b2">⚪</div>
-        <div class="bullet b3">🔴</div>
-        <div class="bullet b4">⚪</div>
-        <div class="bullet b5">🔴</div>
-      </div>
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <!-- Gradient effects -->
+      <div class="absolute inset-0 bg-gradient-radial"></div>
+      <div class="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl"></div>
+      
+      <!-- Grid -->
+      <div class="absolute inset-0 bg-grid opacity-20"></div>
+      
+      <!-- Floating bullets -->
+      <div class="floating-bullet text-2xl opacity-10 top-[15%] left-[10%]">🔴</div>
+      <div class="floating-bullet text-2xl opacity-10 top-[25%] right-[15%] animation-delay-4">⚪</div>
+      <div class="floating-bullet text-2xl opacity-10 top-[60%] left-[5%] animation-delay-8">🔴</div>
+      <div class="floating-bullet text-2xl opacity-10 top-[70%] right-[8%] animation-delay-12">⚪</div>
+      <div class="floating-bullet text-2xl opacity-10 bottom-[10%] left-1/2 animation-delay-16">🔴</div>
     </div>
 
-    <div class="auth-container w-full max-w-[440px] max-h-[94vh] px-3 py-2 sm:px-4 sm:py-3">
-      <!-- Logo / Header -->
-      <header class="auth-header">
-        <div class="logo-icon">🎯</div>
-        <h1 class="auth-title">REVOLVER GAMBIT</h1>
-        <p class="auth-subtitle">Connectez-vous pour jouer</p>
-      </header>
+    <!-- Auth Container -->
+    <div class="w-full max-w-md relative z-10">
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <div class="text-5xl mb-3 drop-shadow-glow">🎯</div>
+        <h1 class="text-3xl font-black tracking-widest text-amber-100 mb-2 text-shadow-glow">
+          REVOLVER GAMBIT
+        </h1>
+        <p class="text-sm text-zinc-500">Connectez-vous pour jouer</p>
+      </div>
 
       <!-- Auth Card -->
-      <div class="auth-card max-h-[72vh] overflow-y-auto px-4 py-4 sm:px-5 sm:py-4">
+      <div class="bg-gradient-to-br from-white/5 to-black/20 backdrop-blur-sm border border-amber-500/20 rounded-2xl p-6 shadow-2xl shadow-amber-500/10">
         <!-- Tabs -->
         <q-tabs
           v-model="activeTab"
-          class="auth-tabs"
+          class="bg-black/30 rounded-xl mb-6"
           indicator-color="amber"
           active-color="amber"
           align="justify"
           narrow-indicator
         >
-          <q-tab name="login" label="Connexion" />
-          <q-tab name="register" label="Inscription" />
+          <q-tab 
+            name="login" 
+            label="Connexion"
+            class="font-bold text-sm tracking-wide"
+          />
+          <q-tab 
+            name="register" 
+            label="Inscription"
+            class="font-bold text-sm tracking-wide"
+          />
         </q-tabs>
 
-        <q-separator color="white" class="q-mb-lg" style="opacity: 0.08" />
+        <q-separator color="white" class="mb-6 opacity-5" />
 
         <!-- Login Form -->
-        <q-form
-          v-if="activeTab === 'login'"
-          class="auth-form flex flex-col gap-3 sm:gap-4"
-          @submit.prevent="handleLogin"
-        >
+        <q-form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
           <q-input
             v-model="loginEmail"
             type="email"
@@ -91,7 +103,7 @@
             label="Se connecter"
             color="amber"
             text-color="black"
-            class="auth-submit-btn"
+            class="w-full font-bold py-3 rounded-lg shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all"
             :loading="authStore.loading"
             unelevated
             no-caps
@@ -103,11 +115,7 @@
         </q-form>
 
         <!-- Register Form -->
-        <q-form
-          v-else
-          class="auth-form flex flex-col gap-3 sm:gap-4"
-          @submit.prevent="handleRegister"
-        >
+        <q-form v-else @submit.prevent="handleRegister" class="space-y-4">
           <q-input
             v-model="registerEmail"
             type="email"
@@ -134,12 +142,12 @@
             color="amber"
             label-color="grey-5"
             class="auth-input"
-            hint="Sera affiché en jeu"
+            hint="2-12 caractères, lettres/chiffres/_"
             :rules="[
               val => !!val || 'Pseudo requis',
               val => val.length >= 2 || 'Minimum 2 caractères',
               val => val.length <= 12 || 'Maximum 12 caractères',
-              val => /^[a-zA-Z0-9_]+$/.test(val) || 'Lettres, chiffres et _ uniquement (sans espaces)'
+              val => /^[a-zA-Z0-9_]+$/.test(val) || 'Lettres, chiffres et _ uniquement'
             ]"
             lazy-rules
           >
@@ -157,6 +165,7 @@
             color="amber"
             label-color="grey-5"
             class="auth-input"
+            hint="Minimum 6 caractères"
             :rules="[val => !!val || 'Mot de passe requis', val => val.length >= 6 || 'Minimum 6 caractères']"
             lazy-rules
           >
@@ -175,17 +184,15 @@
 
           <q-checkbox
             v-model="registerConsent"
-            class="rgpd-consent"
             color="amber"
             dark
-            :rules="[val => val || 'Consentement requis']"
-            lazy-rules
+            class="text-sm"
           >
-            <span class="rgpd-label">
-              J’accepte la politique de confidentialité (RGPD)
+            <span class="text-zinc-300">
+              J'accepte la politique de confidentialité (RGPD)
             </span>
-            <q-icon name="info" size="16px" class="q-ml-xs rgpd-icon">
-              <q-tooltip class="rgpd-tooltip">
+            <q-icon name="info" size="16px" class="ml-1 text-zinc-500">
+              <q-tooltip class="bg-zinc-900 border border-zinc-700 text-xs max-w-xs">
                 Vos données sont utilisées pour créer votre compte, vous contacter en cas de besoin
                 et assurer le bon fonctionnement du service.
               </q-tooltip>
@@ -197,7 +204,7 @@
             label="Créer un compte"
             color="amber"
             text-color="black"
-            class="auth-submit-btn"
+            class="w-full font-bold py-3 rounded-lg shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all"
             :loading="authStore.loading"
             unelevated
             no-caps
@@ -208,32 +215,36 @@
           </q-btn>
         </q-form>
 
-        <!-- Google Auth (disabled) -->
+        <!-- Google Auth -->
         <template v-if="enableGoogle">
-          <div class="auth-divider">
-            <span class="divider-line"></span>
-            <span class="divider-text">ou</span>
-            <span class="divider-line"></span>
+          <div class="flex items-center gap-3 my-6">
+            <div class="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+            <span class="text-xs text-zinc-600 uppercase tracking-wider">ou</span>
+            <div class="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
           </div>
 
-          <div class="google-section">
-            <div ref="googleButtonRef" class="google-button"></div>
+          <div class="flex flex-col items-center gap-2">
+            <div ref="googleButtonRef" class="google-button min-h-[40px]"></div>
             <q-btn
               v-if="!googleReady"
               outline
               color="white"
-              class="google-fallback-btn"
+              class="w-full border-white/15 rounded-lg hover:border-amber-500/40 transition-all"
               no-caps
               @click="initGoogle"
             >
-              <q-icon name="img:https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" size="20px" class="q-mr-sm" />
+              <q-icon name="img:https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" size="20px" class="mr-2" />
               Continuer avec Google
             </q-btn>
           </div>
         </template>
 
         <!-- Error message -->
-        <q-banner v-if="authStore.error" class="auth-error q-mt-md" rounded>
+        <q-banner 
+          v-if="authStore.error" 
+          class="mt-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300"
+          dense
+        >
           <template v-slot:avatar>
             <q-icon name="warning" color="negative" />
           </template>
@@ -293,21 +304,14 @@ const initGoogle = async () => {
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: async (response) => {
-        try {
-          await authStore.loginWithGoogle(response.credential);
-          notifyAuthState('positive', 'Connexion Google réussie. Bon jeu !');
-          router.push('/menu');
-        } catch (error) {
-          const message = resolveAuthMessage(error?.message || authStore.error);
-          authStore.setError(message);
-          notifyAuthState('negative', message);
-        }
+        await authStore.loginWithGoogle(response.credential);
+        router.push('/menu');
       }
     });
     window.google.accounts.id.renderButton(googleButtonRef.value, {
-      theme: 'filled_black',
+      theme: 'outline',
       size: 'large',
-      shape: 'pill',
+      shape: 'rectangular',
       text: 'continue_with'
     });
     googleReady.value = true;
@@ -322,15 +326,6 @@ const resolveAuthMessage = (message) => {
   const normalized = String(message || '').toLowerCase();
   if (!normalized) {
     return 'Une erreur est survenue. Merci de réessayer.';
-  }
-  if (normalized.includes('email déjà utilisé')) {
-    return message;
-  }
-  if (normalized.includes('utilise google')) {
-    return 'Ce compte est lié à Google. Connectez-vous via Google.';
-  }
-  if (normalized.includes('email non vérifié')) {
-    return 'Email non vérifié. Vérifiez votre boîte mail pour valider votre compte.';
   }
   if (
     normalized.includes('identifiant')
@@ -385,7 +380,7 @@ const handleRegister = async () => {
     });
     if (data?.requiresVerification) {
       const message = data.emailSent === false
-        ? 'Compte créé, mais l’email de confirmation n’a pas pu être envoyé. Contactez le support.'
+        ? 'Compte créé, mais l\'email de confirmation n\'a pas pu être envoyé. Contactez le support.'
         : 'Compte créé. Confirmez votre email pour vous connecter.';
       notifyAuthState(data.emailSent === false ? 'negative' : 'positive', message);
       activeTab.value = 'login';
@@ -412,151 +407,50 @@ watch(activeTab, () => {
 </script>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  padding: 0;
-}
-
-.auth-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.bg-gradient {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(220, 38, 38, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 30% at 0% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
-}
-
+/* Background effects */
 .bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
+  background-image: 
     linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 70%);
 }
 
-.floating-bullets {
-  position: absolute;
-  inset: 0;
+.bg-gradient-radial {
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(220, 38, 38, 0.15) 0%, transparent 50%);
 }
 
-.bullet {
-  position: absolute;
-  font-size: 20px;
-  opacity: 0.15;
-  animation: float-bullet 20s ease-in-out infinite;
+.drop-shadow-glow {
+  filter: drop-shadow(0 4px 20px rgba(245, 158, 11, 0.4));
 }
 
-.b1 { top: 15%; left: 10%; animation-delay: 0s; }
-.b2 { top: 25%; right: 15%; animation-delay: -4s; }
-.b3 { top: 60%; left: 5%; animation-delay: -8s; }
-.b4 { top: 70%; right: 8%; animation-delay: -12s; }
-.b5 { top: 85%; left: 50%; animation-delay: -16s; }
+.text-shadow-glow {
+  text-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
+}
 
-@keyframes float-bullet {
+/* Floating bullets animation */
+.floating-bullet {
+  position: absolute;
+  animation: float 20s ease-in-out infinite;
+}
+
+.animation-delay-4 { animation-delay: -4s; }
+.animation-delay-8 { animation-delay: -8s; }
+.animation-delay-12 { animation-delay: -12s; }
+.animation-delay-16 { animation-delay: -16s; }
+
+@keyframes float {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   25% { transform: translateY(-30px) rotate(90deg); }
   50% { transform: translateY(0) rotate(180deg); }
   75% { transform: translateY(30px) rotate(270deg); }
 }
 
-.auth-container {
-  position: relative;
-  z-index: 1;
-  width: min(420px, 94vw);
-  max-height: 94vh;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(10px, 1.8vh, 16px);
-  padding: clamp(6px, 1.5vh, 12px);
-}
-
-/* Header */
-.auth-header {
-  text-align: center;
-}
-
-.logo-icon {
-  font-size: clamp(32px, 6vh, 42px);
-  margin-bottom: clamp(4px, 1vh, 8px);
-  filter: drop-shadow(0 4px 20px rgba(245, 158, 11, 0.4));
-}
-
-.auth-title {
-  margin: 0;
-  font-size: clamp(20px, 4vh, 26px);
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  color: #fef3c7;
-  text-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
-}
-
-.auth-subtitle {
-  margin: clamp(4px, 1vh, 6px) 0 0;
-  color: #71717a;
-  font-size: clamp(12px, 2vh, 13px);
-}
-
-/* Card */
-.auth-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: 16px;
-  padding: clamp(12px, 2.2vh, 16px);
-  max-height: min(72vh, 560px);
-  overflow-y: auto;
-  box-shadow: 
-    0 20px 50px rgba(0, 0, 0, 0.5),
-    0 0 80px rgba(245, 158, 11, 0.05);
-}
-
-/* Tabs */
-.auth-tabs {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
-  padding: 3px;
-}
-
-.auth-tabs :deep(.q-tab) {
-  border-radius: 7px;
-  min-height: clamp(36px, 5vh, 40px);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  font-size: clamp(12px, 2vh, 14px);
-}
-
-.auth-tabs :deep(.q-tab--active) {
-  background: rgba(245, 158, 11, 0.15);
-}
-
-/* Form */
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1.6vh, 12px);
-}
-
-.auth-input {
-  border-radius: 10px;
-}
-
+/* Custom Quasar overrides with Tailwind approach */
 .auth-input :deep(.q-field__control) {
-  border-radius: 10px;
+  border-radius: 0.5rem;
   background: rgba(0, 0, 0, 0.4);
-  min-height: clamp(42px, 6vh, 50px);
+  min-height: 3rem;
 }
 
 .auth-input :deep(.q-field__control:before) {
@@ -574,234 +468,23 @@ watch(activeTab, () => {
 .auth-input :deep(.q-field__native),
 .auth-input :deep(.q-field__input) {
   color: #fef3c7;
-  font-size: clamp(12px, 1.8vh, 14px);
 }
 
-.auth-input :deep(.q-field__label) {
-  font-size: clamp(11px, 1.7vh, 13px);
-}
-
-.auth-input :deep(.q-field__bottom) {
-  padding-top: 4px;
-  min-height: 16px;
-  font-size: 10px;
-}
-
-.rgpd-consent {
-  margin-top: 2px;
-  align-items: flex-start;
-}
-
-.rgpd-label {
-  font-size: 12px;
-  color: #e4e4e7;
-  line-height: 1.3;
-}
-
-.rgpd-icon {
-  color: #a1a1aa;
-}
-
-.rgpd-tooltip {
-  max-width: 220px;
-  font-size: 11px;
-  line-height: 1.3;
-}
-
-.auth-submit-btn {
-  margin-top: clamp(4px, 1vh, 6px);
-  padding: clamp(8px, 1.6vh, 10px) clamp(14px, 2.4vh, 18px);
-  border-radius: 10px;
-  font-size: clamp(12px, 1.8vh, 14px);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+/* Tabs styling */
+:deep(.q-tab) {
+  border-radius: 0.5rem;
+  min-height: 2.5rem;
   transition: all 0.2s;
 }
 
-.auth-submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4);
+:deep(.q-tab--active) {
+  background: rgba(245, 158, 11, 0.15);
 }
 
-/* Divider */
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: clamp(12px, 2vh, 16px) 0;
-}
-
-.divider-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-}
-
-.divider-text {
-  font-size: 11px;
-  color: #52525b;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-/* Google */
-.google-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
+/* Google button container */
 .google-button {
-  min-height: 40px;
-}
-
-.google-fallback-btn {
-  border-color: rgba(255, 255, 255, 0.15);
-  padding: 8px 16px;
-  border-radius: 10px;
-  font-size: clamp(12px, 2vh, 14px);
-}
-
-/* Error */
-.auth-error {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fecaca;
-  padding: 10px 12px;
-  font-size: clamp(11px, 2vh, 13px);
-}
-
-.auth-error :deep(.q-banner__avatar) {
-  min-width: 32px;
-}
-
-.auth-error :deep(.q-icon) {
-  font-size: 20px;
-}
-
-/* Responsive - Mobile portrait */
-@media (max-width: 480px) {
-  .auth-page {
-    padding: 8px 0;
-  }
-
-  .auth-container {
-    width: 94vw;
-    max-height: 96vh;
-    padding: 6px;
-    gap: 8px;
-  }
-
-  .auth-card {
-    padding: 12px 10px;
-    border-radius: 14px;
-  }
-
-  .auth-form {
-    gap: 8px;
-  }
-
-  .auth-input :deep(.q-field__bottom) {
-    min-height: 14px;
-    font-size: 10px;
-  }
-}
-
-/* Responsive - Small height screens */
-@media (max-height: 700px) {
-  .auth-container {
-    gap: 8px;
-    max-height: 94vh;
-  }
-
-  .logo-icon {
-    font-size: 32px;
-    margin-bottom: 4px;
-  }
-
-  .auth-title {
-    font-size: 20px;
-  }
-
-  .auth-subtitle {
-    margin: 4px 0 0;
-    font-size: 11px;
-  }
-
-  .auth-card {
-    padding: 12px;
-    max-height: min(68vh, 520px);
-  }
-
-  .auth-form {
-    gap: 8px;
-  }
-
-  .auth-input :deep(.q-field__control) {
-    min-height: 40px;
-  }
-
-  .auth-input :deep(.q-field__bottom) {
-    min-height: 12px;
-    padding-top: 2px;
-  }
-
-  .auth-submit-btn {
-    padding: 8px 14px;
-    margin-top: 4px;
-  }
-}
-
-/* Responsive - Very small height */
-@media (max-height: 600px) {
-  .auth-container {
-    gap: 6px;
-  }
-
-  .logo-icon {
-    font-size: 28px;
-    margin-bottom: 2px;
-  }
-
-  .auth-title {
-    font-size: 18px;
-  }
-
-  .auth-subtitle {
-    display: none;
-  }
-
-  .auth-card {
-    padding: 10px;
-    max-height: min(64vh, 480px);
-  }
-
-  .auth-tabs {
-    padding: 2px;
-  }
-
-  .auth-tabs :deep(.q-tab) {
-    min-height: 34px;
-    font-size: 12px;
-  }
-
-  .auth-form {
-    gap: 6px;
-  }
-
-  .auth-input :deep(.q-field__control) {
-    min-height: 38px;
-  }
-
-  .auth-input :deep(.q-field__bottom) {
-    display: none;
-  }
-
-  .auth-submit-btn {
-    padding: 8px 14px;
-    margin-top: 2px;
-  }
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 </style>
