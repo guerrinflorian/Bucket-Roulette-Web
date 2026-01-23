@@ -22,13 +22,11 @@ const createVerificationToken = () => randomBytes(32).toString('hex');
 const getVerificationExpiry = () => new Date(Date.now() + 1000 * 60 * 60 * 24);
 
 const verificationBaseUrl = () => {
-  const fallback = 'http://localhost:3001';
-  return process.env.APP_BASE_URL || process.env.API_BASE_URL || process.env.SERVER_URL || fallback;
+  return process.env.APP_BASE_URL;
 };
 
 const clientBaseUrl = () => {
-  const fallback = 'http://localhost:5173';
-  return process.env.APP_BASE_URL || process.env.CLIENT_BASE_URL || fallback;
+  return process.env.APP_BASE_URL;
 };
 
 const createMailer = () => {
@@ -50,14 +48,40 @@ const sendVerificationEmail = async ({ email, token, username }) => {
   const url = `${verificationBaseUrl()}/api/auth/verify-email?token=${token}`;
   const displayName = username || 'joueur';
   await mailer.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `Revolver Gambit <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Confirmez votre adresse email',
+    subject: '🎯 Activez votre compte - Revolver Gambit',
     html: `
-      <p>Bonjour ${displayName},</p>
-      <p>Merci de confirmer votre adresse email en cliquant sur le lien ci-dessous :</p>
-      <p><a href="${url}">Confirmer mon email</a></p>
-      <p>Ce lien expire dans 24 heures.</p>
+      <div style="background-color: #0a0a0f; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #ffffff; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background: linear-gradient(145deg, #161b22 0%, #0d1117 100%); border: 1px solid #f59e0b; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          
+          <div style="font-size: 40px; margin-bottom: 10px;">🎯</div>
+          <h1 style="color: #fef3c7; font-size: 24px; font-weight: 900; letter-spacing: 2px; margin: 0; text-transform: uppercase;">Revolver Gambit</h1>
+          <div style="height: 1px; background: linear-gradient(90deg, transparent, #f59e0b, transparent); margin: 20px 0;"></div>
+  
+          <p style="font-size: 16px; line-height: 1.6; color: #a1a1aa;">
+            Bonjour <strong style="color: #f59e0b;">${displayName}</strong>,
+          </p>
+          <p style="font-size: 15px; line-height: 1.6; color: #a1a1aa;">
+            Le barillet est chargé, il ne manque plus que vous. Pour rejoindre l'arène et enregistrer vos statistiques, confirmez votre identité :
+          </p>
+  
+          <div style="margin: 35px 0;">
+            <a href="${url}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: orange; padding: 15px 35px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); display: inline-block;">
+              VÉRIFIER MON COMPTE
+            </a>
+          </div>
+  
+          <p style="font-size: 12px; color: #52525b; margin-top: 30px;">
+            Ce lien est à usage unique et expirera dans <span style="color: #ef4444;">24 heures</span>.<br>
+            Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.
+          </p>
+        </div>
+  
+        <footer style="margin-top: 25px; font-size: 11px; color: #3f3f46;">
+          © 2026 Revolver Gambit - Que la chance soit avec vous.
+        </footer>
+      </div>
     `
   });
 };
