@@ -245,8 +245,12 @@ export const useGameStore = defineStore('game', {
       if (state.lastResult !== undefined) this.lastResult = state.lastResult;
       if (state.lastAction !== undefined) this.lastAction = state.lastAction;
       if (state.winner !== undefined) this.winner = state.winner;
-      // Don't update reloadCount from network to avoid false reload modals
-      // if (state.reloadCount !== undefined) this.reloadCount = state.reloadCount;
+
+      // Update reloadCount to trigger standard reload modal if server says so
+      if (state.reloadCount !== undefined && state.reloadCount > this.reloadCount) {
+        this.reloadCount = state.reloadCount;
+      }
+
       if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
       if (state.turnTimer) {
         if ('remaining' in state.turnTimer) {
@@ -479,7 +483,9 @@ export const useGameStore = defineStore('game', {
         const actor = this.players[actorKey];
         if (!actor) return;
 
-        if (isEmpty(this.barrel)) {
+        // Only auto-reload if not online (in online, server sends the new barrel)
+        // Or if we are the host/local? No, online mode relies on server state.
+        if (isEmpty(this.barrel) && this.mode !== 'online') {
           this.reloadBarrel({ notify: true });
         }
 
