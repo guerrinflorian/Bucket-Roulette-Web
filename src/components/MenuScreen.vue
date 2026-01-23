@@ -140,14 +140,14 @@
         <q-card-actions class="difficulty-actions q-px-lg q-pb-lg q-pt-md">
           <button
             type="button"
-            class="px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-gray-700 hover:bg-gray-600 text-gray-200 hover:text-white"
+            class="px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-gray-700 hover:bg-gray-600 text-gray-200 hover:text-white justify-center"
             @click="showDifficultyModal = false"
           >
             Annuler
           </button>
           <button
             type="button"
-            class="px-8 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2"
+            class="px-8 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 justify-center flex items-center gap-2"
             @click="startBot"
           >
             <span>Lancer la partie</span>

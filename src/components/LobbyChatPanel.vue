@@ -27,7 +27,7 @@
         class="lobby-chat-message"
       >
         <template v-slot:avatar>
-          <q-avatar size="36px" class="chat-avatar" :class="{ 'chat-avatar--system': message.type === 'system' }">
+          <q-avatar size="36px" class="chat-avatar" :class="{ 'chat-avatar--system': message.type === 'system' }" v-if="message.type !== 'system'">
             <Avatar
               v-if="message.name"
               :name="getAvatarSeed(message.name)"
@@ -169,6 +169,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 16px;
   min-height: 400px;
+  height: 450px;      /* Fixe une hauteur précise */
+  max-height: 450px;  /* Empêche de grandir au-delà */
 }
 
 .lobby-chat-header {
