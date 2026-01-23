@@ -1,14 +1,17 @@
 import 'dotenv/config';
 import { Server } from 'socket.io';
 import buildApp from './app.js';
+import { getCorsOriginValidator } from './cors.js';
 
 const fastify = await buildApp();
 await fastify.ready();
 
 const httpServer = fastify.server;
 const io = new Server(httpServer, {
+  pingInterval: 25000,
+  pingTimeout: 60000,
   cors: {
-    origin: '*',
+    origin: getCorsOriginValidator(),
     methods: ['GET', 'POST']
   }
 });

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useNetStore } from '../stores/netStore.js';
 import MenuScreen from '../components/MenuScreen.vue';
 import GameScreen from '../components/GameScreen.vue';
 import AuthScreen from '../components/AuthScreen.vue';
@@ -42,8 +43,13 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.requiresGame) {
     const gameStore = useGameStore();
+    const netStore = useNetStore();
     
     // Allow only if a session was started from the menu (prevents refresh going to /game)
+    if (!netStore.connected) {
+      console.log('⚠️ Socket not connected, redirecting to menu');
+      return next('/menu');
+    }
     if (gameStore.sessionActive) {
       next();
     } else {
