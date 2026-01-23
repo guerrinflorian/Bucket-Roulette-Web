@@ -100,7 +100,7 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -118,6 +118,7 @@ const authStore = useAuthStore();
 const matchStore = useMatchStore();
 const gameSceneRef = ref(null);
 const matchSubmitted = ref(false);
+const forfeitApplied = ref(false);
 
 const showGameOver = computed(() => gameStore.phase === 'game_over');
 const isOnlineMode = computed(() => gameStore.mode === 'online');
@@ -367,7 +368,7 @@ const gameOverSubtitle = computed(() => {
 
 const shouldAutoTimeout = computed(() => {
   if (!isOnlineMode.value) return true;
-  return isMyTurn.value;
+  return netStore.isHost;
 });
 
 const onlineActorKey = computed(() => localPlayerKey.value);
@@ -727,13 +728,16 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
 
 const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
   if (gameStore.isAnimating) return;
-  if (!canAct.value && !fromNetwork) return;
+  if (!canAct.value && !fromNetwork && !(isOnlineMode.value && netStore.isHost)) return;
+
+  const actorKey = actorKeyOverride || gameStore.currentTurn;
+  if (!actorKey) return;
 
   if (isOnlineMode.value && !fromNetwork) {
-    netStore.sendAction({ type: 'timeout', actorKey: onlineActorKey.value });
+    netStore.sendAction({ type: 'timeout', actorKey });
   }
 
-  gameStore.timeoutTurn(actorKeyOverride);
+  gameStore.timeoutTurn(actorKey);
   syncStateIfHost(fromNetwork);
 };
 
@@ -808,6 +812,34 @@ const startOrderReveal = () => {
     }, revealDelay * (index + 1));
     orderRevealTimers.push(timerId);
   });
+};
+
+const applyLocalForfeit = async () => {
+  if (forfeitApplied.value) return;
+  if (!gameStore.sessionActive || gameStore.phase === 'game_over') return;
+  forfeitApplied.value = true;
+
+  const localKey = localPlayerKey.value || 'player';
+  const localName = gameStore.players[localKey]?.name || 'Joueur';
+  if (gameStore.players[localKey]) {
+    gameStore.players[localKey].hp = 0;
+    gameStore.players[localKey].isActive = false;
+  }
+
+  const remaining = gameStore.getActivePlayerKeys().filter((key) => key !== localKey);
+  const fallbackOpponent = gameStore.turnOrder.find((key) => key !== localKey) || remaining[0] || null;
+
+  gameStore.winner = remaining[0] || fallbackOpponent || null;
+  gameStore.phase = 'game_over';
+  gameStore.lastAction = { type: 'surrender', actor: localKey };
+  gameStore.lastResult = { text: `🏳️ ${localName} a abandonné.` };
+
+  syncStateIfHost(false);
+  await submitMatchResult();
+
+  if (isOnlineMode.value && netStore.isInRoom) {
+    netStore.leaveRoom();
+  }
 };
 
 const restart = () => {
@@ -924,6 +956,12 @@ onMounted(() => {
   emojiTick = setInterval(() => {
     emojiNow.value = Date.now();
   }, 1000);
+});
+
+onBeforeRouteLeave(async () => {
+  if (!gameStore.sessionActive || gameStore.phase === 'game_over') return true;
+  await applyLocalForfeit();
+  return true;
 });
 
 onUnmounted(() => {

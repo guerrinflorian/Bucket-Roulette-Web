@@ -124,17 +124,32 @@ const renderVerificationPage = ({ title, message, buttonLabel, buttonUrl }) => `
   </html>
 `;
 
+const EMAIL_TIMEOUT_MS = Number.parseInt(process.env.EMAIL_TIMEOUT_MS || '10000', 10);
+
 const createMailer = () => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_APP_PASSWORD;
   if (!user || !pass) return null;
   return nodemailer.createTransport({
     service: 'gmail',
-    auth: { user, pass }
+    auth: { user, pass },
+    connectionTimeout: EMAIL_TIMEOUT_MS,
+    greetingTimeout: EMAIL_TIMEOUT_MS,
+    socketTimeout: EMAIL_TIMEOUT_MS
   });
 };
 
 const mailer = createMailer();
+
+const withTimeout = (promise, timeoutMs, timeoutMessage) => {
+  if (!timeoutMs || timeoutMs <= 0) return promise;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    })
+  ]);
+};
 
 const sendVerificationEmail = async ({ email, token, username }) => {
   if (!mailer) {
@@ -142,7 +157,7 @@ const sendVerificationEmail = async ({ email, token, username }) => {
   }
   const url = `${verificationBaseUrl()}/api/auth/verify-email?token=${token}`;
   const displayName = username || 'joueur';
-  await mailer.sendMail({
+  await withTimeout(mailer.sendMail({
     from: `Revolver Gambit <${process.env.EMAIL_USER}>`,
     to: email,
     subject: '🎯 Activez votre compte - Revolver Gambit',
@@ -178,7 +193,7 @@ const sendVerificationEmail = async ({ email, token, username }) => {
         </footer>
       </div>
     `
-  });
+  }), EMAIL_TIMEOUT_MS, 'Email timeout');
 };
 
 const ensureUniqueUsername = async (client, baseName) => {
@@ -241,7 +256,7 @@ const sendPasswordResetEmail = async ({ email, token, username }) => {
   const url = `${clientBaseUrl()}/reset-password?token=${token}`;
   const displayName = username || 'joueur';
   const year = new Date().getFullYear();
-  await mailer.sendMail({
+  await withTimeout(mailer.sendMail({
     from: process.env.EMAIL_USER,
     to: email,
     subject: 'Réinitialisez votre mot de passe',
@@ -288,7 +303,7 @@ const sendPasswordResetEmail = async ({ email, token, username }) => {
         </table>
       </div>
     `
-  });
+  }), EMAIL_TIMEOUT_MS, 'Email timeout');
 };
 
 export default async function authRoutes(fastify) {
