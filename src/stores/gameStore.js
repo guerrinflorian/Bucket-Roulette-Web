@@ -110,7 +110,9 @@ export const useGameStore = defineStore('game', {
       enemy2: 0
     },
     // Flag to prevent reload modal during network hydration
-    isHydratingFromNetwork: false
+    isHydratingFromNetwork: false,
+    // Pending handcuff target selection for 1v1v1
+    pendingHandcuff: null
   }),
   getters: {
     isPlayerTurn: (state) => state.phase === PHASES.PLAYER_TURN,
@@ -404,6 +406,11 @@ export const useGameStore = defineStore('game', {
         : null;
       const result = applyItem(this.$state, actorKey, itemId, targetKey);
       if (!result.success) {
+        if (result.pending) {
+          // Item use is pending target selection (e.g. handcuffs in 1v1v1)
+          // State has been updated (pendingHandcuff set), simply return.
+          return;
+        }
         this.lastResult = { text: result.message };
         return;
       }
@@ -427,6 +434,10 @@ export const useGameStore = defineStore('game', {
         itemId,
         target: targetKey
       };
+      // Clear pending state if successful
+      if (this.pendingHandcuff && this.pendingHandcuff.actorKey === actorKey) {
+        this.pendingHandcuff = null;
+      }
       actor.itemsUsed += 1;
       audioManager.play('click');
 
@@ -434,6 +445,15 @@ export const useGameStore = defineStore('game', {
         await sleep(600);
         this.queueBotAction();
       }
+    },
+    async resolveHandcuffTarget(targetKey) {
+      if (!this.pendingHandcuff) return;
+
+      const { actorKey } = this.pendingHandcuff;
+      this.pendingHandcuff = null; // Clear pending state
+
+      // Re-call useItem with the selected target
+      await this.useItem('handcuffs', actorKey, targetKey);
     },
     async shoot(target, actorKeyOverride = null) {
       if (this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) return;

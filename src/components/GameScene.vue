@@ -207,7 +207,20 @@ const canUseItems = computed(() => {
   return canAct.value;
 });
 
-const counts = computed(() => remainingCounts(props.barrel));
+const counts = computed(() => {
+  const base = remainingCounts(props.barrel);
+  // Hide inverter changes to preserve mystery
+  if (props.barrel.invertedNext) {
+    const { from, to } = props.barrel.invertedNext;
+    if (to === 'blank' && from === 'real') {
+      return { ...base, real: base.real + 1, blank: base.blank - 1 };
+    }
+    if (to === 'real' && from === 'blank') {
+      return { ...base, real: base.real - 1, blank: base.blank + 1 };
+    }
+  }
+  return base;
+});
 const realCount = computed(() => counts.value.real);
 const blankCount = computed(() => counts.value.blank);
 const totalSlots = computed(() => props.barrel?.chambers?.length ?? 6);
@@ -362,6 +375,10 @@ function hideBullet() {
   }
 }
 
+function openItemTargetPicker(itemId) {
+  modalsRef.value?.openTargetPicker?.(itemId);
+}
+
 defineExpose({
   showActionChoice,
   startZoom,
@@ -374,6 +391,7 @@ defineExpose({
   rotateBarrel,
   revealBullet,
   dropBullet,
-  hideBullet
+  hideBullet,
+  openItemTargetPicker
 });
 </script>

@@ -418,6 +418,16 @@ watch(() => gameStore.pendingBotItem, async (itemId) => {
   }
 });
 
+// Watch for pending handcuff selection
+watch(() => gameStore.pendingHandcuff, async (pending) => {
+  if (pending?.actorKey === localPlayerKey.value) {
+    if (!gameSceneRef.value) {
+      await sleep(100);
+    }
+    gameSceneRef.value?.openItemTargetPicker?.('handcuffs');
+  }
+});
+
 const waitForInitialFlip = () => {
   if (initialFlipResolved.value) {
     return Promise.resolve();

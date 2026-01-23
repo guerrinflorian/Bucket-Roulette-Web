@@ -51,18 +51,47 @@ export const ITEM_DEFS = [
     name: 'Les Menottes',
     description: 'Choisissez un adversaire à bloquer au prochain tour.',
     canUse: (state, actorKey, targetKey) => {
-      if (!targetKey || targetKey === actorKey) return false;
-      return !state.players[targetKey].skipNextTurn;
+      // Allow usage if there is at least one eligible opponent.
+      // If a target is provided, ensure it's a valid opponent.
+      if (targetKey) {
+        if (targetKey === actorKey) return false;
+        return !state.players[targetKey].skipNextTurn;
+      }
+      // No explicit target: check if at least one opponent is eligible.
+      const opponents = Object.entries(state.players).filter(([key, player]) =>
+        key !== actorKey && player && player.isActive && player.hp > 0 && !player.skipNextTurn
+      );
+      return opponents.length >= 1;
     },
     apply: (state, actorKey, targetKey) => {
-      state.players[targetKey].skipNextTurn = true;
-      return { message: `⛓️ ${state.players[targetKey].name} sera menotté au prochain tour.` };
+      // Determine target
+      let target = targetKey;
+      if (!target) {
+        const opponents = Object.entries(state.players).filter(([key, player]) =>
+          key !== actorKey && player && player.isActive && player.hp > 0 && !player.skipNextTurn
+        );
+
+        if (opponents.length === 0) {
+          return { message: 'Aucun adversaire disponible pour les menottes.' };
+        }
+
+        if (opponents.length > 1) {
+          // Multiple opponents and no target specified: trigger selection UI
+          state.pendingHandcuff = { actorKey };
+          return { message: 'Choisissez un adversaire.', success: false, pending: true };
+        }
+
+        target = opponents[0][0]; // Auto-select single opponent
+      }
+
+      state.players[target].skipNextTurn = true;
+      return { message: `⛓️ ${state.players[target].name} sera menotté au prochain tour.` };
     }
   },
   {
     id: 'inverter',
     name: "L'Inverseur",
-    description: 'Inverse la balle actuelle : blanche ⇄ réelle.',
+    description: "Inverse la balle actuelle (blanche ⇄ réelle) sans indiquer le résultat.",
     canUse: (state) => peekNext(state.barrel) !== null,
     apply: (state, actorKey) => {
       const current = peekNext(state.barrel);
