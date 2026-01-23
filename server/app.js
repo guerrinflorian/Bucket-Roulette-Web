@@ -30,8 +30,6 @@ const buildApp = async () => {
   await fastify.register(authRoutes, { prefix: '/api/auth' });
   await fastify.register(gameRoutes, { prefix: '/api' });
 
-  await fastify.ready();
-
   return fastify;
 };
 

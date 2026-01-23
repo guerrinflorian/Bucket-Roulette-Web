@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@10.8.1",
   "scripts": {
     "dev": "vite --host",
     "server": "node server/index.js",
@@ -11,7 +12,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fastify/aws-lambda": "^5.1.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.0.0",
     "@quasar/extras": "^1.16.12",
