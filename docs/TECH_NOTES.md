@@ -54,6 +54,7 @@ Le bot calcule :
 Variables d’environnement (Vite) :
 ```
 VITE_API_BASE=http://localhost:3001
+VITE_SOCKET_URL=http://localhost:3001
 VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ```
 
