@@ -307,7 +307,15 @@ const initGoogle = async () => {
       client_id: clientId,
       callback: async (response) => {
         try {
-          await authStore.loginWithGoogle(response.credential);
+          const data = await authStore.loginWithGoogle(response.credential);
+          
+          if (data?.requiresVerification) {
+             authStore.clearSession();
+             const message = 'Veuillez confirmer votre email avant de vous connecter.';
+             notifyAuthState('warning', message);
+             return;
+          }
+
           notifyAuthState('positive', 'Connexion Google réussie. Bon jeu !');
           router.push('/menu');
         } catch (error) {
@@ -353,7 +361,15 @@ const notifyAuthState = (status, message) => {
 
 const handleLogin = async () => {
   try {
-    await authStore.login({ email: loginEmail.value, password: loginPassword.value });
+    const data = await authStore.login({ email: loginEmail.value, password: loginPassword.value });
+    
+    if (data?.requiresVerification) {
+      authStore.clearSession(); // Ensure no partial state remains
+      const message = 'Veuillez confirmer votre email avant de vous connecter.';
+      notifyAuthState('warning', message);
+      return; 
+    }
+
     notifyAuthState('positive', 'Connexion réussie. Bon jeu !');
     router.push('/menu');
   } catch (error) {
