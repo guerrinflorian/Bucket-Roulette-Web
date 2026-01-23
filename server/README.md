@@ -21,6 +21,14 @@ EMAIL_APP_PASSWORD=app_password
 APP_BASE_URL=http://localhost:3001
 ```
 
+### Production (Vercel)
+Sur Vercel, définis ces variables d’environnement pour éviter les erreurs 500 :
+- `DATABASE_URL` (+ `DATABASE_SSL=true` si ta base l’exige)
+- `JWT_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `EMAIL_USER` / `EMAIL_APP_PASSWORD`
+- `APP_BASE_URL` (URL publique de ton front, ex: `https://revolver-gambit.vercel.app`)
+
 ## Auth API
 - `POST /api/auth/register` { email, password, username }
 - `POST /api/auth/login` { email, password }

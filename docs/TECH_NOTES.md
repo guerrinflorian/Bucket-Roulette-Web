@@ -59,3 +59,6 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 
 ## Assets placeholders
 Les assets visuels sont des SVG texte pour éviter les binaires dans le repo. Le son utilise un WAV silencieux en data URI dans `AudioManager`.
+
+## Build tooling
+Le déploiement utilise `npm` pour installer les dépendances; le verrouillage `pnpm-lock.yaml` a été retiré afin d’éviter les erreurs de lockfile obsolète en CI. 
