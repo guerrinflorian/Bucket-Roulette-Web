@@ -43,7 +43,6 @@ const connectionMessage = computed(() => {
   if (props.message) return props.message;
   if (props.connectionState === 'connecting') return 'Connexion au serveur...';
   if (props.connectionState === 'reconnecting') return 'Connexion perdue, reconnexion en cours...';
-  if (props.connectionState === 'disconnected') return 'Connexion perdue, reconnexion en cours...';
   return '';
 });
 

@@ -290,7 +290,7 @@ export const useNetStore = defineStore('net', {
         this.error = 'Nom de joueur requis';
         return;
       }
-      
+
       try {
         await this.connect();
         this.socket.emit('room:create', { playerName: this.playerName, userId: this.userId });
@@ -307,7 +307,7 @@ export const useNetStore = defineStore('net', {
         this.error = 'Code de room invalide';
         return;
       }
-      
+
       if (!this.playerName) {
         this.error = 'Nom de joueur requis';
         return;
@@ -315,7 +315,7 @@ export const useNetStore = defineStore('net', {
 
       try {
         await this.connect();
-        this.socket.emit('room:join', { 
+        this.socket.emit('room:join', {
           roomId: roomId.toUpperCase(),
           playerName: this.playerName,
           userId: this.userId
@@ -409,7 +409,7 @@ export const useNetStore = defineStore('net', {
       this.socket.off('room:player-left');
       this.socket.off('room:host-left');
       this.socket.off('room:guest-left');
-      
+
       this.socket.on('room:player-left', callback);
       this.socket.on('room:host-left', callback);
       this.socket.on('room:guest-left', callback);
@@ -486,6 +486,13 @@ export const useNetStore = defineStore('net', {
       };
       const next = [...this.lobbyChatMessages, entry];
       this.lobbyChatMessages = next.slice(-120);
+
+      // Play notification sound if not self and not system
+      if (!entry.isSelf && !isSystem) {
+        const audio = new Audio(new URL('../assets/audio/notification.mp3', import.meta.url).href);
+        audio.volume = 0.5;
+        audio.play().catch(() => { });
+      }
     }
   }
 });

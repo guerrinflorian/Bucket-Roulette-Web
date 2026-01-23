@@ -18,6 +18,7 @@ const buildAllowedOrigins = () => {
   addOrigin('https://revolver-gambit.vercel.app');
   origins.add('http://localhost:5173');
   origins.add('http://localhost:3000');
+  origins.add('https://revolver-gambit.onrender.com');
 
   return origins;
 };

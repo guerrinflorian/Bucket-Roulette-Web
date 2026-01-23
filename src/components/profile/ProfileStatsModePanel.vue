@@ -116,7 +116,7 @@ const losses = computed(() => stats.value?.losses ?? 0);
 const matches = computed(() => wins.value + losses.value);
 const winRate = computed(() => (matches.value > 0 ? wins.value / matches.value : 0));
 const winLossRatio = computed(() =>
-  losses.value > 0 ? (wins.value / losses.value).toFixed(2) : '0'
+  losses.value > 0 ? (wins.value / losses.value).toFixed(2) : (wins.value > 0 ? wins.value.toFixed(2) : '0')
 );
 const shotsFired = computed(() => stats.value?.shots_fired ?? 0);
 const itemsUsed = computed(() => stats.value?.items_used ?? 0);
