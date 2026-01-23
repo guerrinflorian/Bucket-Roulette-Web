@@ -223,8 +223,20 @@ export const useGameStore = defineStore('game', {
       if (state.phase) this.phase = state.phase;
       if (state.currentTurn) this.currentTurn = state.currentTurn;
       if (state.turnOrder) this.turnOrder = [...state.turnOrder];
-      // Only hydrate barrel if not animating to avoid race conditions/jumps
-      if (state.barrel && !this.isAnimating) this.barrel = state.barrel;
+
+      // smart barrel hydration:
+      // If chambers changed (reload), always accept new barrel to sync distributions.
+      // If only index changed (shot/item), only accept if not animating to avoid glitches.
+      if (state.barrel) {
+        const currentChambers = JSON.stringify(this.barrel.chambers);
+        const newChambers = JSON.stringify(state.barrel.chambers);
+        const isNewBarrel = currentChambers !== newChambers;
+
+        if (isNewBarrel || !this.isAnimating) {
+          this.barrel = state.barrel;
+        }
+      }
+
       if (state.players) {
         if (state.players.player) Object.assign(this.players.player, state.players.player);
         if (state.players.enemy) Object.assign(this.players.enemy, state.players.enemy);
