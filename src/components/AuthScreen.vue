@@ -328,13 +328,21 @@ const handleLogin = async () => {
 
 const handleRegister = async () => {
   try {
-    await authStore.register({
+    const data = await authStore.register({
       email: registerEmail.value,
       password: registerPassword.value,
       username: registerUsername.value
     });
-    notifyAuthState('positive', 'Compte créé. Bienvenue à bord !');
-    router.push('/menu');
+    if (data?.requiresVerification) {
+      const message = data.emailSent === false
+        ? 'Compte créé, mais l’email de confirmation n’a pas pu être envoyé. Contactez le support.'
+        : 'Compte créé. Confirmez votre email pour vous connecter.';
+      notifyAuthState(data.emailSent === false ? 'negative' : 'positive', message);
+      activeTab.value = 'login';
+    } else {
+      notifyAuthState('positive', 'Compte créé. Bienvenue à bord !');
+      router.push('/menu');
+    }
   } catch (error) {
     const message = resolveAuthMessage(error?.message || authStore.error);
     authStore.setError(message);

@@ -56,7 +56,9 @@ export const useAuthStore = defineStore('auth', () => {
         method: 'POST',
         body: JSON.stringify({ email, password, username })
       });
-      setSession(data);
+      if (data.token) {
+        setSession(data);
+      }
       return data;
     } catch (err) {
       setError(err.message);

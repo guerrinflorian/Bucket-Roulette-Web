@@ -16,6 +16,9 @@ DATABASE_URL=postgresql://user:password@host:5432/dbname
 DATABASE_SSL=true
 JWT_SECRET=change_me
 GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+EMAIL_USER=you@gmail.com
+EMAIL_APP_PASSWORD=app_password
+APP_BASE_URL=http://localhost:3001
 ```
 
 ## Auth API
@@ -23,6 +26,8 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 - `POST /api/auth/login` { email, password }
 - `POST /api/auth/google` { idToken }
 - `GET /api/auth/me` (Authorization: Bearer <token>)
+- `GET /api/auth/verify-email?token=...`
+- `POST /api/auth/resend-verification` { email }
 
 ## Matchs & stats API
 - `POST /api/matches/solo` { victoryType, botLevel?, roundsPlayed?, participants?, difficulty?, isDefeated? }
