@@ -43,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || 'Erreur serveur.');
+      throw new Error(data.error || data.message || 'Erreur serveur.');
     }
     return data;
   };
@@ -130,6 +130,59 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     login,
     loginWithGoogle,
+    updateUsername: async (username) => {
+      loading.value = true;
+      setError('');
+      try {
+        const data = await request('/api/auth/username', {
+          method: 'PATCH',
+          body: JSON.stringify({ username })
+        });
+        user.value = data.user;
+        return data;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      } finally {
+        loading.value = false;
+      }
+    },
+    requestPasswordReset: async () => {
+      loading.value = true;
+      setError('');
+      try {
+        const data = await request('/api/auth/password-reset', {
+          method: 'POST'
+        });
+        return data;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      } finally {
+        loading.value = false;
+      }
+    },
+    resetPassword: async ({ token, password }) => {
+      loading.value = true;
+      setError('');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Erreur serveur.');
+        }
+        return data;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      } finally {
+        loading.value = false;
+      }
+    },
     fetchMe,
     clearSession,
     logout: clearSession

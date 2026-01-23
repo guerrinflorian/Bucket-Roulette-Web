@@ -5,11 +5,13 @@ import MenuScreen from '../components/MenuScreen.vue';
 import GameScreen from '../components/GameScreen.vue';
 import AuthScreen from '../components/AuthScreen.vue';
 import HelpScreen from '../components/HelpScreen.vue';
+import ResetPasswordScreen from '../components/ResetPasswordScreen.vue';
 
 const routes = [
   { path: '/', redirect: '/menu' },
   { path: '/menu', component: MenuScreen },
   { path: '/auth', component: AuthScreen },
+  { path: '/reset-password', component: ResetPasswordScreen },
   { path: '/help', component: HelpScreen },
   { path: '/game', component: GameScreen, meta: { requiresGame: true } }
 ];
@@ -22,8 +24,9 @@ const router = createRouter({
 // Navigation guard to enforce auth + active game
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
+  const publicPaths = ['/auth', '/reset-password'];
 
-  if (to.path !== '/auth') {
+  if (!publicPaths.includes(to.path)) {
     if (!authStore.isAuthenticated) {
       return next('/auth');
     }
@@ -33,7 +36,7 @@ router.beforeEach(async (to, from, next) => {
         return next('/auth');
       }
     }
-  } else if (authStore.isAuthenticated && authStore.user) {
+  } else if (to.path === '/auth' && authStore.isAuthenticated && authStore.user) {
     return next('/menu');
   }
 

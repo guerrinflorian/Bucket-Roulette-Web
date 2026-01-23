@@ -13,6 +13,7 @@
       :avatar-colors="avatarColors"
       :email="authStore.user?.email"
       @profile="openProfileSelf"
+      @settings="openProfileSettings"
       @logout="handleLogout"
     />
 
@@ -168,6 +169,8 @@
       :bot-levels="botLevels"
     />
 
+    <ProfileSettingsModal v-model="showProfileSettingsModal" />
+
     <LeaderboardModal
       v-model="showLeaderboardModal"
       :leaderboards="leaderboards"
@@ -187,6 +190,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useMatchStore } from '../stores/matchStore.js';
 import ProfileStatsModal from './ProfileStatsModal.vue';
 import LeaderboardModal from './LeaderboardModal.vue';
+import ProfileSettingsModal from './ProfileSettingsModal.vue';
 import MenuBackground from './menu/MenuBackground.vue';
 import MenuButtons from './menu/MenuButtons.vue';
 import MenuFooter from './menu/MenuFooter.vue';
@@ -208,6 +212,7 @@ const showMultiplayer = ref(false);
 const roomInput = ref('');
 const showDifficultyModal = ref(false);
 const showProfileModal = ref(false);
+const showProfileSettingsModal = ref(false);
 const botDifficulty = ref(gameStore.botDifficulty ?? 1);
 const menuModelRef = ref(null);
 const soloProgress = ref([]);
@@ -422,6 +427,10 @@ const openProfileSelf = () => {
   selectedProfile.value = payload;
   showProfileModal.value = true;
   loadProfileStats(payload);
+};
+
+const openProfileSettings = () => {
+  showProfileSettingsModal.value = true;
 };
 
 const openProfileFromSlot = (slot) => {

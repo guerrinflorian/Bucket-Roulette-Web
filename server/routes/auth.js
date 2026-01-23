@@ -26,6 +26,11 @@ const verificationBaseUrl = () => {
   return process.env.APP_BASE_URL || process.env.API_BASE_URL || process.env.SERVER_URL || fallback;
 };
 
+const clientBaseUrl = () => {
+  const fallback = 'http://localhost:5173';
+  return process.env.APP_BASE_URL || process.env.CLIENT_BASE_URL || fallback;
+};
+
 const createMailer = () => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_APP_PASSWORD;
@@ -77,6 +82,58 @@ const ensureUniqueUsername = async (client, baseName) => {
   return null;
 };
 
+const generateVodkaShotUsername = async (client) => {
+  const base = 'Vodka-Shot';
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const candidate = `${base}${Math.floor(Math.random() * 9000 + 1000)}`;
+    const unique = await ensureUniqueUsername(client, candidate);
+    if (unique) {
+      return unique;
+    }
+  }
+  return ensureUniqueUsername(client, `${base}${Math.floor(Math.random() * 9000 + 1000)}`);
+};
+
+const validateUsername = async (client, userId, username) => {
+  if (!username) {
+    return 'Le pseudo est requis.';
+  }
+  const trimmedUsername = username.trim();
+  if (trimmedUsername.length < 2 || trimmedUsername.length > 12) {
+    return 'Le pseudo doit contenir entre 2 et 12 caractères.';
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+    return 'Le pseudo ne peut contenir que des lettres, chiffres et underscores (pas d\'espaces).';
+  }
+  const usernameCheck = await client.query(
+    'SELECT id FROM users WHERE lower(username) = lower($1) AND id <> $2 LIMIT 1',
+    [trimmedUsername, userId]
+  );
+  if (usernameCheck.rowCount > 0) {
+    return 'Ce pseudo est déjà utilisé.';
+  }
+  return '';
+};
+
+const sendPasswordResetEmail = async ({ email, token, username }) => {
+  if (!mailer) {
+    throw new Error('Service email non configuré.');
+  }
+  const url = `${clientBaseUrl()}/reset-password?token=${token}`;
+  const displayName = username || 'joueur';
+  await mailer.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Réinitialisez votre mot de passe',
+    html: `
+      <p>Bonjour ${displayName},</p>
+      <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous :</p>
+      <p><a href="${url}">Changer mon mot de passe</a></p>
+      <p>Ce lien expire dans 1 heure.</p>
+    `
+  });
+};
+
 export default async function authRoutes(fastify) {
   fastify.post('/register', async (request, reply) => {
     const { email, password, username } = request.body || {};
@@ -86,10 +143,10 @@ export default async function authRoutes(fastify) {
     }
 
     // Validation du pseudo
-    if (!username) {
+    const trimmedUsername = username?.trim?.() ?? '';
+    if (!trimmedUsername) {
       return reply.code(400).send({ error: 'Le pseudo est requis.' });
     }
-    const trimmedUsername = username.trim();
     if (trimmedUsername.length < 2 || trimmedUsername.length > 12) {
       return reply.code(400).send({ error: 'Le pseudo doit contenir entre 2 et 12 caractères.' });
     }
@@ -139,7 +196,7 @@ export default async function authRoutes(fastify) {
          (id, created_at, last_login, email, username, verification_token, token_expires_at)
          VALUES ($1, NOW(), NOW(), $2, $3, $4, $5)
          RETURNING *`,
-        [userId, normalizedEmail, username.trim(), verificationToken, verificationExpiresAt]
+        [userId, normalizedEmail, trimmedUsername, verificationToken, verificationExpiresAt]
       );
 
       await client.query(
@@ -278,8 +335,6 @@ export default async function authRoutes(fastify) {
 
       const normalizedEmail = normalizeEmail(payload.email);
       const providerId = payload.sub;
-      const displayName = payload.name || payload.given_name || null;
-
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -302,14 +357,11 @@ export default async function authRoutes(fastify) {
             userId = existingUser.rows[0].id;
             user = existingUser.rows[0];
             if (!user.username) {
-              desiredUsername = await ensureUniqueUsername(
-                client,
-                displayName || normalizedEmail.split('@')[0]
-              );
+              desiredUsername = await generateVodkaShotUsername(client);
             }
           } else {
             userId = randomUUID();
-            const uniqueUsername = await ensureUniqueUsername(client, displayName || normalizedEmail.split('@')[0]);
+            const uniqueUsername = await generateVodkaShotUsername(client);
             const newUser = await client.query(
               `INSERT INTO users
                (id, created_at, last_login, email, username, email_verified_at)
@@ -326,10 +378,7 @@ export default async function authRoutes(fastify) {
           const fetchedUser = await client.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
           user = fetchedUser.rows[0];
           if (user && !user.username) {
-            desiredUsername = await ensureUniqueUsername(
-              client,
-              displayName || normalizedEmail.split('@')[0]
-            );
+            desiredUsername = await generateVodkaShotUsername(client);
           }
         }
 
@@ -362,6 +411,123 @@ export default async function authRoutes(fastify) {
     } catch (error) {
       fastify.log.error(error);
       return reply.code(401).send({ error: 'Connexion Google échouée.' });
+    }
+  });
+
+  fastify.patch('/username', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+    const { userId } = request.user;
+    const { username } = request.body || {};
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const errorMessage = await validateUsername(client, userId, username);
+      if (errorMessage) {
+        await client.query('ROLLBACK');
+        return reply.code(400).send({ error: errorMessage });
+      }
+
+      const trimmedUsername = username.trim();
+      const updatedUser = await client.query(
+        `UPDATE users
+         SET username = $1
+         WHERE id = $2
+         RETURNING *`,
+        [trimmedUsername, userId]
+      );
+
+      await client.query('COMMIT');
+      return reply.send({ user: sanitizeUser(updatedUser.rows[0]) });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Erreur serveur lors de la mise à jour du pseudo.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  fastify.post('/password-reset', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+    const { userId } = request.user;
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
+      const user = userResult.rows[0];
+      if (!user) {
+        return reply.code(404).send({ error: 'Utilisateur introuvable.' });
+      }
+      if (!mailer) {
+        return reply.code(500).send({ error: 'Service email non configuré.' });
+      }
+      const resetToken = fastify.jwt.sign(
+        { userId, type: 'password_reset' },
+        { expiresIn: '1h' }
+      );
+      await sendPasswordResetEmail({
+        email: user.email,
+        token: resetToken,
+        username: user.username
+      });
+      return reply.send({ message: 'Email de réinitialisation envoyé.' });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Erreur serveur lors de la réinitialisation.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  fastify.post('/reset-password', async (request, reply) => {
+    const { token, password } = request.body || {};
+    if (!token || !password) {
+      return reply.code(400).send({ error: 'Token et mot de passe requis.' });
+    }
+    if (password.length < 6) {
+      return reply.code(400).send({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
+    }
+    try {
+      const payload = fastify.jwt.verify(token);
+      if (payload.type !== 'password_reset') {
+        return reply.code(400).send({ error: 'Token invalide.' });
+      }
+      const userId = payload.userId;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const userResult = await client.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
+        const user = userResult.rows[0];
+        if (!user) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'Utilisateur introuvable.' });
+        }
+        const passwordHash = await bcrypt.hash(password, 10);
+        const accountResult = await client.query(
+          'SELECT * FROM accounts WHERE user_id = $1 AND provider_type = $2 LIMIT 1',
+          [userId, 'password']
+        );
+        if (accountResult.rows[0]) {
+          await client.query(
+            'UPDATE accounts SET password_hash = $1 WHERE id = $2',
+            [passwordHash, accountResult.rows[0].id]
+          );
+        } else {
+          await client.query(
+            'INSERT INTO accounts (id, user_id, provider_type, provider_id, password_hash) VALUES ($1, $2, $3, $4, $5)',
+            [randomUUID(), userId, 'password', user.email, passwordHash]
+          );
+        }
+        await client.query('COMMIT');
+        return reply.send({ message: 'Mot de passe mis à jour.' });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        fastify.log.error(error);
+        return reply.code(500).send({ error: 'Erreur serveur lors de la mise à jour du mot de passe.' });
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(400).send({ error: 'Token invalide ou expiré.' });
     }
   });
 

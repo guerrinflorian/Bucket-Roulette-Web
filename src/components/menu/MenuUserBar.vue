@@ -45,6 +45,15 @@
         <q-separator dark class="q-my-sm" />
 
         <q-list class="dropdown-actions">
+          <q-item clickable v-close-popup @click="emit('settings')">
+            <q-item-section avatar>
+              <q-icon name="manage_accounts" color="amber" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Voir mon profil</q-item-label>
+              <q-item-label caption>Modifier pseudo et sécurité</q-item-label>
+            </q-item-section>
+          </q-item>
           <q-item clickable v-close-popup @click="emit('profile')">
             <q-item-section avatar>
               <q-icon name="insights" color="amber" />
@@ -95,7 +104,7 @@ defineProps({
   }
 });
 
-const emit = defineEmits(['profile', 'logout']);
+const emit = defineEmits(['profile', 'settings', 'logout']);
 </script>
 
 <style scoped>
