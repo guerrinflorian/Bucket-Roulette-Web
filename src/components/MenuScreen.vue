@@ -2158,7 +2158,7 @@ const cleanupMenuModel = () => {
 
 @media (min-width: 1024px) {
   .multiplayer-panel {
-    max-width: 600px;
+    max-width: 850px;
   }
 }
 
