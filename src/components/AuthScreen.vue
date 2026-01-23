@@ -98,6 +98,19 @@
             </template>
           </q-input>
 
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Besoin d'aide pour vous connecter ?</span>
+            <q-btn
+              flat
+              dense
+              no-caps
+              class="text-amber-200 hover:text-amber-100 px-0"
+              @click="handleForgotPassword"
+            >
+              Mot de passe oublié ?
+            </q-btn>
+          </div>
+
           <q-btn
             type="submit"
             label="Se connecter"
@@ -347,6 +360,38 @@ const handleLogin = async () => {
     const message = resolveAuthMessage(error?.message || authStore.error);
     authStore.setError(message);
     notifyAuthState('negative', message);
+  }
+};
+
+const handleForgotPassword = async () => {
+  const trimmedEmail = loginEmail.value.trim();
+  if (!trimmedEmail) {
+    Notify.create({
+      type: 'warning',
+      message: 'Entrez votre email pour recevoir le lien de réinitialisation.',
+      position: 'top'
+    });
+    return;
+  }
+  if (!/.+@.+\..+/.test(trimmedEmail)) {
+    Notify.create({
+      type: 'warning',
+      message: 'Merci de renseigner un email valide.',
+      position: 'top'
+    });
+    return;
+  }
+  try {
+    const data = await authStore.requestPasswordResetByEmail(trimmedEmail);
+    Notify.create({
+      type: 'positive',
+      message: data?.message || 'Si un compte existe, un email de réinitialisation a été envoyé.',
+      position: 'top'
+    });
+  } catch (error) {
+    const message = resolveAuthMessage(error?.message || authStore.error);
+    authStore.setError(message);
+    Notify.create({ type: 'negative', message, position: 'top' });
   }
 };
 

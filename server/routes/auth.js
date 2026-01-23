@@ -121,15 +121,53 @@ const sendPasswordResetEmail = async ({ email, token, username }) => {
   }
   const url = `${clientBaseUrl()}/reset-password?token=${token}`;
   const displayName = username || 'joueur';
+  const year = new Date().getFullYear();
   await mailer.sendMail({
     from: process.env.EMAIL_USER,
     to: email,
     subject: 'Réinitialisez votre mot de passe',
     html: `
-      <p>Bonjour ${displayName},</p>
-      <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous :</p>
-      <p><a href="${url}">Changer mon mot de passe</a></p>
-      <p>Ce lien expire dans 1 heure.</p>
+      <div style="background:#0b0f19;padding:32px 16px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width:560px;margin:0 auto;background:#111827;border-radius:16px;overflow:hidden;border:1px solid rgba(251,191,36,0.2);">
+          <tr>
+            <td style="padding:24px 24px 12px;background:linear-gradient(135deg,#1f2937 0%,#0b0f19 100%);text-align:center;">
+              <div style="font-size:28px;line-height:1;margin-bottom:8px;">🎯</div>
+              <div style="font-size:18px;font-weight:700;color:#fcd34d;letter-spacing:2px;">REVOLVER GAMBIT</div>
+              <div style="font-size:12px;color:#9ca3af;margin-top:6px;">Sécurité du compte</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px;">
+              <p style="margin:0 0 12px;font-size:16px;">Bonjour ${displayName},</p>
+              <p style="margin:0 0 16px;color:#cbd5f5;font-size:14px;line-height:1.6;">
+                Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte.
+                Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.
+              </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
+                <tr>
+                  <td align="center" bgcolor="#fbbf24" style="border-radius:10px;">
+                    <a href="${url}" style="display:inline-block;padding:12px 22px;color:#1f2937;text-decoration:none;font-weight:700;font-size:14px;">
+                      Réinitialiser mon mot de passe
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">
+                Ce lien expire dans <strong>1 heure</strong>. Si le bouton ne fonctionne pas, copiez ce lien :
+              </p>
+              <p style="margin:0 0 16px;font-size:12px;color:#60a5fa;word-break:break-all;">${url}</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">
+                Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px;background:#0b0f19;text-align:center;font-size:11px;color:#6b7280;">
+              © ${year} Revolver Gambit — Tous droits réservés.
+            </td>
+          </tr>
+        </table>
+      </div>
     `
   });
 };
@@ -469,6 +507,44 @@ export default async function authRoutes(fastify) {
         username: user.username
       });
       return reply.send({ message: 'Email de réinitialisation envoyé.' });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Erreur serveur lors de la réinitialisation.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  fastify.post('/password-reset-request', async (request, reply) => {
+    const { email } = request.body || {};
+    const trimmedEmail = email?.trim?.() ?? '';
+    if (!trimmedEmail) {
+      return reply.code(400).send({ error: 'Email requis.' });
+    }
+    if (!mailer) {
+      return reply.code(500).send({ error: 'Service email non configuré.' });
+    }
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query(
+        'SELECT * FROM users WHERE lower(email) = lower($1) LIMIT 1',
+        [trimmedEmail]
+      );
+      const user = userResult.rows[0];
+      if (user) {
+        const resetToken = fastify.jwt.sign(
+          { userId: user.id, type: 'password_reset' },
+          { expiresIn: '1h' }
+        );
+        await sendPasswordResetEmail({
+          email: user.email,
+          token: resetToken,
+          username: user.username
+        });
+      }
+      return reply.send({
+        message: 'Si un compte existe, un email de réinitialisation a été envoyé.'
+      });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors de la réinitialisation.' });
