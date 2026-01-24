@@ -13,7 +13,7 @@
           <div class="wakeup-spinner" aria-hidden="true"></div>
           <div class="wakeup-text">
             <h2>Le serveur se réveille doucement...</h2>
-            <p>(cela peut prendre 30s)</p>
+            <p>(cela peut prendre 1-2 minutes)</p>
           </div>
         </div>
       </div>
