@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch, toRaw } from 'vue';
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
@@ -119,19 +119,13 @@ const matchStore = useMatchStore();
 const gameSceneRef = ref(null);
 const matchSubmitted = ref(false);
 const cloneBarrel = (barrel) => {
-  if (typeof structuredClone === 'function') {
-    try {
-      return structuredClone(barrel);
-    } catch (error) {
-      console.warn('structuredClone failed for barrel snapshot, falling back to JSON clone.', error);
-    }
-  }
-  try {
-    return JSON.parse(JSON.stringify(barrel));
-  } catch (error) {
-    console.warn('JSON clone failed for barrel snapshot, falling back to shallow clone.', error);
-    return { ...barrel };
-  }
+  const source = toRaw(barrel) || barrel;
+  return {
+    chambers: Array.isArray(source?.chambers) ? [...source.chambers] : [],
+    index: Number.isFinite(source?.index) ? source.index : 0,
+    firstShotFired: Boolean(source?.firstShotFired),
+    invertedNext: source?.invertedNext ? { ...source.invertedNext } : null
+  };
 };
 const forfeitApplied = ref(false);
 
