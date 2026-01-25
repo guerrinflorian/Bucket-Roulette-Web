@@ -246,12 +246,11 @@ export const useGameStore = defineStore('game', {
       if (state.lastAction !== undefined) this.lastAction = state.lastAction;
       if (state.winner !== undefined) this.winner = state.winner;
 
+      if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
       // Update reloadCount to trigger standard reload modal if server says so
       if (state.reloadCount !== undefined && state.reloadCount > this.reloadCount) {
         this.reloadCount = state.reloadCount;
       }
-
-      if (state.lastReloadInfo !== undefined) this.lastReloadInfo = state.lastReloadInfo;
       if (state.turnTimer) {
         if ('remaining' in state.turnTimer) {
           this.turnTimer.remaining = state.turnTimer.remaining;
@@ -472,11 +471,12 @@ export const useGameStore = defineStore('game', {
       // Re-call useItem with the selected target
       await this.useItem('handcuffs', actorKey, targetKey);
     },
-    async shoot(target, actorKeyOverride = null) {
+    async shoot(target, actorKeyOverride = null, options = {}) {
       if (this.phase === PHASES.ANIMATING || this.phase === PHASES.GAME_OVER) return;
       if (!this.isTurnPhase()) return;
 
       const previousPhase = this.phase;
+      const { allowReload = true } = options;
 
       try {
         const actorKey = actorKeyOverride || this.currentTurn;
@@ -549,7 +549,7 @@ export const useGameStore = defineStore('game', {
           return;
         }
 
-        if (isEmpty(this.barrel)) {
+        if (allowReload && isEmpty(this.barrel)) {
           this.reloadBarrel({ notify: true });
         }
 
@@ -583,7 +583,7 @@ export const useGameStore = defineStore('game', {
       };
 
       this.timeoutStreak[actorKey] += 1;
-      if (this.timeoutStreak[actorKey] >= 2) {
+      if (this.timeoutStreak[actorKey] >= 3) {
         this.players[actorKey].hp = 0;
         const activePlayers = this.getActivePlayerKeys();
         if (activePlayers.length <= 1) {
