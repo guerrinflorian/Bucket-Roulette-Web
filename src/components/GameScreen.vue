@@ -473,10 +473,14 @@ watch(() => gameStore.reloadCount, async (count, prev) => {
 }, { immediate: true });
 
 // Main shoot handler - controls the full animation flow
-const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null) => {
+const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null, actionMeta = null) => {
   // In online mode, check if it's our turn (unless receiving from network)
   if (isOnlineMode.value && !fromNetwork && !isMyTurn.value) {
     console.log('Not your turn!');
+    return;
+  }
+  if (isOnlineMode.value && !fromNetwork && !netStore.isHost) {
+    netStore.sendAction({ type: 'shoot', target, actorKey: onlineActorKey.value, intent: true });
     return;
   }
   if (isHandlingShot.value) {
@@ -485,10 +489,14 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
   isHandlingShot.value = true;
 
   beginTimerBlock();
+
+  const allowReload = !(isOnlineMode.value && !netStore.isHost);
+  const shouldBroadcastResolved = isOnlineMode.value
+    && netStore.isHost
+    && !actionMeta?.resolved;
   
-  // Send action to network (if not already from network)
-  if (isOnlineMode.value && !fromNetwork) {
-    netStore.sendAction({ type: 'shoot', target, actorKey: onlineActorKey.value });
+  if (fromNetwork && actionMeta?.resolved && actionMeta?.barrel) {
+    gameStore.barrel = actionMeta.barrel;
   }
   
   // Safety: if already animating, wait a bit and check again
@@ -513,6 +521,9 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       targetKey = actorKey;
     }
     
+    const barrelSnapshot = structuredClone
+      ? structuredClone(gameStore.barrel)
+      : JSON.parse(JSON.stringify(gameStore.barrel));
     const shot = gameStore.barrel.chambers[gameStore.barrel.index];
     const isReal = shot === 'real';
     let damage = isReal ? 1 : 0;
@@ -534,6 +545,19 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       targetName: uiNameForStoreKey(targetKey),
       actorIsSelf: actorKey === targetKey
     };
+
+    if (shouldBroadcastResolved) {
+      netStore.sendAction({
+        type: 'shoot',
+        target: targetKey,
+        actorKey,
+        resolved: true,
+        shot,
+        damage,
+        inverterInfo,
+        barrel: barrelSnapshot
+      });
+    }
     
     // Check if only blanks remain (fast mode)
     const counts = remainingCounts(gameStore.barrel);
@@ -562,7 +586,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       await settleWithTimeout(gameSceneRef.value?.showShotResult?.(actionData), 2600, 'showShotResult');
       
       // Apply game logic
-      await gameStore.shoot(targetKey, actorKey);
+      await gameStore.shoot(targetKey, actorKey, { allowReload });
       shotResolved = true;
       resetTurnTimerAfterAction();
       await sleep(200);
@@ -607,7 +631,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
       }
       
       // 10. Apply game logic
-      await gameStore.shoot(targetKey, actorKey);
+      await gameStore.shoot(targetKey, actorKey, { allowReload });
       shotResolved = true;
       resetTurnTimerAfterAction();
       
@@ -630,7 +654,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null)
   }
 };
 
-const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, actorKeyOverride = null) => {
+const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, actorKeyOverride = null, actionMeta = null) => {
   if (gameStore.isAnimating) return;
   
   // In online mode, check if it's our turn (unless receiving from network)
@@ -638,20 +662,45 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
     console.log('Not your turn!');
     return;
   }
+  if (isOnlineMode.value && !fromNetwork && !netStore.isHost) {
+    netStore.sendAction({
+      type: 'item',
+      itemId,
+      targetKey,
+      actorKey: onlineActorKey.value,
+      intent: true
+    });
+    return;
+  }
+
+  if (fromNetwork && actionMeta?.resolved && actionMeta?.barrel) {
+    gameStore.barrel = actionMeta.barrel;
+  }
   
   const runItemAction = async () => {
-    // Send action to network (if not already from network)
-    if (isOnlineMode.value && !fromNetwork) {
-      netStore.sendAction({ type: 'item', itemId, targetKey, actorKey: onlineActorKey.value });
-    }
-
     const actorKey = actorKeyOverride || gameStore.currentTurn;
+    const barrelSnapshot = structuredClone
+      ? structuredClone(gameStore.barrel)
+      : JSON.parse(JSON.stringify(gameStore.barrel));
+    const shouldBroadcastResolved = isOnlineMode.value
+      && netStore.isHost
+      && !actionMeta?.resolved;
     
     // For peek, we need to show the result
     if (itemId === 'peek') {
       const nextBullet = gameStore.barrel.chambers[gameStore.barrel.index];
       await gameStore.useItem(itemId, actorKey, targetKey);
       syncStateIfHost(fromNetwork);
+      if (shouldBroadcastResolved) {
+        netStore.sendAction({
+          type: 'item',
+          itemId,
+          targetKey,
+          actorKey,
+          resolved: true,
+          barrel: barrelSnapshot
+        });
+      }
       
       // Show peek result modal
       if (gameSceneRef.value && nextBullet) {
@@ -704,6 +753,16 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
         // Now apply the item (increments barrel index)
         await gameStore.useItem(itemId, actorKey, targetKey);
         syncStateIfHost(fromNetwork);
+        if (shouldBroadcastResolved) {
+          netStore.sendAction({
+            type: 'item',
+            itemId,
+            targetKey,
+            actorKey,
+            resolved: true,
+            barrel: barrelSnapshot
+          });
+        }
         
         await sleep(300);
       } finally {
@@ -714,6 +773,16 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
 
     await gameStore.useItem(itemId, actorKey, targetKey);
     syncStateIfHost(fromNetwork);
+    if (shouldBroadcastResolved) {
+      netStore.sendAction({
+        type: 'item',
+        itemId,
+        targetKey,
+        actorKey,
+        resolved: true,
+        barrel: barrelSnapshot
+      });
+    }
   };
 
   const shouldPauseForItem = itemId === 'peek' || itemId === 'eject';
@@ -726,15 +795,20 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
   resetTurnTimerAfterAction();
 };
 
-const handleTimeout = async (fromNetwork = false, actorKeyOverride = null) => {
+const handleTimeout = async (fromNetwork = false, actorKeyOverride = null, actionMeta = null) => {
   if (gameStore.isAnimating) return;
   if (!canAct.value && !fromNetwork && !(isOnlineMode.value && netStore.isHost)) return;
 
   const actorKey = actorKeyOverride || gameStore.currentTurn;
   if (!actorKey) return;
 
-  if (isOnlineMode.value && !fromNetwork) {
-    netStore.sendAction({ type: 'timeout', actorKey });
+  if (isOnlineMode.value && !fromNetwork && !netStore.isHost) {
+    netStore.sendAction({ type: 'timeout', actorKey, intent: true });
+    return;
+  }
+
+  if (isOnlineMode.value && netStore.isHost && !actionMeta?.resolved) {
+    netStore.sendAction({ type: 'timeout', actorKey, resolved: true });
   }
 
   gameStore.timeoutTurn(actorKey);
@@ -892,18 +966,19 @@ onMounted(() => {
     
     // Listen for actions from opponent
     netStore.onGameAction(async ({ action }) => {
-      // Ignore our own actions
-      if (action.actorKey && action.actorKey === localPlayerKey.value) return;
+      if (netStore.isHost && action.resolved) return;
+      // Ignore our own intent actions (resolved actions still need replay)
+      if (action.actorKey && action.actorKey === localPlayerKey.value && !action.resolved) return;
       
       console.log('📨 Received action from opponent:', action);
       
       // Execute the action (mark as fromNetwork to avoid re-sending)
       if (action.type === 'shoot') {
-        await handleShoot(action.target, true, action.actorKey || null);
+        await handleShoot(action.target, true, action.actorKey || null, action);
       } else if (action.type === 'item') {
-        await handleUseItem(action.itemId, action.targetKey || null, true, action.actorKey || null);
+        await handleUseItem(action.itemId, action.targetKey || null, true, action.actorKey || null, action);
       } else if (action.type === 'timeout') {
-        await handleTimeout(true, action.actorKey || null);
+        await handleTimeout(true, action.actorKey || null, action);
       } else if (action.type === 'coinFlip') {
         gameStore.setCoinFlipResult(action.starts);
       } else if (action.type === 'timer') {
