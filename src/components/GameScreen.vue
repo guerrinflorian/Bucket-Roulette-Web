@@ -118,6 +118,21 @@ const authStore = useAuthStore();
 const matchStore = useMatchStore();
 const gameSceneRef = ref(null);
 const matchSubmitted = ref(false);
+const cloneBarrel = (barrel) => {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(barrel);
+    } catch (error) {
+      console.warn('structuredClone failed for barrel snapshot, falling back to JSON clone.', error);
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(barrel));
+  } catch (error) {
+    console.warn('JSON clone failed for barrel snapshot, falling back to shallow clone.', error);
+    return { ...barrel };
+  }
+};
 const forfeitApplied = ref(false);
 
 const showGameOver = computed(() => gameStore.phase === 'game_over');
@@ -521,9 +536,7 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
       targetKey = actorKey;
     }
     
-    const barrelSnapshot = structuredClone
-      ? structuredClone(gameStore.barrel)
-      : JSON.parse(JSON.stringify(gameStore.barrel));
+    const barrelSnapshot = cloneBarrel(gameStore.barrel);
     const shot = gameStore.barrel.chambers[gameStore.barrel.index];
     const isReal = shot === 'real';
     let damage = isReal ? 1 : 0;
@@ -679,9 +692,7 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
   
   const runItemAction = async () => {
     const actorKey = actorKeyOverride || gameStore.currentTurn;
-    const barrelSnapshot = structuredClone
-      ? structuredClone(gameStore.barrel)
-      : JSON.parse(JSON.stringify(gameStore.barrel));
+    const barrelSnapshot = cloneBarrel(gameStore.barrel);
     const shouldBroadcastResolved = isOnlineMode.value
       && netStore.isHost
       && !actionMeta?.resolved;
