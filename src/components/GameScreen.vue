@@ -169,9 +169,11 @@ const isApplyingTimerState = ref(false);
 const TURN_TIME_LIMIT = 15;
 const EMOJI_COOLDOWN_MS = 5000;
 const EMOJI_DISPLAY_MS = 3000;
+const GAME_OVER_REDIRECT_DELAY_MS = 3000;
 let turnTimer = null;
 let turnTick = null;
 let emojiTick = null;
+let gameOverRedirectTimer = null;
 let visibilityHandler = null;
 const emojiNow = ref(Date.now());
 const playerEmojis = ref({});
@@ -1216,6 +1218,10 @@ const restart = () => {
   if (isOnlineMode.value && netStore.isInRoom) {
     netStore.gameEnded = true;
   }
+  if (gameOverRedirectTimer) {
+    clearTimeout(gameOverRedirectTimer);
+    gameOverRedirectTimer = null;
+  }
   gameStore.sessionActive = false;
   router.push('/menu');
 };
@@ -1358,6 +1364,10 @@ onUnmounted(() => {
     netStore.offGameAction();
   }
   clearTurnTimer();
+  if (gameOverRedirectTimer) {
+    clearTimeout(gameOverRedirectTimer);
+    gameOverRedirectTimer = null;
+  }
   orderRevealTimers.splice(0).forEach((timerId) => clearTimeout(timerId));
   if (emojiTick) clearInterval(emojiTick);
   Object.values(emojiTimeouts).forEach((timeoutId) => clearTimeout(timeoutId));
@@ -1434,9 +1444,14 @@ watch(
       netStore.endGame();
     }
     if (isOnlineMode.value && netStore.isInRoom && !redirectedToLobby.value) {
-      redirectedToLobby.value = true;
-      gameStore.sessionActive = false;
-      router.push('/menu');
+      if (gameOverRedirectTimer) {
+        clearTimeout(gameOverRedirectTimer);
+      }
+      gameOverRedirectTimer = setTimeout(() => {
+        redirectedToLobby.value = true;
+        gameStore.sessionActive = false;
+        router.push('/menu');
+      }, GAME_OVER_REDIRECT_DELAY_MS);
     }
   }
 );
