@@ -15,6 +15,10 @@ const SOUND_MAP = {
   notification: notificationSrc
 };
 
+const SOUND_VOLUMES = {
+  click: 0.25
+};
+
 class AudioManager {
   constructor() {
     this.sounds = {};
@@ -23,7 +27,7 @@ class AudioManager {
     this.background.loop = true;
     this.background.volume = 0.01;
     Object.entries(SOUND_MAP).forEach(([key, src]) => {
-      const audio = this.createAudio(src, 0.6);
+      const audio = this.createAudio(src, SOUND_VOLUMES[key] ?? 0.6);
       this.sounds[key] = audio;
       this.soundPools[key] = [audio];
     });
@@ -73,10 +77,15 @@ class AudioManager {
     // Attempt to unlock audio context on mobile
     const unlockSound = (audio) => {
       if (!audio) return;
+      const previousVolume = audio.volume;
+      audio.volume = 0;
       audio.play().then(() => {
         audio.pause();
         audio.currentTime = 0;
-      }).catch(() => { });
+        audio.volume = previousVolume;
+      }).catch(() => {
+        audio.volume = previousVolume;
+      });
     };
 
     unlockSound(this.background);
