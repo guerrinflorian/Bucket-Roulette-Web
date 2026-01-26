@@ -160,9 +160,9 @@ function setupScene() {
 
 function loadModel() {
   const loader = new GLTFLoader();
-  const baseUrl = import.meta.env.BASE_URL || '/';
+  const modelUrl = new URL('../../../assets/3d/animated_carry_pistol.glb', import.meta.url).href;
   loader.load(
-    `${baseUrl}3d/animated_carry_pistol.glb`,
+    modelUrl,
     (gltf) => {
       console.log(gltf.animations.map(a => a.name));
       modelRoot = gltf.scene;
