@@ -234,17 +234,26 @@ export const useNetStore = defineStore('net', {
               text: `${playerName} a quitté la room.`
             });
           }
-          if (wasHost) {
+          if (playerName) {
+            this.error = `${playerName} a quitté la room`;
+            notifyDeparture(`${playerName} a quitté la room.`);
+          } else if (wasHost) {
             this.error = "L'hôte a quitté la partie";
             notifyDeparture("L'hôte a quitté la partie.");
           } else {
-            this.error = "L'adversaire a quitté la room";
-            notifyDeparture(`${playerName || 'Un joueur'} a quitté la partie.`);
+            this.error = "Un joueur a quitté la room";
+            notifyDeparture("Un joueur a quitté la room.");
           }
         });
 
         this.socket.on('room:host-left', ({ message }) => {
           console.log('🚪 Host left:', message);
+          if (this.roomPlayers.length > 1) {
+            this.roomReady = false;
+            this.gameEnded = true;
+            this.opponentLeft = { wasHost: true, message };
+            return;
+          }
           this.roomReady = false;
           this.gameEnded = true;
           this.opponentLeft = { wasHost: true, message };
@@ -254,6 +263,11 @@ export const useNetStore = defineStore('net', {
 
         this.socket.on('room:guest-left', ({ message }) => {
           console.log('🚪 Guest left:', message);
+          if (this.roomPlayers.length > 1) {
+            this.roomReady = false;
+            this.opponentLeft = { wasHost: false, message };
+            return;
+          }
           this.roomReady = false;
           this.opponentLeft = { wasHost: false, message };
           this.error = message;

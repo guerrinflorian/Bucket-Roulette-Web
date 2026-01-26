@@ -347,22 +347,16 @@ io.on('connection', (socket) => {
         const wasHost = socket.isHost;
         const playerName = socket.playerName;
 
-        // Notify other player immediately
-        socket.to(socket.roomId).emit('room:player-left', {
-          playerId: socket.id,
-          playerName: playerName,
-          wasHost: wasHost,
-          ...getRoomInfo(room)
-        });
-
         // Remove player from room
         room.players = room.players.filter((player) => player.id !== socket.id);
 
-        // If room is empty or game hasn't started, delete room
-        if (room.players.length === 0) {
+        const roomIsEmpty = room.players.length === 0;
+        if (roomIsEmpty) {
           rooms.delete(socket.roomId);
           console.log(`🗑️ Room ${socket.roomId} deleted (empty)`);
-        } else if (wasHost) {
+        }
+
+        if (!roomIsEmpty && wasHost) {
           // If host left, either end game or promote next host
           if (room.gameStarted && !room.gameEnded) {
             room.gameEnded = true;
@@ -389,9 +383,19 @@ io.on('connection', (socket) => {
               console.log(`👑 ${room.hostName} promoted to host in room ${socket.roomId}`);
             }
           }
-        } else if (room.gameStarted && !room.gameEnded) {
+        } else if (!roomIsEmpty && room.gameStarted && !room.gameEnded) {
           io.to(room.host).emit('room:guest-left', {
             message: "Un joueur a quitté la partie"
+          });
+        }
+
+        if (!roomIsEmpty) {
+          // Notify other player with updated room info
+          socket.to(socket.roomId).emit('room:player-left', {
+            playerId: socket.id,
+            playerName: playerName,
+            wasHost: wasHost,
+            ...getRoomInfo(room)
           });
         }
       }
@@ -405,22 +409,17 @@ io.on('connection', (socket) => {
       if (room) {
         const wasHost = socket.isHost;
 
-        // Notify other player
-        socket.to(socket.roomId).emit('room:player-left', {
-          playerId: socket.id,
-          playerName: socket.playerName,
-          wasHost: wasHost,
-          ...getRoomInfo(room)
-        });
-
         // Remove player from room
         room.players = room.players.filter((player) => player.id !== socket.id);
         socket.leave(socket.roomId);
 
-        if (room.players.length === 0) {
+        const roomIsEmpty = room.players.length === 0;
+        if (roomIsEmpty) {
           rooms.delete(socket.roomId);
           console.log(`🗑️ Room ${socket.roomId} deleted`);
-        } else if (wasHost) {
+        }
+
+        if (!roomIsEmpty && wasHost) {
           if (room.gameStarted && !room.gameEnded) {
             room.gameEnded = true;
             room.gameStarted = false;
@@ -444,6 +443,16 @@ io.on('connection', (socket) => {
               });
             }
           }
+        }
+
+        if (!roomIsEmpty) {
+          // Notify other player with updated room info
+          socket.to(socket.roomId).emit('room:player-left', {
+            playerId: socket.id,
+            playerName: socket.playerName,
+            wasHost: wasHost,
+            ...getRoomInfo(room)
+          });
         }
       }
 
