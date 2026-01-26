@@ -20,7 +20,7 @@ class AudioManager {
     this.soundPools = {};
     this.background = new Audio(backgroundSrc);
     this.background.loop = true;
-    this.background.volume = 0.02;
+    this.background.volume = 0.01;
     Object.entries(SOUND_MAP).forEach(([key, src]) => {
       const audio = this.createAudio(src, 0.6);
       this.sounds[key] = audio;
