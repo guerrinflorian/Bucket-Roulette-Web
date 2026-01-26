@@ -32,12 +32,14 @@
       :inverter-text="revealInverterText"
       :damage="revealDamage"
       :ammo-type="revealAmmoType"
+      :weapon-skin="revealWeaponSkin"
     />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import { useWeaponSkinsStore } from '../../stores/weaponSkinsStore.js';
 import GameSceneActionModal from './modals/GameSceneActionModal.vue';
 import GameSceneReloadModal from './modals/GameSceneReloadModal.vue';
 import GameSceneEnemyItemModal from './modals/GameSceneEnemyItemModal.vue';
@@ -45,6 +47,8 @@ import GameSceneTargetModal from './modals/GameSceneTargetModal.vue';
 import GameScenePeekModal from './modals/GameScenePeekModal.vue';
 import GameSceneEjectModal from './modals/GameSceneEjectModal.vue';
 import GameSceneRevealModal from './modals/GameSceneRevealModal.vue';
+
+const weaponSkinsStore = useWeaponSkinsStore();
 
 const props = defineProps({
   playersByKey: {
@@ -90,6 +94,7 @@ const revealSubtitle = ref('');
 const revealDamage = ref(0);
 const revealInverterText = ref('');
 const revealAmmoType = ref('REAL');
+const revealWeaponSkin = ref(null);
 
 const itemData = {
   heart: { emoji: '❤️', name: '+1 PV' },
@@ -185,6 +190,7 @@ async function showShotResult(actionData) {
   revealDamage.value = actionData.damage || 0;
   revealInverterText.value = '';
   revealAmmoType.value = isReal ? 'REAL' : 'BLANK';
+  revealWeaponSkin.value = weaponSkinsStore.getSkinForUserId(actionData.actorUserId);
 
   const actorName = actionData.actorName || props.playersByKey?.[actionData.actor]?.name || 'Joueur';
   const targetName = actionData.targetName || props.playersByKey?.[actionData.target]?.name || 'Joueur';

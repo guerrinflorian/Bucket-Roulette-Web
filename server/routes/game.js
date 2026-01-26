@@ -6,6 +6,23 @@ const DEFAULT_HISTORY_LIMIT = 20;
 const LEADERBOARD_LIMIT = 10;
 const MULTIPLAYER_MODES = new Set(['1v1', '1v1v1']);
 const MODE_STAT_KEYS = ['solo', '1v1', '1v1v1'];
+const BOT_WIN_REWARDS = {
+  paysan: 2,
+  prince: 5,
+  tsar: 10,
+  empereur: 15
+};
+const MULTIPLAYER_WIN_REWARDS = {
+  '1v1': {
+    1: 10,
+    2: 0
+  },
+  '1v1v1': {
+    1: 15,
+    2: 7,
+    3: 0
+  }
+};
 const BOT_DIFFICULTY_TO_DB = {
   peasant: 'Paysan',
   prince: 'Prince',
@@ -41,6 +58,24 @@ const toOptionalInt = (value, fallback = null) => {
   }
   const parsed = Number.parseInt(value, 10);
   return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const resolveReward = (baseReward, victoryType) => {
+  if (!baseReward || baseReward <= 0) return 0;
+  if (victoryType === 'abandon') {
+    return Math.floor(baseReward / 4);
+  }
+  return baseReward;
+};
+
+const getBotReward = (difficulty) => {
+  if (!difficulty) return 0;
+  const key = String(difficulty).toLowerCase();
+  return BOT_WIN_REWARDS[key] || 0;
+};
+
+const getMultiplayerReward = (mode, rank) => {
+  return MULTIPLAYER_WIN_REWARDS[mode]?.[rank] || 0;
 };
 
 const ensureUserStats = async (client, userId) => {
@@ -285,6 +320,17 @@ export default async function gameRoutes(fastify) {
           ]
         );
         await updateWinStreak(client, userId, userParticipant.rank === 1);
+
+        if (userParticipant.rank === 1) {
+          const baseReward = getBotReward(normalizedBotLevel || normalizedDifficulty);
+          const rewardCoins = resolveReward(baseReward, victoryType);
+          if (rewardCoins > 0) {
+            await client.query(
+              'UPDATE user_stats SET coins = coins + $1 WHERE user_id = $2',
+              [rewardCoins, userId]
+            );
+          }
+        }
       }
 
       if (normalizedDifficulty) {
@@ -421,6 +467,15 @@ export default async function gameRoutes(fastify) {
           ]
         );
         await updateWinStreak(client, participant.userId, participant.rank === 1);
+
+        const baseReward = getMultiplayerReward(mode, participant.rank);
+        const rewardCoins = resolveReward(baseReward, victoryType);
+        if (rewardCoins > 0) {
+          await client.query(
+            'UPDATE user_stats SET coins = coins + $1 WHERE user_id = $2',
+            [rewardCoins, participant.userId]
+          );
+        }
       }
 
       await client.query('COMMIT');

@@ -14,6 +14,7 @@
       :email="authStore.user?.email"
       @profile="openProfileSelf"
       @settings="openProfileSettings"
+      @weapon-skins="openWeaponSkins"
       @logout="handleLogout"
     />
 
@@ -178,6 +179,8 @@
       :error="leaderboardError"
       :highlight-id="leaderboardUserId"
     />
+
+    <WeaponSkinModal v-model="showWeaponSkinsModal" />
   </q-page>
 </template>
 
@@ -198,6 +201,7 @@ import MenuHeader from './menu/MenuHeader.vue';
 import MenuMultiplayerPanel from './menu/MenuMultiplayerPanel.vue';
 import MenuUserBar from './menu/MenuUserBar.vue';
 import MenuUtilityButtons from './menu/MenuUtilityButtons.vue';
+import WeaponSkinModal from './WeaponSkinModal.vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
@@ -220,6 +224,7 @@ const profileLoading = ref(false);
 const profileError = ref('');
 const profileStats = ref(null);
 const showLeaderboardModal = ref(false);
+const showWeaponSkinsModal = ref(false);
 const leaderboardLoading = ref(false);
 const leaderboardError = ref('');
 const leaderboards = ref({
@@ -336,6 +341,10 @@ const goAuth = () => {
 
 const goHelp = () => {
   router.push('/help');
+};
+
+const openWeaponSkins = () => {
+  showWeaponSkinsModal.value = true;
 };
 
 const loadLeaderboards = async () => {

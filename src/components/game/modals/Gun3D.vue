@@ -6,6 +6,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { applyWeaponSkin } from '../../../engine/weaponSkins.js';
 
 const containerRef = ref(null);
 const actions = new Map();
@@ -20,6 +21,7 @@ let frameId;
 let modelRoot;
 let resizeObserver;
 let pendingAmmoType = null;
+let pendingSkin = null;
 
 function disposeScene() {
   if (modelRoot) {
@@ -175,6 +177,11 @@ function loadModel() {
         actions.set(clip.name, action);
       });
 
+      if (pendingSkin) {
+        applyWeaponSkin(modelRoot, pendingSkin);
+        pendingSkin = null;
+      }
+
       if (pendingAmmoType) {
         const ammoType = pendingAmmoType;
         pendingAmmoType = null;
@@ -192,7 +199,15 @@ function playSequence(ammoType = 'REAL') {
   runSequence(ammoType);
 }
 
-defineExpose({ playSequence });
+function applySkin(skin) {
+  if (!modelRoot) {
+    pendingSkin = skin;
+    return;
+  }
+  applyWeaponSkin(modelRoot, skin);
+}
+
+defineExpose({ playSequence, applyWeaponSkin: applySkin });
 
 onMounted(() => {
   setupScene();

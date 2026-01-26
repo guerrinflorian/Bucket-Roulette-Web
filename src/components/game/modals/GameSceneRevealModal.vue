@@ -52,16 +52,21 @@ const props = defineProps({
   ammoType: {
     type: String,
     default: 'REAL'
+  },
+  weaponSkin: {
+    type: Object,
+    default: null
   }
 });
 
 const gunRef = ref(null);
 
 watch(
-  () => props.modelValue,
-  async (isOpen) => {
+  () => [props.modelValue, props.weaponSkin, props.ammoType],
+  async ([isOpen]) => {
     if (!isOpen) return;
     await nextTick();
+    gunRef.value?.applyWeaponSkin?.(props.weaponSkin);
     gunRef.value?.playSequence?.(props.ammoType);
   }
 );

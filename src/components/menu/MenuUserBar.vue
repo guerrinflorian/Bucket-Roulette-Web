@@ -63,6 +63,15 @@
               <q-item-label caption>Performances et progression</q-item-label>
             </q-item-section>
           </q-item>
+          <q-item clickable v-close-popup @click="emit('weapon-skins')">
+            <q-item-section avatar>
+              <q-icon name="palette" color="amber" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Mon arme</q-item-label>
+              <q-item-label caption>Boutique & équipement</q-item-label>
+            </q-item-section>
+          </q-item>
           <q-item clickable v-close-popup @click="emit('logout')">
             <q-item-section avatar>
               <q-icon name="logout" color="red-4" />
@@ -104,7 +113,7 @@ defineProps({
   }
 });
 
-const emit = defineEmits(['profile', 'settings', 'logout']);
+const emit = defineEmits(['profile', 'settings', 'weapon-skins', 'logout']);
 </script>
 
 <style scoped>
