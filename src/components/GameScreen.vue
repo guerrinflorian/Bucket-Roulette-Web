@@ -523,6 +523,9 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
     && !actionMeta?.resolved;
   const actionId = actionMeta?.actionId || createActionId();
   const isResolvedNetworkAction = !!(fromNetwork && actionMeta?.resolved);
+  if (fromNetwork && actionMeta?.barrelSnapshot) {
+    gameStore.barrel = actionMeta.barrelSnapshot;
+  }
 
   if (isResolvedNetworkAction && hasProcessedAction(actionId)) {
     endTimerBlock();
@@ -588,6 +591,20 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
       targetName: uiNameForStoreKey(targetKey),
       actorIsSelf: actorKey === targetKey
     };
+
+    if (isOnlineMode.value && netStore.isHost && !fromNetwork && !actionMeta?.resolved) {
+      netStore.sendAction({
+        type: 'shoot',
+        targetKey,
+        actorKey,
+        intent: true,
+        actionId,
+        shot,
+        damage,
+        inverterInfo,
+        barrelSnapshot
+      });
+    }
 
     const sendResolvedShoot = (nextState) => {
       if (!shouldBroadcastResolved) return;
