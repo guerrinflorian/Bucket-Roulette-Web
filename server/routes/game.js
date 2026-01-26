@@ -531,7 +531,11 @@ export default async function gameRoutes(fastify) {
 
       const matchIds = matches.map((match) => match.id);
       const participantsResult = await client.query(
-        'SELECT * FROM match_participants WHERE match_id = ANY($1::uuid[]) ORDER BY rank ASC',
+        `SELECT mp.*, u.username
+         FROM match_participants mp
+         LEFT JOIN users u ON u.id = mp.user_id
+         WHERE mp.match_id = ANY($1::uuid[])
+         ORDER BY mp.rank ASC`,
         [matchIds]
       );
 
@@ -541,6 +545,7 @@ export default async function gameRoutes(fastify) {
         list.push({
           id: participant.id,
           userId: participant.user_id,
+          username: participant.username,
           rank: participant.rank,
           finalHp: participant.final_hp,
           shotsFired: participant.shots_fired,
