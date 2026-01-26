@@ -101,6 +101,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref, computed, watch, toRaw } from 'vue';
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
+import { Notify } from 'quasar';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -212,6 +213,76 @@ const isInitialOnlineFlip = (state = null) => {
 
 const uiNameForStoreKey = (key) => {
   return gameStore.players[key]?.name || 'Joueur';
+};
+
+const itemNotifyLabels = {
+  heart: '+1 PV',
+  double: 'Double dégâts',
+  peek: 'Voir la balle',
+  eject: 'Éjecter',
+  handcuffs: 'Les Menottes',
+  inverter: "L'Inverseur",
+  scanner: 'Scanner'
+};
+
+const actionNotifySignature = ref(null);
+
+const formatActorName = (actorKey) => {
+  if (!actorKey) return 'Un joueur';
+  return actorKey === localPlayerKey.value ? 'Vous' : uiNameForStoreKey(actorKey);
+};
+
+const formatTargetName = (targetKey) => {
+  if (!targetKey) return 'un joueur';
+  if (targetKey === localPlayerKey.value) return 'vous';
+  return uiNameForStoreKey(targetKey);
+};
+
+const shouldNotifyAction = (action) => {
+  if (!action) return false;
+  if (action.type === 'shot') return false;
+  if (action.type === 'item') {
+    if (action.itemId === 'peek' || action.itemId === 'eject') return false;
+    if (gameStore.mode === 'bot' && action.actor && action.actor !== localPlayerKey.value) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const buildActionNotifyMessage = (action) => {
+  const actorName = formatActorName(action.actor);
+
+  if (action.type === 'item') {
+    switch (action.itemId) {
+      case 'handcuffs': {
+        const targetName = formatTargetName(action.target);
+        return `⛓️ ${actorName} a menotté ${targetName}.`;
+      }
+      case 'heart':
+        return `❤️ ${actorName} a récupéré 1 PV.`;
+      case 'double':
+        return `⚡ ${actorName} a activé Double dégâts.`;
+      case 'inverter':
+        return `🔁 ${actorName} a utilisé l'Inverseur.`;
+      case 'scanner':
+        return `📡 ${actorName} a utilisé le Scanner.`;
+      default: {
+        const label = itemNotifyLabels[action.itemId] || 'un objet';
+        return `📦 ${actorName} a utilisé ${label}.`;
+      }
+    }
+  }
+
+  if (action.type === 'timeout') {
+    return `⏳ ${actorName} a perdu son tour.`;
+  }
+
+  if (action.type === 'surrender') {
+    return `🏳️ ${actorName} a abandonné.`;
+  }
+
+  return null;
 };
 
 const getVictoryType = () => {
@@ -777,6 +848,40 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
     return;
   }
 
+  const shouldAnnounceLocalAction = () => {
+    if (fromNetwork) return false;
+    if (itemId === 'peek' || itemId === 'eject') return false;
+    if (gameStore.mode === 'bot' && actorKeyOverride && actorKeyOverride !== localPlayerKey.value) {
+      return false;
+    }
+    if (gameStore.mode === 'bot' && !actorKeyOverride && gameStore.currentTurn !== localPlayerKey.value) {
+      return false;
+    }
+    return true;
+  };
+
+  const notifyLocalItemUse = (actorKey) => {
+    if (!shouldAnnounceLocalAction()) return;
+    const message = buildActionNotifyMessage({
+      type: 'item',
+      actor: actorKey,
+      itemId,
+      target: targetKey
+    });
+    if (!message) return;
+    const signature = `local-item:${actorKey || ''}:${itemId}:${targetKey || ''}`;
+    if (signature === actionNotifySignature.value) return;
+    Notify.create({
+      message,
+      color: 'blue-6',
+      textColor: 'white',
+      icon: 'campaign',
+      position: 'top',
+      timeout: 2500
+    });
+    actionNotifySignature.value = signature;
+  };
+
   const actionId = actionMeta?.actionId || createActionId();
   const isResolvedNetworkAction = !!(fromNetwork && actionMeta?.resolved);
 
@@ -902,6 +1007,9 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
       await gameStore.useItem(itemId, actorKey, targetKey);
       syncStateIfHost(fromNetwork);
     }
+    if (!isResolvedNetworkAction) {
+      notifyLocalItemUse(actorKey);
+    }
     sendResolvedItem({
       type: 'item',
       itemId,
@@ -960,6 +1068,23 @@ const handleTimeout = async (fromNetwork = false, actorKeyOverride = null, actio
     gameStore.timeoutTurn(actorKey);
     syncStateIfHost(fromNetwork);
     sendResolvedTimeout(gameStore.serializeForNetwork());
+    if (!fromNetwork) {
+      const signature = `local-timeout:${actorKey}`;
+      if (signature !== actionNotifySignature.value) {
+        const message = buildActionNotifyMessage({ type: 'timeout', actor: actorKey });
+        if (message) {
+          Notify.create({
+            message,
+            color: 'blue-6',
+            textColor: 'white',
+            icon: 'campaign',
+            position: 'top',
+            timeout: 2500
+          });
+          actionNotifySignature.value = signature;
+        }
+      }
+    }
   }
   if (isResolvedNetworkAction && actionMeta?.nextState) {
     gameStore.hydrateFromNetwork(actionMeta.nextState);
@@ -1138,6 +1263,24 @@ onMounted(() => {
         }
       } else if (action.type === 'emoji') {
         handleReceiveEmoji(action.emoji, action.actorKey);
+      }
+
+      if (shouldNotifyAction(action)) {
+        const signature = `${action.type}:${action.actor || ''}:${action.itemId || ''}:${action.target || ''}`;
+        if (signature !== actionNotifySignature.value) {
+          const message = buildActionNotifyMessage(action);
+          if (message) {
+            Notify.create({
+              message,
+              color: 'blue-6',
+              textColor: 'white',
+              icon: 'campaign',
+              position: 'top',
+              timeout: 2500
+            });
+            actionNotifySignature.value = signature;
+          }
+        }
       }
       
       // Host syncs state after processing
