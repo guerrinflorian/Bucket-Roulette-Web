@@ -48,12 +48,12 @@ const playButtonSound = (event) => {
 onMounted(() => {
   document.addEventListener('click', unlockAudio);
   document.addEventListener('touchstart', unlockAudio);
-  document.addEventListener('click', playButtonSound);
+  document.addEventListener('pointerdown', playButtonSound);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', unlockAudio);
   document.removeEventListener('touchstart', unlockAudio);
-  document.removeEventListener('click', playButtonSound);
+  document.removeEventListener('pointerdown', playButtonSound);
 });
 </script>
