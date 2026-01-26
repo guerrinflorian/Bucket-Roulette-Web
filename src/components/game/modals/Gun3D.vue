@@ -103,7 +103,7 @@ async function runSequence(ammoType) {
 
   await playOnce(reloadAction);
   if (fireAction) {
-    playShotSound(ammoType);
+    setTimeout(() => playShotSound(ammoType), 800);
     await playOnce(fireAction);
   }
   playIdle(idleAction);
