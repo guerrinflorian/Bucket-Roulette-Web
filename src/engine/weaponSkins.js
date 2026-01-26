@@ -18,11 +18,13 @@ export const normalizeWeaponSkin = (skin = {}) => ({
 export const applyWeaponSkin = (scene, skin) => {
   if (!scene) return;
   const resolved = normalizeWeaponSkin(skin);
+  let materialCount = 0;
   scene.traverse((child) => {
     if (!child.isMesh) return;
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     materials.forEach((material) => {
       if (!material) return;
+      materialCount += 1;
       if (material.color?.set) {
         material.color.set(resolved.color_hex);
       }
@@ -34,5 +36,11 @@ export const applyWeaponSkin = (scene, skin) => {
       }
       material.needsUpdate = true;
     });
+  });
+  console.log('[weaponSkins] applied', {
+    color: resolved.color_hex,
+    metalness: resolved.metalness,
+    roughness: resolved.roughness,
+    materialCount
   });
 };

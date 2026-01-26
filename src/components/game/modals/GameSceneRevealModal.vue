@@ -66,6 +66,10 @@ watch(
   async ([isOpen]) => {
     if (!isOpen) return;
     await nextTick();
+    console.log('[weaponSkins] reveal modal update', {
+      weaponSkin: props.weaponSkin,
+      ammoType: props.ammoType
+    });
     gunRef.value?.applyWeaponSkin?.(props.weaponSkin);
     gunRef.value?.playSequence?.(props.ammoType);
   }
@@ -301,6 +305,12 @@ watch(
 
   .damage-value {
     font-size: 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  .reveal-gun {
+    transform: translateX(8px);
   }
 }
 </style>
