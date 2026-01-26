@@ -207,7 +207,7 @@ const resolveOpponents = (match) => {
       ? 'Bot'
       : isSameUser(participant.userId, props.viewerId)
         ? 'Vous'
-        : 'Adversaire';
+        : participant.username || 'Joueur';
     return {
       name,
       label: participant.isBot ? 'IA' : 'Opposant',

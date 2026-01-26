@@ -302,13 +302,17 @@ watch(
 }
 
 .profile-content {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
 }
 
 .profile-panels {
   background: transparent;
+  flex: 1;
   height: 100%;
+  min-height: 0;
 }
 
 .profile-panels :deep(.q-tab-panel) {
