@@ -542,12 +542,13 @@ export default async function gameRoutes(fastify) {
       const participantsByMatch = new Map();
       for (const participant of participantsResult.rows) {
         const list = participantsByMatch.get(participant.match_id) || [];
-        const hasUserRecord = Boolean(participant.user_id) && Boolean(participant.user_exists);
+        const hasUserId = Boolean(participant.user_id);
+        const hasUserRecord = hasUserId && Boolean(participant.user_exists);
         const resolvedUsername = participant.is_bot
           ? null
           : hasUserRecord
             ? participant.username || 'Joueur'
-            : null;
+            : 'Joueur';
         list.push({
           id: participant.id,
           userId: participant.user_id,
@@ -557,7 +558,7 @@ export default async function gameRoutes(fastify) {
           shotsFired: participant.shots_fired,
           itemsUsed: participant.items_used,
           isBot: participant.is_bot,
-          accountDeleted: !participant.is_bot && !hasUserRecord
+          accountDeleted: !participant.is_bot && hasUserId && !hasUserRecord
         });
         participantsByMatch.set(participant.match_id, list);
       }
