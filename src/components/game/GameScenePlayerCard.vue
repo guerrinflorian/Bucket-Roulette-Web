@@ -14,10 +14,6 @@
       }"
     >
       <div v-if="isHandcuffed" class="handcuff-overlay" aria-hidden="true">
-        <span class="handcuff-overlay__ring handcuff-overlay__ring--left"></span>
-        <span class="handcuff-overlay__ring handcuff-overlay__ring--right"></span>
-        <span class="handcuff-overlay__chain"></span>
-        <img :src="handcuffsImg" alt="" class="handcuff-overlay__icon" />
         <span class="handcuff-overlay__label">Menotté</span>
       </div>
       <div class="relative flex flex-shrink-0 items-center justify-center">
@@ -198,95 +194,48 @@ function getItemImage(id) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: linear-gradient(120deg, rgba(12, 16, 28, 0.75), rgba(35, 24, 64, 0.8));
-  border: 1px solid rgba(130, 139, 255, 0.28);
-  box-shadow: inset 0 0 30px rgba(17, 24, 39, 0.7), 0 0 24px rgba(99, 102, 241, 0.25);
+  background: linear-gradient(120deg, rgba(8, 10, 18, 0.72), rgba(32, 26, 52, 0.78));
+  border: 1px solid rgba(148, 163, 255, 0.24);
+  box-shadow: inset 0 0 28px rgba(15, 23, 42, 0.65), 0 0 20px rgba(99, 102, 241, 0.2);
   backdrop-filter: blur(4px);
   pointer-events: none;
 }
 
-.handcuff-overlay::after {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 16px;
-  border: 1px dashed rgba(148, 163, 255, 0.35);
-  opacity: 0.6;
-}
-
-.handcuff-overlay__icon {
-  width: 26px;
-  height: 26px;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
-  animation: handcuff-float 2.4s ease-in-out infinite;
-}
-
 .handcuff-overlay__label {
-  padding: 4px 10px;
+  position: relative;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.25);
-  border: 1px solid rgba(129, 140, 248, 0.45);
-  font-size: 0.65rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(165, 180, 252, 0.5);
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #eef2ff;
-  text-shadow: 0 0 10px rgba(129, 140, 248, 0.6);
+  text-shadow: 0 0 12px rgba(129, 140, 248, 0.6);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.5);
+  animation: handcuff-shimmer 2.2s ease-in-out infinite;
 }
 
-.handcuff-overlay__ring {
+.handcuff-overlay__label::after {
+  content: '';
   position: absolute;
-  width: 40px;
-  height: 40px;
+  inset: -6px;
   border-radius: 999px;
-  border: 2px solid rgba(226, 232, 240, 0.7);
-  box-shadow: 0 0 12px rgba(148, 163, 255, 0.4);
-  animation: handcuff-pulse 1.8s ease-in-out infinite;
+  border: 1px dashed rgba(199, 210, 254, 0.35);
+  opacity: 0.7;
+  filter: blur(0.2px);
 }
 
-.handcuff-overlay__ring--left {
-  left: 18px;
-  top: 14px;
-}
-
-.handcuff-overlay__ring--right {
-  right: 18px;
-  bottom: 14px;
-  animation-delay: 0.3s;
-}
-
-.handcuff-overlay__chain {
-  position: absolute;
-  left: 44%;
-  top: 52%;
-  width: 36px;
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(226, 232, 240, 0.4), rgba(129, 140, 248, 0.6));
-  box-shadow: 0 0 12px rgba(129, 140, 248, 0.45);
-  transform: rotate(-12deg);
-}
-
-@keyframes handcuff-float {
+@keyframes handcuff-shimmer {
   0%,
   100% {
     transform: translateY(0);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.5), 0 0 14px rgba(129, 140, 248, 0.2);
   }
   50% {
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes handcuff-pulse {
-  0%,
-  100% {
-    transform: scale(0.96);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.6), 0 0 18px rgba(129, 140, 248, 0.35);
   }
 }
 </style>
