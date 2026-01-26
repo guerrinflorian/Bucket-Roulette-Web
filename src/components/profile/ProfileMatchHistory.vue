@@ -214,7 +214,7 @@ const resolveOpponents = (match) => {
   }
 
   return opponents.map((participant) => {
-    const isDeleted = !participant.isBot && (!participant.userId || !participant.username);
+    const isDeleted = Boolean(participant.accountDeleted);
     const name = participant.isBot
       ? 'Bot'
       : isDeleted
