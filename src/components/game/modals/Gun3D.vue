@@ -79,7 +79,10 @@ function playIdle(action) {
 }
 
 function playShotSound(ammoType) {
-  const src = ammoType === 'BLANK' ? '/sounds/shot_blank.mp3' : '/sounds/shot_real.mp3';
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const src = ammoType === 'BLANK'
+    ? `${baseUrl}sounds/shot_blank.mp3`
+    : `${baseUrl}sounds/shot_real.mp3`;
   const audio = new Audio(src);
   audio.play().catch(() => {});
 }
@@ -157,22 +160,30 @@ function setupScene() {
 
 function loadModel() {
   const loader = new GLTFLoader();
-  loader.load('/3d/animated_carry_pistol.glb', (gltf) => {
-    console.log(gltf.animations.map(a => a.name));
-    modelRoot = gltf.scene;
-    scene.add(modelRoot);
-    mixer = new THREE.AnimationMixer(modelRoot);
-    gltf.animations.forEach((clip) => {
-      const action = mixer.clipAction(clip);
-      actions.set(clip.name, action);
-    });
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  loader.load(
+    `${baseUrl}3d/animated_carry_pistol.glb`,
+    (gltf) => {
+      console.log(gltf.animations.map(a => a.name));
+      modelRoot = gltf.scene;
+      scene.add(modelRoot);
+      mixer = new THREE.AnimationMixer(modelRoot);
+      gltf.animations.forEach((clip) => {
+        const action = mixer.clipAction(clip);
+        actions.set(clip.name, action);
+      });
 
-    if (pendingAmmoType) {
-      const ammoType = pendingAmmoType;
-      pendingAmmoType = null;
-      runSequence(ammoType);
+      if (pendingAmmoType) {
+        const ammoType = pendingAmmoType;
+        pendingAmmoType = null;
+        runSequence(ammoType);
+      }
+    },
+    undefined,
+    (error) => {
+      console.error('Failed to load pistol model.', error);
     }
-  });
+  );
 }
 
 function playSequence(ammoType = 'REAL') {
