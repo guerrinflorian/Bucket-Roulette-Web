@@ -123,6 +123,9 @@ function setupRenderer() {
   if (!container) return;
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
   renderer.setPixelRatio(window.devicePixelRatio || 1);
   container.appendChild(renderer.domElement);
 
@@ -146,16 +149,20 @@ function setupScene() {
   camera.position.set(0, 1.6, 3.2);
   camera.lookAt(0, 1.1, 0);
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+  const ambient = new THREE.AmbientLight(0xffffff, 1.1);
   scene.add(ambient);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
   keyLight.position.set(2, 4, 3);
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.9);
   rimLight.position.set(-2, 2, -3);
   scene.add(rimLight);
+
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  fillLight.position.set(0, 2.5, 2);
+  scene.add(fillLight);
 
   clock = new THREE.Clock();
 }
@@ -204,6 +211,7 @@ function applySkin(skin) {
     pendingSkin = skin;
     return;
   }
+  console.log('[weaponSkins] Gun3D applySkin', skin);
   applyWeaponSkin(modelRoot, skin);
 }
 
