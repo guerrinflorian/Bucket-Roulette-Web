@@ -5,6 +5,7 @@
         <div class="reveal-card" :class="isReal ? 'card-real' : 'card-blank'">
           <div class="reveal-glow"></div>
           <div class="reveal-content">
+            <Gun3D ref="gunRef" class="reveal-gun" />
             <div class="reveal-icon">{{ isReal ? '💥' : '💨' }}</div>
             <div class="reveal-title">{{ isReal ? 'BALLE RÉELLE' : 'À BLANC' }}</div>
             <div class="reveal-subtitle">{{ subtitle }}</div>
@@ -24,6 +25,9 @@
 </template>
 
 <script setup>
+import { nextTick, ref, watch } from 'vue';
+import Gun3D from './Gun3D.vue';
+
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -44,8 +48,23 @@ const props = defineProps({
   damage: {
     type: Number,
     default: 0
+  },
+  ammoType: {
+    type: String,
+    default: 'REAL'
   }
 });
+
+const gunRef = ref(null);
+
+watch(
+  () => props.modelValue,
+  async (isOpen) => {
+    if (!isOpen) return;
+    await nextTick();
+    gunRef.value?.playSequence?.(props.ammoType);
+  }
+);
 </script>
 
 <style scoped>
@@ -77,6 +96,12 @@ const props = defineProps({
   position: relative;
   z-index: 1;
   padding: 48px 64px;
+}
+
+.reveal-gun {
+  width: 320px;
+  height: 220px;
+  margin: 0 auto 18px;
 }
 
 .reveal-glow {
@@ -240,6 +265,12 @@ const props = defineProps({
 @media (max-width: 420px) {
   .reveal-content {
     padding: 32px 28px;
+  }
+
+  .reveal-gun {
+    width: 240px;
+    height: 170px;
+    margin-bottom: 12px;
   }
 
   .reveal-icon {
