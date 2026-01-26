@@ -142,6 +142,7 @@ const playerUserIds = computed(() => {
 
 const showGameOver = computed(() => gameStore.phase === 'game_over');
 const isOnlineMode = computed(() => gameStore.mode === 'online');
+const redirectedToLobby = ref(false);
 const showOnlineFlip = ref(false);
 const isFlipVisible = computed(() => gameStore.phase === 'coin_flip' || showOnlineFlip.value);
 const onlineFlipResult = ref(null);
@@ -1431,6 +1432,11 @@ watch(
     submitMatchResult();
     if (isOnlineMode.value && netStore.isHost) {
       netStore.endGame();
+    }
+    if (isOnlineMode.value && netStore.isInRoom && !redirectedToLobby.value) {
+      redirectedToLobby.value = true;
+      gameStore.sessionActive = false;
+      router.push('/menu');
     }
   }
 );
