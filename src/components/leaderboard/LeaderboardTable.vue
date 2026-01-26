@@ -16,9 +16,14 @@
 
       <div
         v-for="entry in topRows"
-        :key="entry.userId"
+        :key="resolveUserId(entry)"
         class="leaderboard-row"
-        :class="{ 'is-self': entry.isSelf, 'is-top': entry.rank <= 3 }"
+        :class="{
+          'is-self': entry.isSelf,
+          'is-top': entry.rank <= 3,
+          'is-clickable': hasUserId(entry)
+        }"
+        @click="selectEntry(entry)"
       >
         <div class="cell rank">{{ entry.rank }}</div>
         <div class="cell name">{{ entry.username || 'Joueur' }}</div>
@@ -35,6 +40,8 @@
       <div
         v-if="extraRow"
         class="leaderboard-row is-self extra-row"
+        :class="{ 'is-clickable': hasUserId(extraRow) }"
+        @click="selectEntry(extraRow)"
       >
         <div class="cell rank">{{ extraRow.rank }}</div>
         <div class="cell name">{{ extraRow.username || 'Joueur' }}</div>
@@ -57,6 +64,8 @@ const props = defineProps({
   mode: { type: String, required: true },
   highlightId: { type: String, default: '' }
 });
+
+const emit = defineEmits(['select']);
 
 const isTrio = computed(() => props.mode === '1v1v1');
 
@@ -88,6 +97,17 @@ const ratioValue = (wins, losses) => {
     return (wins / losses).toFixed(2);
   }
   return wins > 0 ? wins.toFixed(2) : '0.00';
+};
+
+const resolveUserId = (entry) => entry?.userId ?? entry?.user_id ?? '';
+const hasUserId = (entry) => Boolean(resolveUserId(entry));
+
+const selectEntry = (entry) => {
+  if (!hasUserId(entry)) return;
+  emit('select', {
+    userId: resolveUserId(entry),
+    username: entry?.username
+  });
 };
 
 const top2Count = (entry) => Math.max(0, (entry.top2_finishes ?? 0) - (entry.wins ?? 0));
@@ -160,6 +180,17 @@ const tableClass = computed(() => ({
 
 .leaderboard-row.extra-row {
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+}
+
+.leaderboard-row.is-clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.leaderboard-row.is-clickable:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(30, 41, 59, 0.7);
 }
 
 .leaderboard-self-divider {

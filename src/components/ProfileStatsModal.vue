@@ -29,6 +29,12 @@
           <q-tab name="solo" label="Solo" icon="smart_toy" />
           <q-tab name="1v1" label="1v1" icon="sports_kabaddi" />
           <q-tab name="1v1v1" label="1v1v1" icon="groups" />
+          <q-tab
+            v-if="showConfrontationTab"
+            name="confrontation"
+            label="Confrontation"
+            icon="compare_arrows"
+          />
         </q-tabs>
       </q-card-section>
 
@@ -90,6 +96,21 @@
                 show-top2
               />
             </q-tab-panel>
+            <q-tab-panel v-if="showConfrontationTab" name="confrontation">
+              <div v-if="confrontationLoading" class="profile-loading">
+                <q-spinner size="32px" color="amber" />
+                <span>Chargement des confrontations...</span>
+              </div>
+              <div v-else-if="confrontationError" class="profile-error">
+                <q-icon name="warning" color="negative" size="20px" />
+                <span>{{ confrontationError }}</span>
+              </div>
+              <ProfileConfrontationPanel
+                v-else
+                :profile="profile"
+                :confrontation="confrontationPayload"
+              />
+            </q-tab-panel>
           </q-tab-panels>
         </div>
       </q-card-section>
@@ -98,10 +119,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ProfileStatsGlobalPanel from './profile/ProfileStatsGlobalPanel.vue';
 import ProfileStatsModePanel from './profile/ProfileStatsModePanel.vue';
 import ProfileSoloProgress from './profile/ProfileSoloProgress.vue';
+import ProfileConfrontationPanel from './profile/ProfileConfrontationPanel.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -109,6 +131,9 @@ const props = defineProps({
   stats: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  confrontation: { type: Object, default: null },
+  confrontationLoading: { type: Boolean, default: false },
+  confrontationError: { type: String, default: '' },
   soloProgress: { type: Array, default: () => [] },
   botLevels: { type: Array, default: () => [] }
 });
@@ -122,6 +147,15 @@ const modeStats = computed(() => statsPayload.value?.modes ?? {});
 const soloStats = computed(() => modeStats.value?.solo ?? {});
 const duelStats = computed(() => modeStats.value?.['1v1'] ?? {});
 const trioStats = computed(() => modeStats.value?.['1v1v1'] ?? {});
+const confrontationPayload = computed(() => props.confrontation || {});
+const showConfrontationTab = computed(() => Boolean(props.profile && !props.profile.isSelf));
+
+watch(
+  () => props.profile?.userId,
+  () => {
+    activeTab.value = 'global';
+  }
+);
 </script>
 
 <style scoped>
