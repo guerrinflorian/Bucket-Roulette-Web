@@ -59,6 +59,7 @@
                   :self-entry="duelSelfEntry"
                   mode="1v1"
                   :highlight-id="highlightId"
+                  @select="emit('select-profile', $event)"
                 />
               </div>
             </q-tab-panel>
@@ -78,6 +79,7 @@
                   :self-entry="trioSelfEntry"
                   mode="1v1v1"
                   :highlight-id="highlightId"
+                  @select="emit('select-profile', $event)"
                 />
               </div>
             </q-tab-panel>
@@ -100,7 +102,7 @@ const props = defineProps({
   highlightId: { type: String, default: '' }
 });
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'select-profile']);
 
 const activeTab = ref('1v1');
 

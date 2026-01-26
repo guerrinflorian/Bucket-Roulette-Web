@@ -166,6 +166,9 @@
       :stats="profileStats"
       :loading="profileLoading"
       :error="profileError"
+      :confrontation="confrontationStats"
+      :confrontation-loading="confrontationLoading"
+      :confrontation-error="confrontationError"
       :solo-progress="soloProgress"
       :bot-levels="botLevels"
     />
@@ -178,6 +181,7 @@
       :loading="leaderboardLoading"
       :error="leaderboardError"
       :highlight-id="leaderboardUserId"
+      @select-profile="openProfileFromLeaderboard"
     />
 
     <WeaponSkinModal v-model="showWeaponSkinsModal" />
@@ -223,6 +227,9 @@ const soloProgress = ref([]);
 const profileLoading = ref(false);
 const profileError = ref('');
 const profileStats = ref(null);
+const confrontationStats = ref(null);
+const confrontationLoading = ref(false);
+const confrontationError = ref('');
 const showLeaderboardModal = ref(false);
 const showWeaponSkinsModal = ref(false);
 const leaderboardLoading = ref(false);
@@ -424,6 +431,13 @@ const loadProfileStats = async (target) => {
   } finally {
     profileLoading.value = false;
   }
+
+  if (target.isSelf) {
+    confrontationStats.value = null;
+    confrontationError.value = '';
+  } else {
+    await loadConfrontationStats(target);
+  }
 };
 
 const openProfileSelf = () => {
@@ -452,6 +466,112 @@ const openProfileFromSlot = (slot) => {
   selectedProfile.value = payload;
   showProfileModal.value = true;
   loadProfileStats(payload);
+};
+
+const openProfileFromLeaderboard = (entry) => {
+  if (!entry?.userId) return;
+  const payload = {
+    name: entry.username || 'Joueur',
+    userId: entry.userId,
+    isSelf: entry.userId === authStore.user?.id
+  };
+  showLeaderboardModal.value = false;
+  selectedProfile.value = payload;
+  showProfileModal.value = true;
+  loadProfileStats(payload);
+};
+
+const loadConfrontationStats = async (target) => {
+  confrontationError.value = '';
+  confrontationStats.value = null;
+  if (!authStore.isAuthenticated) {
+    confrontationError.value = 'Connectez-vous pour voir la confrontation.';
+    return;
+  }
+  if (!target?.userId) {
+    confrontationError.value = 'Confrontation indisponible.';
+    return;
+  }
+  confrontationLoading.value = true;
+  try {
+    const response = await matchStore.fetchMatchHistory({ mode: '1v1', limit: 50 });
+    const matches = response?.matches || [];
+    const selfId = authStore.user?.id;
+    const targetId = target.userId;
+    const relevantMatches = matches.filter((match) => {
+      const participants = match?.participants || [];
+      const hasSelf = participants.some((player) => player.userId === selfId);
+      const hasTarget = participants.some((player) => player.userId === targetId);
+      return hasSelf && hasTarget;
+    });
+
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    let lastResult = 'Aucun';
+    let lastDateLabel = 'Pas encore de duel';
+
+    for (const match of relevantMatches) {
+      const participants = match?.participants || [];
+      const selfParticipant = participants.find((player) => player.userId === selfId);
+      const targetParticipant = participants.find((player) => player.userId === targetId);
+      if (!selfParticipant || !targetParticipant) continue;
+
+      let outcome = 'draw';
+      if (match.winnerId) {
+        if (match.winnerId === selfId) {
+          outcome = 'win';
+        } else if (match.winnerId === targetId) {
+          outcome = 'loss';
+        }
+      } else if (selfParticipant.rank === 1) {
+        outcome = 'win';
+      } else if (targetParticipant.rank === 1) {
+        outcome = 'loss';
+      }
+
+      if (outcome === 'win') wins += 1;
+      else if (outcome === 'loss') losses += 1;
+      else draws += 1;
+    }
+
+    const lastMatch = relevantMatches[0];
+    if (lastMatch) {
+      const participants = lastMatch?.participants || [];
+      const selfParticipant = participants.find((player) => player.userId === selfId);
+      const targetParticipant = participants.find((player) => player.userId === targetId);
+      if (selfParticipant && targetParticipant) {
+        if (lastMatch.winnerId === selfId || selfParticipant.rank === 1) {
+          lastResult = 'Victoire';
+        } else if (lastMatch.winnerId === targetId || targetParticipant.rank === 1) {
+          lastResult = 'Défaite';
+        } else {
+          lastResult = 'Nul';
+        }
+      }
+      if (lastMatch.createdAt) {
+        const date = new Date(lastMatch.createdAt);
+        lastDateLabel = date.toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+      }
+    }
+
+    confrontationStats.value = {
+      matches: relevantMatches.length,
+      wins,
+      losses,
+      draws,
+      lastResult,
+      lastDateLabel
+    };
+  } catch (error) {
+    confrontationError.value = error?.message || 'Impossible de charger la confrontation.';
+  } finally {
+    confrontationLoading.value = false;
+  }
 };
 
 const handleLogout = () => {
