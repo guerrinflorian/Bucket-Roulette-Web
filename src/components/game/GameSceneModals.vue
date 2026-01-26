@@ -31,6 +31,7 @@
       :subtitle="revealSubtitle"
       :inverter-text="revealInverterText"
       :damage="revealDamage"
+      :ammo-type="revealAmmoType"
     />
   </div>
 </template>
@@ -88,6 +89,7 @@ const revealIsReal = ref(false);
 const revealSubtitle = ref('');
 const revealDamage = ref(0);
 const revealInverterText = ref('');
+const revealAmmoType = ref('REAL');
 
 const itemData = {
   heart: { emoji: '❤️', name: '+1 PV' },
@@ -182,6 +184,7 @@ async function showShotResult(actionData) {
   revealIsReal.value = isReal;
   revealDamage.value = actionData.damage || 0;
   revealInverterText.value = '';
+  revealAmmoType.value = isReal ? 'REAL' : 'BLANK';
 
   const actorName = actionData.actorName || props.playersByKey?.[actionData.actor]?.name || 'Joueur';
   const targetName = actionData.targetName || props.playersByKey?.[actionData.target]?.name || 'Joueur';
