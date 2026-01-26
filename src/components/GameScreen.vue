@@ -106,6 +106,7 @@ import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useMatchStore } from '../stores/matchStore.js';
+import { useWeaponSkinsStore } from '../stores/weaponSkinsStore.js';
 import { getBotLevel } from '../engine/botLevels/index.js';
 import { audioManager } from '../engine/audio.js';
 import { remainingCounts } from '../engine/barrel.js';
@@ -117,6 +118,7 @@ const gameStore = useGameStore();
 const netStore = useNetStore();
 const authStore = useAuthStore();
 const matchStore = useMatchStore();
+const weaponSkinsStore = useWeaponSkinsStore();
 const gameSceneRef = ref(null);
 const matchSubmitted = ref(false);
 const cloneBarrel = (barrel) => {
@@ -129,6 +131,14 @@ const cloneBarrel = (barrel) => {
   };
 };
 const forfeitApplied = ref(false);
+const playerUserIds = computed(() => {
+  const ids = new Set();
+  Object.values(gameStore.players).forEach((player) => {
+    if (player?.userId) ids.add(player.userId);
+  });
+  if (authStore.user?.id) ids.add(authStore.user.id);
+  return Array.from(ids);
+});
 
 const showGameOver = computed(() => gameStore.phase === 'game_over');
 const isOnlineMode = computed(() => gameStore.mode === 'online');
@@ -574,6 +584,14 @@ watch(
   }
 );
 
+watch(
+  playerUserIds,
+  async (ids) => {
+    await Promise.all(ids.map((userId) => weaponSkinsStore.fetchPlayerSkin(userId)));
+  },
+  { immediate: true }
+);
+
 // Watch for barrel reload to notify player
 watch(() => gameStore.reloadCount, async (count, prev) => {
   if (count && count !== prev) {
@@ -687,7 +705,8 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
       inverterInfo,
       actorName: uiNameForStoreKey(actorKey),
       targetName: uiNameForStoreKey(targetKey),
-      actorIsSelf: actorKey === targetKey
+      actorIsSelf: actorKey === targetKey,
+      actorUserId: actor?.userId || (actorKey === localPlayerKey.value ? authStore.user?.id : null)
     };
 
     if (isOnlineMode.value && netStore.isHost && !fromNetwork && !actionMeta?.resolved) {

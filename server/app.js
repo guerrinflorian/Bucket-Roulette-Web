@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
+import weaponSkinRoutes from './routes/weaponSkins.js';
 import { getCorsOriginValidator } from './cors.js';
 
 const buildApp = async () => {
@@ -31,6 +32,7 @@ const buildApp = async () => {
   fastify.get('/api/health', async () => ({ status: 'ok' }));
   await fastify.register(authRoutes, { prefix: '/api/auth' });
   await fastify.register(gameRoutes, { prefix: '/api' });
+  await fastify.register(weaponSkinRoutes, { prefix: '/api' });
 
   return fastify;
 };
