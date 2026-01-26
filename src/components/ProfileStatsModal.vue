@@ -311,13 +311,14 @@ watch(
 .profile-panels {
   background: transparent;
   flex: 1;
-  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .profile-panels :deep(.q-tab-panel) {
   height: 100%;
   padding: 0;
+  overflow: auto;
 }
 
 .profile-panel-layout {
@@ -335,6 +336,6 @@ watch(
 .profile-panel-history {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
 }
 </style>
