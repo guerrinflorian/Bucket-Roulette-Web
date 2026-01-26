@@ -1188,13 +1188,13 @@ const applyLocalForfeit = async () => {
   await submitMatchResult();
 
   if (isOnlineMode.value && netStore.isInRoom) {
-    netStore.leaveRoom();
+    netStore.gameEnded = true;
   }
 };
 
 const restart = () => {
-  if (isOnlineMode.value) {
-    netStore.leaveRoom();
+  if (isOnlineMode.value && netStore.isInRoom) {
+    netStore.gameEnded = true;
   }
   gameStore.sessionActive = false;
   router.push('/menu');

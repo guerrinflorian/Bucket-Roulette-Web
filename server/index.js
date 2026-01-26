@@ -217,12 +217,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.gameEnded) {
-      socket.emit('room:error', { message: 'Cette partie est terminée' });
-      return;
-    }
-
     room.gameState = gameState;
+    room.gameEnded = false;
     room.gameStarted = true;
     console.log(`🎮 Game started in room ${roomId} by host ${socket.id}`);
     console.log(`📤 Broadcasting game:state to room ${roomId} (${room.players.length} players)`);
@@ -269,6 +265,7 @@ io.on('connection', (socket) => {
     // Check if game ended
     if (gameState.winner) {
       room.gameEnded = true;
+      room.gameStarted = false;
       console.log(`🏆 Game ended in room ${roomId}, winner: ${gameState.winner}`);
     }
 
@@ -282,6 +279,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     room.gameEnded = true;
+    room.gameStarted = false;
     console.log(`🏁 Game ended in room ${roomId}`);
 
     // Notify all players
@@ -365,16 +363,15 @@ io.on('connection', (socket) => {
           rooms.delete(socket.roomId);
           console.log(`🗑️ Room ${socket.roomId} deleted (empty)`);
         } else if (wasHost) {
-          // If host left, either promote guest or delete room
+          // If host left, either end game or promote next host
           if (room.gameStarted && !room.gameEnded) {
-            // Game in progress, end it
             room.gameEnded = true;
+            room.gameStarted = false;
             io.to(socket.roomId).emit('room:host-left', {
               message: "L'hôte a quitté la partie"
             });
             console.log(`🚪 Host left during game in room ${socket.roomId}`);
-          } else if (!room.gameStarted) {
-            // Game not started yet, promote first remaining player
+          } else {
             const nextHost = room.players[0];
             if (nextHost) {
               room.host = nextHost.id;
@@ -424,20 +421,28 @@ io.on('connection', (socket) => {
           rooms.delete(socket.roomId);
           console.log(`🗑️ Room ${socket.roomId} deleted`);
         } else if (wasHost) {
-          const nextHost = room.players[0];
-          if (nextHost) {
-            room.host = nextHost.id;
-            room.hostName = nextHost.name;
-
-            const promotedSocket = io.sockets.sockets.get(room.host);
-            if (promotedSocket) {
-              promotedSocket.isHost = true;
-            }
-
-            io.to(room.host).emit('room:promoted-host', {
-              hostName: room.hostName,
-              ...getRoomInfo(room)
+          if (room.gameStarted && !room.gameEnded) {
+            room.gameEnded = true;
+            room.gameStarted = false;
+            io.to(socket.roomId).emit('room:host-left', {
+              message: "L'hôte a quitté la partie"
             });
+          } else {
+            const nextHost = room.players[0];
+            if (nextHost) {
+              room.host = nextHost.id;
+              room.hostName = nextHost.name;
+
+              const promotedSocket = io.sockets.sockets.get(room.host);
+              if (promotedSocket) {
+                promotedSocket.isHost = true;
+              }
+
+              io.to(room.host).emit('room:promoted-host', {
+                hostName: room.hostName,
+                ...getRoomInfo(room)
+              });
+            }
           }
         }
       }

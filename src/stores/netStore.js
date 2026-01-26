@@ -3,6 +3,8 @@ import { io } from 'socket.io-client';
 import { Notify } from 'quasar';
 import { audioManager } from '../engine/audio.js';
 
+const ROOM_STORAGE_KEY = 'bucket-roulette-room';
+
 const notifyDeparture = (message) => {
   if (!message) return;
   Notify.create({
@@ -34,7 +36,9 @@ export const useNetStore = defineStore('net', {
     error: null,
     lastPing: null,
     lobbyChatMessages: [],
-    lastLobbyChatSentAt: 0
+    lastLobbyChatSentAt: 0,
+    pendingRejoin: false,
+    restoredRoomSession: false
   }),
 
   getters: {
@@ -96,6 +100,14 @@ export const useNetStore = defineStore('net', {
           this.connectionStatus = 'connected';
           this.connectionMessage = '';
           this.socketId = this.socket.id;
+          if (this.roomId && this.playerName) {
+            this.pendingRejoin = true;
+            this.socket.emit('room:join', {
+              roomId: this.roomId,
+              playerName: this.playerName,
+              userId: this.userId
+            });
+          }
           resolve();
         });
 
@@ -109,6 +121,7 @@ export const useNetStore = defineStore('net', {
           this.roomPlayers = [];
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
+          this.pendingRejoin = false;
         });
 
         this.socket.on('reconnect_attempt', () => {
@@ -132,6 +145,7 @@ export const useNetStore = defineStore('net', {
           this.isHost = isHost;
           this.hostName = hostName || this.playerName;
           this.roomPlayers = players || [];
+          this.persistRoomSession();
           this.error = null;
           this.gameEnded = false;
           this.lobbyChatMessages = [];
@@ -151,6 +165,8 @@ export const useNetStore = defineStore('net', {
           this.isHost = isHost;
           this.hostName = hostName;
           this.roomPlayers = players || [];
+          this.pendingRejoin = false;
+          this.persistRoomSession();
           this.error = null;
           this.gameEnded = false;
           this.lobbyChatMessages = [];
@@ -167,6 +183,15 @@ export const useNetStore = defineStore('net', {
         this.socket.on('room:error', ({ message }) => {
           console.error('Room error:', message);
           this.error = message;
+          if (this.pendingRejoin) {
+            this.roomId = null;
+            this.isHost = false;
+            this.hostName = null;
+            this.roomPlayers = [];
+            this.roomReady = false;
+            this.pendingRejoin = false;
+            this.clearRoomSession();
+          }
         });
 
         this.socket.on('room:player-joined', ({ playerId, playerName, players }) => {
@@ -256,6 +281,7 @@ export const useNetStore = defineStore('net', {
           this.roomReady = false;
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
+          this.clearRoomSession();
         });
 
         this.socket.on('room:chat', ({ playerId, playerName, userId, message, timestamp }) => {
@@ -375,6 +401,7 @@ export const useNetStore = defineStore('net', {
         });
         return;
       }
+      this.gameEnded = false;
       console.log('📤 Host emitting game:start for room', this.roomId);
       this.socket.emit('game:start', { roomId: this.roomId, gameState });
     },
@@ -461,6 +488,7 @@ export const useNetStore = defineStore('net', {
       this.error = null;
       this.lobbyChatMessages = [];
       this.lastLobbyChatSentAt = 0;
+      this.clearRoomSession();
     },
 
     // Clear error
@@ -491,6 +519,30 @@ export const useNetStore = defineStore('net', {
       // Play notification sound if not self and not system
       if (!entry.isSelf && !isSystem) {
         audioManager.play('notification');
+      }
+    },
+    persistRoomSession() {
+      if (!this.roomId || typeof localStorage === 'undefined') return;
+      localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify({ roomId: this.roomId }));
+    },
+
+    clearRoomSession() {
+      if (typeof localStorage === 'undefined') return;
+      localStorage.removeItem(ROOM_STORAGE_KEY);
+    },
+
+    async restoreRoomSession() {
+      if (this.restoredRoomSession) return;
+      this.restoredRoomSession = true;
+      if (this.roomId || !this.playerName || typeof localStorage === 'undefined') return;
+      const stored = localStorage.getItem(ROOM_STORAGE_KEY);
+      if (!stored) return;
+      try {
+        const parsed = JSON.parse(stored);
+        if (!parsed?.roomId) return;
+        await this.joinRoom(parsed.roomId);
+      } catch (error) {
+        console.warn('Failed to restore room session:', error);
       }
     }
   }

@@ -579,6 +579,7 @@ watch(
     }
     netStore.playerName = displayName.value;
     netStore.userId = user.id;
+    netStore.restoreRoomSession();
   },
   { immediate: true }
 );
@@ -615,6 +616,9 @@ watch(() => netStore.roomId, (roomId) => {
   if (roomId && !netStore.isHost) {
     console.log('👥 Guest joined room, re-setting up listener');
     setupGameStateListener();
+  }
+  if (roomId) {
+    showMultiplayer.value = true;
   }
 });
 
