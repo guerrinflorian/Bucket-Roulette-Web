@@ -531,7 +531,7 @@ export default async function gameRoutes(fastify) {
 
       const matchIds = matches.map((match) => match.id);
       const participantsResult = await client.query(
-        `SELECT mp.*, u.username
+        `SELECT mp.*, u.username, u.id AS user_exists
          FROM match_participants mp
          LEFT JOIN users u ON u.id = mp.user_id
          WHERE mp.match_id = ANY($1::uuid[])
@@ -542,12 +542,12 @@ export default async function gameRoutes(fastify) {
       const participantsByMatch = new Map();
       for (const participant of participantsResult.rows) {
         const list = participantsByMatch.get(participant.match_id) || [];
-        const hasAccount = Boolean(participant.user_id) && Boolean(participant.username);
+        const hasUserRecord = Boolean(participant.user_id) && Boolean(participant.user_exists);
         const resolvedUsername = participant.is_bot
           ? null
-          : hasAccount
-            ? participant.username
-            : 'Joueur supprimé';
+          : hasUserRecord
+            ? participant.username || 'Joueur'
+            : null;
         list.push({
           id: participant.id,
           userId: participant.user_id,
@@ -556,7 +556,8 @@ export default async function gameRoutes(fastify) {
           finalHp: participant.final_hp,
           shotsFired: participant.shots_fired,
           itemsUsed: participant.items_used,
-          isBot: participant.is_bot
+          isBot: participant.is_bot,
+          accountDeleted: !participant.is_bot && !hasUserRecord
         });
         participantsByMatch.set(participant.match_id, list);
       }
