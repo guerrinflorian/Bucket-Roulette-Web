@@ -202,15 +202,29 @@ const resolveOpponents = (match) => {
     ];
   }
 
+  if (opponents.length === 0) {
+    return [
+      {
+        name: 'Joueur supprimé',
+        label: 'Compte supprimé',
+        isBot: false,
+        initial: 'J'
+      }
+    ];
+  }
+
   return opponents.map((participant) => {
+    const isDeleted = !participant.isBot && (!participant.userId || !participant.username);
     const name = participant.isBot
       ? 'Bot'
-      : isSameUser(participant.userId, props.viewerId)
-        ? 'Vous'
-        : participant.username || 'Joueur';
+      : isDeleted
+        ? 'Joueur supprimé'
+        : isSameUser(participant.userId, props.viewerId)
+          ? 'Vous'
+          : participant.username || 'Joueur';
     return {
       name,
-      label: participant.isBot ? 'IA' : 'Opposant',
+      label: participant.isBot ? 'IA' : isDeleted ? 'Compte supprimé' : 'Opposant',
       isBot: participant.isBot,
       initial: name.charAt(0).toUpperCase()
     };
