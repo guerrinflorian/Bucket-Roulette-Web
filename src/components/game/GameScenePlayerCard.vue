@@ -7,12 +7,19 @@
     }"
   >
     <div
-      class="mx-auto flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2 shadow-lg shadow-black/30 backdrop-blur sm:gap-3 sm:rounded-2xl sm:p-3"
+      class="relative mx-auto flex w-full items-center gap-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-2 shadow-lg shadow-black/30 backdrop-blur sm:gap-3 sm:rounded-2xl sm:p-3"
       :class="{
         'flex-row-reverse': isReversed,
         'gap-1.5 px-1.5 py-1.5 sm:gap-2 sm:px-2 sm:py-2': isCompact
       }"
     >
+      <div v-if="isHandcuffed" class="handcuff-overlay" aria-hidden="true">
+        <span class="handcuff-overlay__ring handcuff-overlay__ring--left"></span>
+        <span class="handcuff-overlay__ring handcuff-overlay__ring--right"></span>
+        <span class="handcuff-overlay__chain"></span>
+        <img :src="handcuffsImg" alt="" class="handcuff-overlay__icon" />
+        <span class="handcuff-overlay__label">Menotté</span>
+      </div>
       <div class="relative flex flex-shrink-0 items-center justify-center">
         <q-avatar :size="isCompact ? '32px' : '44px'" class="rounded-full border border-white/10 sm:!w-[44px] sm:!h-[44px]" :class="{ 'sm:!w-[44px] sm:!h-[44px]': isCompact, 'sm:!w-[56px] sm:!h-[56px]': !isCompact }">
           <Avatar
@@ -121,6 +128,7 @@ const props = defineProps({
 const displayName = computed(() => props.player?.name || 'Joueur');
 const firstName = computed(() => displayName.value.split(' ')[0] || displayName.value);
 const hpPercent = computed(() => (props.player.hp / props.player.maxHp) * 100);
+const isHandcuffed = computed(() => props.player?.skipNextTurn);
 const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 
 const itemImages = {
@@ -181,5 +189,104 @@ function getItemImage(id) {
 .emoji-pop-leave-to {
   opacity: 0;
   transform: translateY(8px) scale(0.8);
+}
+
+.handcuff-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(120deg, rgba(12, 16, 28, 0.75), rgba(35, 24, 64, 0.8));
+  border: 1px solid rgba(130, 139, 255, 0.28);
+  box-shadow: inset 0 0 30px rgba(17, 24, 39, 0.7), 0 0 24px rgba(99, 102, 241, 0.25);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.handcuff-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 255, 0.35);
+  opacity: 0.6;
+}
+
+.handcuff-overlay__icon {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
+  animation: handcuff-float 2.4s ease-in-out infinite;
+}
+
+.handcuff-overlay__label {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #eef2ff;
+  text-shadow: 0 0 10px rgba(129, 140, 248, 0.6);
+}
+
+.handcuff-overlay__ring {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid rgba(226, 232, 240, 0.7);
+  box-shadow: 0 0 12px rgba(148, 163, 255, 0.4);
+  animation: handcuff-pulse 1.8s ease-in-out infinite;
+}
+
+.handcuff-overlay__ring--left {
+  left: 18px;
+  top: 14px;
+}
+
+.handcuff-overlay__ring--right {
+  right: 18px;
+  bottom: 14px;
+  animation-delay: 0.3s;
+}
+
+.handcuff-overlay__chain {
+  position: absolute;
+  left: 44%;
+  top: 52%;
+  width: 36px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.4), rgba(129, 140, 248, 0.6));
+  box-shadow: 0 0 12px rgba(129, 140, 248, 0.45);
+  transform: rotate(-12deg);
+}
+
+@keyframes handcuff-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes handcuff-pulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
 }
 </style>
