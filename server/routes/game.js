@@ -35,6 +35,7 @@ const BOT_DIFFICULTY_FROM_DB = {
   tsar: 'tsar',
   empereur: 'emperor'
 };
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const normalizeDifficultyInput = (value) => {
   if (typeof value !== 'string') {
@@ -378,6 +379,7 @@ export default async function gameRoutes(fastify) {
 
   fastify.post('/matches/multiplayer', { preValidation: [fastify.authenticate] }, async (request, reply) => {
     const { mode, victoryType, roundsPlayed, participants, winnerId } = request.body || {};
+    const userId = request.user.userId;
 
     if (!mode || !MULTIPLAYER_MODES.has(mode)) {
       return reply.code(400).send({ error: 'Mode multijoueur invalide.' });
@@ -402,11 +404,21 @@ export default async function gameRoutes(fastify) {
     if (normalizedParticipants.some((participant) => participant.isBot)) {
       return reply.code(400).send({ error: 'Participants bots non autorisés en multijoueur.' });
     }
-    if (normalizedParticipants.some((participant) => !participant.userId)) {
-      return reply.code(400).send({ error: 'Identifiants participants requis.' });
-    }
     if (normalizedParticipants.some((participant) => !participant.rank)) {
       return reply.code(400).send({ error: 'Participants invalides.' });
+    }
+    if (!normalizedParticipants.some((participant) => participant.userId === userId)) {
+      return reply.code(400).send({ error: 'Participant utilisateur manquant.' });
+    }
+    const userIds = [
+      ...new Set(
+        normalizedParticipants
+          .map((participant) => participant.userId)
+          .filter((id) => Boolean(id))
+      )
+    ];
+    if (userIds.some((id) => !UUID_REGEX.test(id))) {
+      return reply.code(400).send({ error: 'Identifiants participants invalides.' });
     }
 
     const derivedWinnerId =
@@ -418,6 +430,17 @@ export default async function gameRoutes(fastify) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      if (userIds.length > 0) {
+        const existingUsers = await client.query(
+          'SELECT id FROM users WHERE id = ANY($1::uuid[])',
+          [userIds]
+        );
+        if (existingUsers.rowCount !== userIds.length) {
+          await client.query('ROLLBACK');
+          return reply.code(400).send({ error: 'Identifiants participants invalides.' });
+        }
+      }
 
       await client.query(
         `INSERT INTO match_history (id, mode, victory_type, bot_level, rounds_played, winner_id)
@@ -435,6 +458,9 @@ export default async function gameRoutes(fastify) {
       await insertParticipants(client, matchId, normalizedParticipants);
 
       for (const participant of normalizedParticipants) {
+        if (!participant.userId) {
+          continue;
+        }
         await ensureUserStats(client, participant.userId);
         await ensureUserModeStats(client, participant.userId, mode);
         const winIncrement = participant.rank === 1 ? 1 : 0;
@@ -542,12 +568,13 @@ export default async function gameRoutes(fastify) {
       const participantsByMatch = new Map();
       for (const participant of participantsResult.rows) {
         const list = participantsByMatch.get(participant.match_id) || [];
-        const hasUserRecord = Boolean(participant.user_id) && Boolean(participant.user_exists);
+        const hasUserId = Boolean(participant.user_id);
+        const hasUserRecord = hasUserId && Boolean(participant.user_exists);
         const resolvedUsername = participant.is_bot
           ? null
           : hasUserRecord
             ? participant.username || 'Joueur'
-            : null;
+            : 'Joueur';
         list.push({
           id: participant.id,
           userId: participant.user_id,
@@ -557,7 +584,7 @@ export default async function gameRoutes(fastify) {
           shotsFired: participant.shots_fired,
           itemsUsed: participant.items_used,
           isBot: participant.is_bot,
-          accountDeleted: !participant.is_bot && !hasUserRecord
+          accountDeleted: !participant.is_bot && hasUserId && !hasUserRecord
         });
         participantsByMatch.set(participant.match_id, list);
       }
