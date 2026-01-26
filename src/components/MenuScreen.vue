@@ -711,6 +711,9 @@ onMounted(() => {
   
   // Setup listener immediately
   setupGameStateListener();
+  if (netStore.roomId) {
+    showMultiplayer.value = true;
+  }
   nextTick(() => {
     if (!showMultiplayer.value) {
       initMenuModel();
