@@ -300,6 +300,22 @@ const soloProgressMap = computed(
   () => new Map(soloProgress.value.map((entry) => [entry.difficulty, entry]))
 );
 
+const hasSoloVictory = (entry) => {
+  if (!entry) return false;
+  if (typeof entry.times_defeated === 'number') {
+    return entry.times_defeated > 0;
+  }
+  return entry.is_defeated === false;
+};
+
+const hasSoloLoss = (entry) => {
+  if (!entry) return false;
+  if (typeof entry.times_lost === 'number') {
+    return entry.times_lost > 0;
+  }
+  return entry.is_defeated === true;
+};
+
 const isLevelLocked = (level) => {
   if (level.id === 1) return false; // Level 1 always unlocked
   if (!authStore.isAuthenticated) return true; // Lock all except 1 if not authenticated
@@ -310,9 +326,9 @@ const isLevelLocked = (level) => {
   
   const entry = soloProgressMap.value.get(prevLevel.key);
   
-  // Locked if no entry (never played) OR is_defeated is true (player lost last time)
+  // Locked if no entry or if the previous bot hasn't been beaten at least once.
   if (!entry) return true;
-  return entry.is_defeated;
+  return !hasSoloVictory(entry);
 };
 
 const selectBotDifficulty = (levelId) => {
@@ -390,10 +406,13 @@ const soloProgressStatus = (level) => {
   if (!entry) {
     return { label: 'Non tenté', color: 'grey-7', icon: 'hourglass_empty' };
   }
-  if (entry.is_defeated) {
+  if (hasSoloVictory(entry)) {
+    return { label: 'Bot battu', color: 'positive', icon: 'check' };
+  }
+  if (hasSoloLoss(entry)) {
     return { label: 'Défaite', color: 'negative', icon: 'close' };
   }
-  return { label: 'Bot battu', color: 'positive', icon: 'check' };
+  return { label: 'En cours', color: 'warning', icon: 'hourglass_top' };
 };
 
 const loadSoloProgress = async () => {
