@@ -38,12 +38,17 @@
         :code-copied="codeCopied"
         :can-start-match="canStartMatch"
         :missing-player-count="missingPlayerCount"
+        :quickplay-searching="netStore.quickplaySearching"
+        :quickplay-opponent="quickplayOpponent"
+        :quickplay-countdown="quickplayCountdown"
         @back="goBack"
         @create-room="createRoom"
         @join-room="joinRoom"
         @update:roomInput="updateRoomInput"
         @copy-code="copyCode"
         @kick-player="kickPlayer"
+        @quickplay="startQuickplay"
+        @quickplay-cancel="cancelQuickplay"
         @open-profile="openProfileFromSlot"
         @start-game="startMultiplayer"
         @leave-room="leaveRoom"
@@ -199,6 +204,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { Notify } from 'quasar';
 import { useGameStore } from '../stores/gameStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -226,6 +232,8 @@ const matchStore = useMatchStore();
 
 const showMultiplayer = ref(false);
 const roomInput = ref('');
+const quickplayCountdown = ref(0);
+const quickplayOpponent = ref('');
 const showDifficultyModal = ref(false);
 const showProfileModal = ref(false);
 const showProfileSettingsModal = ref(false);
@@ -262,6 +270,7 @@ let animationFrameId;
 let resizeObserver;
 let floatingClock;
 let resizeHandler;
+let quickplayInterval;
 const botLevels = [
   { id: 1, key: 'peasant', name: 'Bot Paysan', stars: '⭐', tag: 'Facile' },
   { id: 2, key: 'prince', name: 'Bot Prince', stars: '⭐⭐', tag: 'Moyen' },
@@ -655,6 +664,33 @@ const createRoom = async () => {
   await netStore.createRoom();
 };
 
+const resetQuickplayCountdown = () => {
+  if (quickplayInterval) {
+    clearInterval(quickplayInterval);
+    quickplayInterval = null;
+  }
+  quickplayCountdown.value = 0;
+};
+
+const startQuickplay = async () => {
+  quickplayOpponent.value = '';
+  resetQuickplayCountdown();
+  await netStore.joinQuickplay();
+  if (netStore.quickplaySearching) {
+    showMultiplayer.value = true;
+  }
+};
+
+const cancelQuickplay = async () => {
+  if (netStore.roomId && quickplayCountdown.value > 0) {
+    leaveRoom();
+    return;
+  }
+  resetQuickplayCountdown();
+  quickplayOpponent.value = '';
+  await netStore.cancelQuickplay();
+};
+
 const joinRoom = async () => {
   if (!roomInput.value || roomInput.value.length < 4 || !netStore.playerName) return;
   await netStore.joinRoom(roomInput.value.trim());
@@ -667,6 +703,8 @@ const updateRoomInput = (value) => {
 const leaveRoom = () => {
   netStore.leaveRoom();
   roomInput.value = '';
+  resetQuickplayCountdown();
+  quickplayOpponent.value = '';
 };
 
 const kickPlayer = (playerId) => {
@@ -825,6 +863,34 @@ watch(() => netStore.roomId, (roomId) => {
   }
 });
 
+watch(
+  () => netStore.quickplayMatch,
+  (match) => {
+    if (!match) return;
+    quickplayOpponent.value = match.opponentName || 'Joueur';
+    Notify.create({
+      type: 'positive',
+      message: `Adversaire trouvé : ${quickplayOpponent.value}`,
+      position: 'top',
+      timeout: 3000,
+      icon: 'sports_kabaddi'
+    });
+    resetQuickplayCountdown();
+    quickplayCountdown.value = 5;
+    quickplayInterval = setInterval(() => {
+      if (quickplayCountdown.value <= 1) {
+        resetQuickplayCountdown();
+        if (match.isHost || netStore.isHost) {
+          startMultiplayer();
+        }
+        netStore.clearQuickplayMatch();
+        return;
+      }
+      quickplayCountdown.value -= 1;
+    }, 1000);
+  }
+);
+
 watch(showMultiplayer, async (value) => {
   if (value) {
     cleanupMenuModel();
@@ -838,6 +904,7 @@ onUnmounted(() => {
   console.log('👋 MenuScreen unmounted, removing listeners');
   netStore.offGameState();
   cleanupMenuModel();
+  resetQuickplayCountdown();
 });
 
 const initMenuModel = async () => {

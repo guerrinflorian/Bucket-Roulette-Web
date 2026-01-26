@@ -18,6 +18,7 @@ const io = new Server(httpServer, {
 
 // Store rooms and their state
 const rooms = new Map();
+const quickplayQueue = [];
 const ACTION_RATE_LIMIT = {
   minIntervalMs: 1000,
   maxTokens: 6,
@@ -91,6 +92,71 @@ function getRoomInfo(room) {
   };
 }
 
+function removeFromQuickplayQueue(socketId) {
+  const index = quickplayQueue.findIndex((entry) => entry.id === socketId);
+  if (index >= 0) {
+    quickplayQueue.splice(index, 1);
+  }
+}
+
+function createQuickplayRoom(hostSocket, guestSocket) {
+  let roomId = generateRoomCode();
+  while (rooms.has(roomId)) {
+    roomId = generateRoomCode();
+  }
+
+  const hostName = hostSocket.playerName;
+  const guestName = guestSocket.playerName;
+  const hostUserId = hostSocket.userId || null;
+  const guestUserId = guestSocket.userId || null;
+
+  rooms.set(roomId, {
+    host: hostSocket.id,
+    hostName,
+    gameState: null,
+    players: [
+      { id: hostSocket.id, name: hostName, userId: hostUserId },
+      { id: guestSocket.id, name: guestName, userId: guestUserId }
+    ],
+    gameStarted: false,
+    gameEnded: false
+  });
+
+  hostSocket.join(roomId);
+  guestSocket.join(roomId);
+  hostSocket.roomId = roomId;
+  guestSocket.roomId = roomId;
+  hostSocket.isHost = true;
+  guestSocket.isHost = false;
+
+  hostSocket.emit('room:created', {
+    roomId,
+    isHost: true,
+    hostName,
+    ...getRoomInfo(rooms.get(roomId))
+  });
+
+  guestSocket.emit('room:joined', {
+    roomId,
+    isHost: false,
+    hostName,
+    ...getRoomInfo(rooms.get(roomId))
+  });
+
+  io.to(roomId).emit('room:ready', getRoomInfo(rooms.get(roomId)));
+
+  hostSocket.emit('quickplay:matched', {
+    roomId,
+    opponentName: guestName,
+    isHost: true
+  });
+  guestSocket.emit('quickplay:matched', {
+    roomId,
+    opponentName: hostName,
+    isHost: false
+  });
+}
+
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
   const now = Date.now();
@@ -132,6 +198,7 @@ io.on('connection', (socket) => {
     socket.roomId = roomId;
     socket.isHost = true;
     socket.playerName = playerName;
+    socket.userId = normalizedUserId;
 
     console.log(`🏠 Room created: ${roomId} by ${playerName} (${socket.id})`);
     socket.emit('room:created', {
@@ -186,6 +253,7 @@ io.on('connection', (socket) => {
     socket.roomId = normalizedRoomId;
     socket.isHost = false;
     socket.playerName = playerName;
+    socket.userId = normalizedUserId;
 
     console.log(`👥 ${playerName} (${socket.id}) joined room ${normalizedRoomId}`);
 
@@ -337,9 +405,57 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('quickplay:join', ({ playerName, userId }) => {
+    if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
+      socket.emit('quickplay:error', { message: 'Nom de joueur requis' });
+      return;
+    }
+    if (socket.roomId) {
+      socket.emit('quickplay:error', { message: 'Vous êtes déjà dans une room.' });
+      return;
+    }
+    if (quickplayQueue.some((entry) => entry.id === socket.id)) {
+      socket.emit('quickplay:error', { message: 'Recherche déjà en cours.' });
+      return;
+    }
+
+    const normalizedUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null;
+    socket.playerName = playerName;
+    socket.userId = normalizedUserId;
+    quickplayQueue.push({
+      id: socket.id,
+      name: playerName,
+      userId: normalizedUserId
+    });
+
+    if (quickplayQueue.length >= 2) {
+      const first = quickplayQueue.shift();
+      const second = quickplayQueue.shift();
+      if (!first || !second) return;
+      const hostSocket = io.sockets.sockets.get(first.id);
+      const guestSocket = io.sockets.sockets.get(second.id);
+      if (!hostSocket || !guestSocket) {
+        if (hostSocket) {
+          quickplayQueue.push(first);
+        }
+        if (guestSocket) {
+          quickplayQueue.push(second);
+        }
+        return;
+      }
+      createQuickplayRoom(hostSocket, guestSocket);
+    }
+  });
+
+  socket.on('quickplay:leave', () => {
+    removeFromQuickplayQueue(socket.id);
+    socket.emit('quickplay:left');
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`❌ Client disconnected: ${socket.id}`);
+    removeFromQuickplayQueue(socket.id);
 
     if (socket.roomId) {
       const room = rooms.get(socket.roomId);
@@ -404,6 +520,7 @@ io.on('connection', (socket) => {
 
   // Leave room manually
   socket.on('room:leave', () => {
+    removeFromQuickplayQueue(socket.id);
     if (socket.roomId) {
       const room = rooms.get(socket.roomId);
       if (room) {

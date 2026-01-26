@@ -38,7 +38,9 @@ export const useNetStore = defineStore('net', {
     lobbyChatMessages: [],
     lastLobbyChatSentAt: 0,
     pendingRejoin: false,
-    restoredRoomSession: false
+    restoredRoomSession: false,
+    quickplaySearching: false,
+    quickplayMatch: null
   }),
 
   getters: {
@@ -122,6 +124,8 @@ export const useNetStore = defineStore('net', {
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
           this.pendingRejoin = false;
+          this.quickplaySearching = false;
+          this.quickplayMatch = null;
         });
 
         this.socket.on('reconnect_attempt', () => {
@@ -150,6 +154,7 @@ export const useNetStore = defineStore('net', {
           this.gameEnded = false;
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
+          this.quickplaySearching = false;
           if (this.playerName) {
             this.addLobbyMessage({
               type: 'system',
@@ -171,6 +176,7 @@ export const useNetStore = defineStore('net', {
           this.gameEnded = false;
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
+          this.quickplaySearching = false;
           if (this.playerName) {
             this.addLobbyMessage({
               type: 'system',
@@ -315,6 +321,26 @@ export const useNetStore = defineStore('net', {
           this.lastPing = Date.now() - time;
         });
 
+        this.socket.on('quickplay:matched', ({ roomId, opponentName, isHost }) => {
+          this.quickplaySearching = false;
+          this.quickplayMatch = {
+            roomId,
+            opponentName,
+            isHost
+          };
+        });
+
+        this.socket.on('quickplay:error', ({ message }) => {
+          this.quickplaySearching = false;
+          this.quickplayMatch = null;
+          this.error = message || 'Recherche rapide impossible.';
+        });
+
+        this.socket.on('quickplay:left', () => {
+          this.quickplaySearching = false;
+          this.quickplayMatch = null;
+        });
+
         // Timeout
         setTimeout(() => {
           if (this.connecting) {
@@ -333,6 +359,9 @@ export const useNetStore = defineStore('net', {
       }
 
       try {
+        if (this.quickplaySearching) {
+          await this.cancelQuickplay();
+        }
         await this.connect();
         this.socket.emit('room:create', { playerName: this.playerName, userId: this.userId });
         this.isHost = true;
@@ -355,6 +384,9 @@ export const useNetStore = defineStore('net', {
       }
 
       try {
+        if (this.quickplaySearching) {
+          await this.cancelQuickplay();
+        }
         await this.connect();
         this.socket.emit('room:join', {
           roomId: roomId.toUpperCase(),
@@ -485,6 +517,9 @@ export const useNetStore = defineStore('net', {
         if (this.roomId) {
           this.socket.emit('room:leave');
         }
+        if (this.quickplaySearching) {
+          this.socket.emit('quickplay:leave');
+        }
         this.socket.disconnect();
       }
       this.socket = null;
@@ -502,6 +537,8 @@ export const useNetStore = defineStore('net', {
       this.error = null;
       this.lobbyChatMessages = [];
       this.lastLobbyChatSentAt = 0;
+      this.quickplaySearching = false;
+      this.quickplayMatch = null;
       this.clearRoomSession();
     },
 
@@ -512,6 +549,41 @@ export const useNetStore = defineStore('net', {
 
     clearOpponentLeft() {
       this.opponentLeft = null;
+    },
+
+    async joinQuickplay() {
+      if (!this.playerName) {
+        this.error = 'Nom de joueur requis';
+        return;
+      }
+      if (this.roomId) {
+        this.error = 'Vous êtes déjà dans une room.';
+        return;
+      }
+      try {
+        await this.connect();
+        this.quickplaySearching = true;
+        this.quickplayMatch = null;
+        this.socket.emit('quickplay:join', {
+          playerName: this.playerName,
+          userId: this.userId
+        });
+      } catch (err) {
+        this.quickplaySearching = false;
+        this.error = err.message;
+      }
+    },
+
+    async cancelQuickplay() {
+      if (this.socket) {
+        this.socket.emit('quickplay:leave');
+      }
+      this.quickplaySearching = false;
+      this.quickplayMatch = null;
+    },
+
+    clearQuickplayMatch() {
+      this.quickplayMatch = null;
     },
 
     addLobbyMessage(payload) {
