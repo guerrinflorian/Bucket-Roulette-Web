@@ -22,6 +22,50 @@
     </div>
 
     <div v-if="!netStore.roomId" class="room-actions">
+      <div class="action-card quickplay-card">
+        <div class="action-card-icon">⚡</div>
+        <div class="action-card-content">
+          <h3 class="action-card-title">Partie rapide 1v1</h3>
+          <p class="action-card-desc">
+            {{
+              quickplayCountdown > 0
+                ? 'Match trouvé, lancement imminent...'
+                : quickplaySearching
+                  ? 'Recherche en cours...'
+                  : 'Trouvez un adversaire immédiatement'
+            }}
+          </p>
+        </div>
+        <button
+          v-if="!quickplaySearching && quickplayCountdown === 0"
+          class="action-card-btn quickplay-btn"
+          @click="emit('quickplay')"
+          :disabled="netStore.connecting"
+        >
+          {{ netStore.connecting ? '...' : 'Lancer' }}
+        </button>
+        <button
+          v-else
+          class="action-card-btn quickplay-cancel-btn"
+          @click="emit('quickplay-cancel')"
+        >
+          Annuler
+        </button>
+      </div>
+
+      <div v-if="quickplaySearching || quickplayCountdown > 0" class="quickplay-status">
+        <div class="status-row">
+          <span class="status-dot"></span>
+          {{ quickplayCountdown > 0 ? 'Match trouvé' : "Recherche d'un adversaire disponible..." }}
+        </div>
+        <div v-if="quickplayOpponent" class="status-match">
+          Adversaire trouvé : <strong>{{ quickplayOpponent }}</strong>
+        </div>
+        <div v-if="quickplayCountdown > 0" class="status-countdown">
+          Démarrage dans {{ quickplayCountdown }}s...
+        </div>
+      </div>
+
       <div class="action-card create-card">
         <div class="action-card-icon">🎯</div>
         <div class="action-card-content">
@@ -193,6 +237,18 @@ defineProps({
   missingPlayerCount: {
     type: Number,
     default: 0
+  },
+  quickplaySearching: {
+    type: Boolean,
+    default: false
+  },
+  quickplayOpponent: {
+    type: String,
+    default: ''
+  },
+  quickplayCountdown: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -205,7 +261,9 @@ const emit = defineEmits([
   'kick-player',
   'open-profile',
   'start-game',
-  'leave-room'
+  'leave-room',
+  'quickplay',
+  'quickplay-cancel'
 ]);
 
 const onRoomInput = (event) => {
@@ -344,6 +402,16 @@ const onRoomInput = (event) => {
   transition: all 0.3s ease;
 }
 
+.quickplay-card {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.9), rgba(30, 58, 138, 0.35));
+}
+
+.quickplay-card:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(30, 58, 138, 0.45));
+}
+
 .action-card:hover {
   border-color: rgba(245, 158, 11, 0.3);
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(180, 83, 9, 0.03) 100%);
@@ -388,6 +456,64 @@ const onRoomInput = (event) => {
   transition: all 0.2s;
   border: none;
   flex-shrink: 0;
+}
+
+.quickplay-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 4px 18px rgba(59, 130, 246, 0.35);
+}
+
+.quickplay-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(59, 130, 246, 0.45);
+}
+
+.quickplay-cancel-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.quickplay-cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.quickplay-status {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quickplay-status .status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.quickplay-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+}
+
+.status-match {
+  color: #bfdbfe;
+  font-weight: 600;
+}
+
+.status-countdown {
+  color: #93c5fd;
+  font-weight: 700;
 }
 
 .create-btn {
