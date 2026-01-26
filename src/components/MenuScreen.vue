@@ -169,8 +169,16 @@
       :confrontation="confrontationStats"
       :confrontation-loading="confrontationLoading"
       :confrontation-error="confrontationError"
+      :confrontation-history="confrontationHistory"
       :solo-progress="soloProgress"
       :bot-levels="botLevels"
+      :match-history-all="matchHistoryAll"
+      :match-history-solo="matchHistorySolo"
+      :match-history-1v1="matchHistory1v1"
+      :match-history-1v1v1="matchHistory1v1v1"
+      :match-history-loading="matchHistoryLoading"
+      :match-history-error="matchHistoryError"
+      :viewer-id="authStore.user?.id"
     />
 
     <ProfileSettingsModal v-model="showProfileSettingsModal" />
@@ -230,6 +238,13 @@ const profileStats = ref(null);
 const confrontationStats = ref(null);
 const confrontationLoading = ref(false);
 const confrontationError = ref('');
+const confrontationHistory = ref([]);
+const matchHistoryAll = ref([]);
+const matchHistorySolo = ref([]);
+const matchHistory1v1 = ref([]);
+const matchHistory1v1v1 = ref([]);
+const matchHistoryLoading = ref(false);
+const matchHistoryError = ref('');
 const showLeaderboardModal = ref(false);
 const showWeaponSkinsModal = ref(false);
 const leaderboardLoading = ref(false);
@@ -451,11 +466,46 @@ const loadProfileStats = async (target) => {
     profileLoading.value = false;
   }
 
+  await loadMatchHistories();
+
   if (target.isSelf) {
     confrontationStats.value = null;
     confrontationError.value = '';
+    confrontationHistory.value = [];
   } else {
     await loadConfrontationStats(target);
+  }
+};
+
+const loadMatchHistories = async () => {
+  matchHistoryLoading.value = true;
+  matchHistoryError.value = '';
+  matchHistoryAll.value = [];
+  matchHistorySolo.value = [];
+  matchHistory1v1.value = [];
+  matchHistory1v1v1.value = [];
+
+  if (!authStore.isAuthenticated) {
+    matchHistoryError.value = 'Connectez-vous pour voir l’historique des matchs.';
+    matchHistoryLoading.value = false;
+    return;
+  }
+
+  try {
+    const [all, solo, duel, trio] = await Promise.all([
+      matchStore.fetchMatchHistory({ limit: 50 }),
+      matchStore.fetchMatchHistory({ mode: 'solo', limit: 50 }),
+      matchStore.fetchMatchHistory({ mode: '1v1', limit: 50 }),
+      matchStore.fetchMatchHistory({ mode: '1v1v1', limit: 50 })
+    ]);
+    matchHistoryAll.value = all?.matches || [];
+    matchHistorySolo.value = solo?.matches || [];
+    matchHistory1v1.value = duel?.matches || [];
+    matchHistory1v1v1.value = trio?.matches || [];
+  } catch (error) {
+    matchHistoryError.value = error?.message || 'Impossible de charger l’historique des matchs.';
+  } finally {
+    matchHistoryLoading.value = false;
   }
 };
 
@@ -503,6 +553,7 @@ const openProfileFromLeaderboard = (entry) => {
 const loadConfrontationStats = async (target) => {
   confrontationError.value = '';
   confrontationStats.value = null;
+  confrontationHistory.value = [];
   if (!authStore.isAuthenticated) {
     confrontationError.value = 'Connectez-vous pour voir la confrontation.';
     return;
@@ -586,6 +637,7 @@ const loadConfrontationStats = async (target) => {
       lastResult,
       lastDateLabel
     };
+    confrontationHistory.value = relevantMatches;
   } catch (error) {
     confrontationError.value = error?.message || 'Impossible de charger la confrontation.';
   } finally {

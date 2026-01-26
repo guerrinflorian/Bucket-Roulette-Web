@@ -95,6 +95,7 @@ const lastDateLabel = computed(() => payload.value?.lastDateLabel || 'Pas encore
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 0;
 }
 
 .stats-section {

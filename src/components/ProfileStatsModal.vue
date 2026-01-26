@@ -54,10 +54,27 @@
         <div v-else class="profile-content">
           <q-tab-panels v-model="activeTab" animated class="profile-panels">
             <q-tab-panel name="global">
-              <ProfileStatsGlobalPanel
-                :profile="profile"
-                :stats="statsPayload"
-              />
+              <div class="profile-panel-layout">
+                <div class="profile-panel-stats">
+                  <ProfileStatsGlobalPanel
+                    :profile="profile"
+                    :stats="statsPayload"
+                  />
+                </div>
+                <div class="profile-panel-history">
+                  <ProfileMatchHistory
+                    title="Historique global"
+                    subtitle="Tous les modes confondus"
+                    :matches="matchHistoryAll"
+                    :loading="matchHistoryLoading"
+                    :error="matchHistoryError"
+                    :focus-user-id="viewerId || profile?.userId"
+                    :focus-name="profile?.name"
+                    :viewer-id="viewerId"
+                    empty-label="Aucun match global enregistré."
+                  />
+                </div>
+              </div>
             </q-tab-panel>
             <q-tab-panel name="solo">
               <ProfileStatsModePanel
@@ -73,6 +90,19 @@
                   :solo-progress="soloProgress"
                   :bot-levels="botLevels"
                 />
+                <div class="profile-panel-history">
+                  <ProfileMatchHistory
+                    title="Historique solo"
+                    subtitle="Du plus récent au plus ancien"
+                    :matches="matchHistorySolo"
+                    :loading="matchHistoryLoading"
+                    :error="matchHistoryError"
+                    :focus-user-id="viewerId || profile?.userId"
+                    :focus-name="profile?.name"
+                    :viewer-id="viewerId"
+                    empty-label="Aucun match solo enregistré."
+                  />
+                </div>
               </ProfileStatsModePanel>
             </q-tab-panel>
             <q-tab-panel name="1v1">
@@ -83,7 +113,21 @@
                 badge-color="positive"
                 :mode-stats="duelStats"
                 highlight="duel"
-              />
+              >
+                <div class="profile-panel-history">
+                  <ProfileMatchHistory
+                    title="Historique 1v1"
+                    subtitle="Vos derniers duels"
+                    :matches="matchHistory1v1"
+                    :loading="matchHistoryLoading"
+                    :error="matchHistoryError"
+                    :focus-user-id="viewerId || profile?.userId"
+                    :focus-name="profile?.name"
+                    :viewer-id="viewerId"
+                    empty-label="Aucun duel enregistré."
+                  />
+                </div>
+              </ProfileStatsModePanel>
             </q-tab-panel>
             <q-tab-panel name="1v1v1">
               <ProfileStatsModePanel
@@ -94,22 +138,54 @@
                 :mode-stats="trioStats"
                 highlight="trio"
                 show-top2
-              />
+              >
+                <div class="profile-panel-history">
+                  <ProfileMatchHistory
+                    title="Historique 1v1v1"
+                    subtitle="Combats à trois"
+                    :matches="matchHistory1v1v1"
+                    :loading="matchHistoryLoading"
+                    :error="matchHistoryError"
+                    :focus-user-id="viewerId || profile?.userId"
+                    :focus-name="profile?.name"
+                    :viewer-id="viewerId"
+                    empty-label="Aucun match 1v1v1 enregistré."
+                  />
+                </div>
+              </ProfileStatsModePanel>
             </q-tab-panel>
             <q-tab-panel v-if="showConfrontationTab" name="confrontation">
-              <div v-if="confrontationLoading" class="profile-loading">
-                <q-spinner size="32px" color="amber" />
-                <span>Chargement des confrontations...</span>
+              <div class="profile-panel-layout">
+                <div v-if="confrontationLoading" class="profile-loading">
+                  <q-spinner size="32px" color="amber" />
+                  <span>Chargement des confrontations...</span>
+                </div>
+                <div v-else-if="confrontationError" class="profile-error">
+                  <q-icon name="warning" color="negative" size="20px" />
+                  <span>{{ confrontationError }}</span>
+                </div>
+                <template v-else>
+                  <div class="profile-panel-stats">
+                    <ProfileConfrontationPanel
+                      :profile="profile"
+                      :confrontation="confrontationPayload"
+                    />
+                  </div>
+                  <div class="profile-panel-history">
+                    <ProfileMatchHistory
+                      title="Historique confrontation"
+                      subtitle="Face à ce joueur"
+                      :matches="confrontationHistory"
+                      :loading="confrontationLoading"
+                      :error="confrontationError"
+                      :focus-user-id="viewerId"
+                      :focus-name="profile?.name"
+                      :viewer-id="viewerId"
+                      empty-label="Aucune confrontation enregistrée."
+                    />
+                  </div>
+                </template>
               </div>
-              <div v-else-if="confrontationError" class="profile-error">
-                <q-icon name="warning" color="negative" size="20px" />
-                <span>{{ confrontationError }}</span>
-              </div>
-              <ProfileConfrontationPanel
-                v-else
-                :profile="profile"
-                :confrontation="confrontationPayload"
-              />
             </q-tab-panel>
           </q-tab-panels>
         </div>
@@ -124,6 +200,7 @@ import ProfileStatsGlobalPanel from './profile/ProfileStatsGlobalPanel.vue';
 import ProfileStatsModePanel from './profile/ProfileStatsModePanel.vue';
 import ProfileSoloProgress from './profile/ProfileSoloProgress.vue';
 import ProfileConfrontationPanel from './profile/ProfileConfrontationPanel.vue';
+import ProfileMatchHistory from './profile/ProfileMatchHistory.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -135,7 +212,15 @@ const props = defineProps({
   confrontationLoading: { type: Boolean, default: false },
   confrontationError: { type: String, default: '' },
   soloProgress: { type: Array, default: () => [] },
-  botLevels: { type: Array, default: () => [] }
+  botLevels: { type: Array, default: () => [] },
+  matchHistoryAll: { type: Array, default: () => [] },
+  matchHistorySolo: { type: Array, default: () => [] },
+  matchHistory1v1: { type: Array, default: () => [] },
+  matchHistory1v1v1: { type: Array, default: () => [] },
+  matchHistoryLoading: { type: Boolean, default: false },
+  matchHistoryError: { type: String, default: '' },
+  confrontationHistory: { type: Array, default: () => [] },
+  viewerId: { type: [String, Number], default: null }
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -210,7 +295,7 @@ watch(
 
 .profile-modal-body {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   padding: 18px 24px 24px;
   display: flex;
   flex-direction: column;
@@ -223,5 +308,29 @@ watch(
 
 .profile-panels {
   background: transparent;
+  height: 100%;
+}
+
+.profile-panels :deep(.q-tab-panel) {
+  height: 100%;
+  padding: 0;
+}
+
+.profile-panel-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  min-height: 0;
+}
+
+.profile-panel-stats {
+  flex: 0 0 auto;
+}
+
+.profile-panel-history {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 </style>
