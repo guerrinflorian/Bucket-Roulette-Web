@@ -527,6 +527,9 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
   if (isResolvedNetworkAction && hasProcessedAction(actionId)) {
     endTimerBlock();
     isHandlingShot.value = false;
+    if (actionMeta?.nextState) {
+      gameStore.hydrateFromNetwork(actionMeta.nextState);
+    }
     return;
   }
   
@@ -634,6 +637,8 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
         shotResolved = true;
         resetTurnTimerAfterAction();
         sendResolvedShoot(gameStore.serializeForNetwork());
+      } else {
+        await gameStore.shoot(targetKey, actorKey, { allowReload, skipDelay: true });
       }
       await sleep(200);
       
@@ -682,6 +687,8 @@ const handleShoot = async (target, fromNetwork = false, actorKeyOverride = null,
         shotResolved = true;
         resetTurnTimerAfterAction();
         sendResolvedShoot(gameStore.serializeForNetwork());
+      } else {
+        await gameStore.shoot(targetKey, actorKey, { allowReload, skipDelay: true });
       }
       
       // 11. Brief pause
@@ -730,6 +737,9 @@ const handleUseItem = async (itemId, targetKey = null, fromNetwork = false, acto
   const isResolvedNetworkAction = !!(fromNetwork && actionMeta?.resolved);
 
   if (isResolvedNetworkAction && hasProcessedAction(actionId)) {
+    if (actionMeta?.nextState) {
+      gameStore.hydrateFromNetwork(actionMeta.nextState);
+    }
     return;
   }
   if (isResolvedNetworkAction) {
@@ -883,6 +893,9 @@ const handleTimeout = async (fromNetwork = false, actorKeyOverride = null, actio
   const isResolvedNetworkAction = !!(fromNetwork && actionMeta?.resolved);
 
   if (isResolvedNetworkAction && hasProcessedAction(actionId)) {
+    if (actionMeta?.nextState) {
+      gameStore.hydrateFromNetwork(actionMeta.nextState);
+    }
     return;
   }
   if (isResolvedNetworkAction) {
@@ -1060,10 +1073,10 @@ onMounted(() => {
     
     // Listen for actions from opponent
     netStore.onGameAction(async ({ action }) => {
-      if (!netStore.isHost && !action.resolved) return;
       if (netStore.isHost && action.resolved) return;
-      // Ignore our own intent actions (resolved actions still need replay)
-      if (action.actorKey && action.actorKey === localPlayerKey.value && !action.resolved) return;
+      if (!netStore.isHost && action.intent && action.actionId) {
+        markActionProcessed(action.actionId);
+      }
       
       console.log('📨 Received action from opponent:', action);
       

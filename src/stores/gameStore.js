@@ -476,7 +476,7 @@ export const useGameStore = defineStore('game', {
       if (!this.isTurnPhase()) return;
 
       const previousPhase = this.phase;
-      const { allowReload = true } = options;
+      const { allowReload = true, skipDelay = false } = options;
 
       try {
         const actorKey = actorKeyOverride || this.currentTurn;
@@ -540,7 +540,9 @@ export const useGameStore = defineStore('game', {
           text: isReal ? 'BALLE RÉELLE !' : 'À BLANC...'
         };
 
-        await sleep(900);
+        if (!skipDelay) {
+          await sleep(900);
+        }
 
         const activePlayers = this.getActivePlayerKeys();
         if (activePlayers.length <= 1) {
