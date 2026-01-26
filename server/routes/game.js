@@ -339,6 +339,8 @@ export default async function gameRoutes(fastify) {
           : userParticipant
             ? userParticipant.rank !== 1
             : resolvedWinnerId && resolvedWinnerId !== userId;
+        const winIncrement = defeated ? 0 : 1;
+        const lossIncrement = defeated ? 1 : 0;
 
         const progressResult = await client.query(
           'SELECT id FROM solo_progress WHERE user_id = $1 AND difficulty = $2 LIMIT 1',
@@ -346,13 +348,19 @@ export default async function gameRoutes(fastify) {
         );
         if (progressResult.rowCount > 0) {
           await client.query(
-            'UPDATE solo_progress SET is_defeated = $1 WHERE id = $2',
-            [defeated, progressResult.rows[0].id]
+            `UPDATE solo_progress
+             SET is_defeated = $1,
+                 times_defeated = times_defeated + $2,
+                 times_lost = times_lost + $3
+             WHERE id = $4`,
+            [defeated, winIncrement, lossIncrement, progressResult.rows[0].id]
           );
         } else {
           await client.query(
-            'INSERT INTO solo_progress (id, user_id, difficulty, is_defeated) VALUES ($1, $2, $3, $4)',
-            [randomUUID(), userId, normalizedDifficulty, defeated]
+            `INSERT INTO solo_progress
+             (id, user_id, difficulty, is_defeated, times_defeated, times_lost)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [randomUUID(), userId, normalizedDifficulty, defeated, winIncrement, lossIncrement]
           );
         }
       }

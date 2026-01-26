@@ -59,6 +59,22 @@ const soloProgressMap = computed(
   () => new Map(props.soloProgress.map((entry) => [entry.difficulty, entry]))
 );
 
+const hasSoloVictory = (entry) => {
+  if (!entry) return false;
+  if (typeof entry.times_defeated === 'number') {
+    return entry.times_defeated > 0;
+  }
+  return entry.is_defeated === false;
+};
+
+const hasSoloLoss = (entry) => {
+  if (!entry) return false;
+  if (typeof entry.times_lost === 'number') {
+    return entry.times_lost > 0;
+  }
+  return entry.is_defeated === true;
+};
+
 const soloProgressStatus = (level) => {
   const entry = soloProgressMap.value.get(level.key);
   
@@ -70,7 +86,15 @@ const soloProgressStatus = (level) => {
       iconColor: 'orange-3' // Orange pâle pour le verrouillé
     };
   }
-  if (entry.is_defeated) {
+  if (hasSoloVictory(entry)) {
+    return { 
+      label: 'Battu', 
+      class: 'completed', 
+      icon: 'check_circle',
+      iconColor: 'orange-7' // Orange vif pour le succès
+    };
+  }
+  if (hasSoloLoss(entry)) {
     return { 
       label: 'Échec', 
       class: 'defeated', 
@@ -79,10 +103,10 @@ const soloProgressStatus = (level) => {
     };
   }
   return { 
-    label: 'Battu', 
-    class: 'completed', 
-    icon: 'check_circle',
-    iconColor: 'orange-7' // Orange vif pour le succès
+    label: 'En cours', 
+    class: 'locked', 
+    icon: 'hourglass_top',
+    iconColor: 'orange-3'
   };
 };
 </script>
