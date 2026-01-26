@@ -142,6 +142,7 @@ const orderRevealDone = ref(false);
 const orderRevealTimers = [];
 const initialFlipResolved = ref(false);
 const isHandlingShot = ref(false);
+const pendingNetworkState = ref(null);
 const isOnlineInitialFlipPending = computed(() => {
   if (!isOnlineMode.value) return false;
   if (onlineFlipShown.value) return false;
@@ -475,6 +476,32 @@ const syncStateIfHost = (fromNetwork = false) => {
     netStore.syncState(gameStore.serializeForNetwork());
   }
 };
+
+const applyNetworkState = (state) => {
+  if (!state) return;
+  gameStore.hydrateFromNetwork(state);
+  // Show forced coin flip once when initial state arrives
+  if (
+    !onlineFlipShown.value &&
+    state.onlineFlipResult &&
+    isInitialOnlineFlip(state) &&
+    (state.turnOrder?.length ?? 2) <= 2
+  ) {
+    onlineFlipResult.value = mapOnlineFlipResult(state.onlineFlipResult);
+    showOnlineFlip.value = true;
+    onlineFlipShown.value = true;
+  }
+};
+
+watch(
+  () => [gameStore.isAnimating, isHandlingShot.value],
+  ([isAnimating, handlingShot]) => {
+    if (isAnimating || handlingShot || !pendingNetworkState.value) return;
+    const state = pendingNetworkState.value;
+    pendingNetworkState.value = null;
+    applyNetworkState(state);
+  }
+);
 
 // Watch for barrel reload to notify player
 watch(() => gameStore.reloadCount, async (count, prev) => {
@@ -1073,18 +1100,11 @@ onMounted(() => {
     // Listen for state sync (for guests)
     netStore.onGameState((state) => {
       if (!netStore.isHost && state) {
-        gameStore.hydrateFromNetwork(state);
-        // Show forced coin flip once when initial state arrives
-        if (
-          !onlineFlipShown.value &&
-          state.onlineFlipResult &&
-          isInitialOnlineFlip(state) &&
-          (state.turnOrder?.length ?? 2) <= 2
-        ) {
-          onlineFlipResult.value = mapOnlineFlipResult(state.onlineFlipResult);
-          showOnlineFlip.value = true;
-          onlineFlipShown.value = true;
+        if (gameStore.isAnimating || isHandlingShot.value) {
+          pendingNetworkState.value = state;
+          return;
         }
+        applyNetworkState(state);
       }
     });
     
