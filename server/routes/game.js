@@ -542,10 +542,16 @@ export default async function gameRoutes(fastify) {
       const participantsByMatch = new Map();
       for (const participant of participantsResult.rows) {
         const list = participantsByMatch.get(participant.match_id) || [];
+        const hasAccount = Boolean(participant.user_id) && Boolean(participant.username);
+        const resolvedUsername = participant.is_bot
+          ? null
+          : hasAccount
+            ? participant.username
+            : 'Joueur supprimé';
         list.push({
           id: participant.id,
           userId: participant.user_id,
-          username: participant.username,
+          username: resolvedUsername,
           rank: participant.rank,
           finalHp: participant.final_hp,
           shotsFired: participant.shots_fired,
