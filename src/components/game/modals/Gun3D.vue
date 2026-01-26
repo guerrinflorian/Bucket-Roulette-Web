@@ -166,8 +166,8 @@ function loadModel() {
     (gltf) => {
       console.log(gltf.animations.map(a => a.name));
       modelRoot = gltf.scene;
-      modelRoot.scale.set(20, 20, 20);
-      modelRoot.position.set(0, -0.4, 0);
+      modelRoot.scale.set(10, 10, 10);
+      modelRoot.position.set(0, 1, 0);
       scene.add(modelRoot);
       mixer = new THREE.AnimationMixer(modelRoot);
       gltf.animations.forEach((clip) => {
