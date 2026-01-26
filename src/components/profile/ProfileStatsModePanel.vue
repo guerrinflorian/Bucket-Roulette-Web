@@ -138,6 +138,7 @@ const sectionHeaderClass = computed(() => ({
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 0;
 }
 
 .stats-section {
@@ -239,6 +240,8 @@ const sectionHeaderClass = computed(() => ({
 .mode-extras {
   border-radius: 16px;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Couleurs de Header par mode (subtil) */
