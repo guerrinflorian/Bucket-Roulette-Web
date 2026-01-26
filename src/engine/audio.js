@@ -4,13 +4,14 @@ import shotSrc from '../assets/audio/revolver_shot.mp3';
 import blankSrc from '../assets/audio/revolver_no_ammo_shot.mp3';
 import backgroundSrc from '../assets/audio/background.mp3';
 import notificationSrc from '../assets/audio/notification.mp3';
+import buttonPressSrc from '../assets/audio/button-press.mp3';
 
 const SOUND_MAP = {
   spin: spinSrc,
   shot: shotSrc,
   blank: blankSrc,
   reload: reloadSrc,
-  click: reloadSrc, // Fallback pour les items
+  click: buttonPressSrc,
   notification: notificationSrc
 };
 
