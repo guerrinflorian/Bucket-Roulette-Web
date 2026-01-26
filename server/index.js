@@ -18,6 +18,50 @@ const io = new Server(httpServer, {
 
 // Store rooms and their state
 const rooms = new Map();
+const ACTION_RATE_LIMIT = {
+  minIntervalMs: 1000,
+  maxTokens: 6,
+  windowMs: 15000
+};
+const OTHER_RATE_LIMIT = {
+  maxTokens: 25,
+  refillPerMs: 15 / 1000
+};
+
+const refillBucket = (bucket, now, maxTokens, refillPerMs) => {
+  const elapsed = now - bucket.lastRefill;
+  if (elapsed <= 0) return;
+  bucket.tokens = Math.min(maxTokens, bucket.tokens + elapsed * refillPerMs);
+  bucket.lastRefill = now;
+};
+
+const canConsumeAction = (socket, action) => {
+  if (!socket?.data?.rateLimits) return true;
+  const now = Date.now();
+  const isActionType = action?.type === 'shoot' || action?.type === 'item';
+  const bucket = isActionType ? socket.data.rateLimits.action : socket.data.rateLimits.other;
+
+  if (isActionType) {
+    if (now - bucket.lastActionAt < ACTION_RATE_LIMIT.minIntervalMs) {
+      return false;
+    }
+    refillBucket(
+      bucket,
+      now,
+      ACTION_RATE_LIMIT.maxTokens,
+      ACTION_RATE_LIMIT.maxTokens / ACTION_RATE_LIMIT.windowMs
+    );
+    if (bucket.tokens < 1) return false;
+    bucket.tokens -= 1;
+    bucket.lastActionAt = now;
+    return true;
+  }
+
+  refillBucket(bucket, now, OTHER_RATE_LIMIT.maxTokens, OTHER_RATE_LIMIT.refillPerMs);
+  if (bucket.tokens < 1) return false;
+  bucket.tokens -= 1;
+  return true;
+};
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -49,6 +93,18 @@ function getRoomInfo(room) {
 
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
+  const now = Date.now();
+  socket.data.rateLimits = {
+    action: {
+      tokens: ACTION_RATE_LIMIT.maxTokens,
+      lastRefill: now,
+      lastActionAt: 0
+    },
+    other: {
+      tokens: OTHER_RATE_LIMIT.maxTokens,
+      lastRefill: now
+    }
+  };
 
   // Create a new room
   socket.on('room:create', ({ playerName, userId }) => {
@@ -184,6 +240,14 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     if (room.gameEnded) return;
+    if (!room.gameStarted) return;
+    if (socket.roomId !== roomId) return;
+    if (action.resolved && !socket.isHost) return;
+    if (action.type === 'timer' && !socket.isHost) return;
+    if (!canConsumeAction(socket, action)) {
+      socket.emit('game:rate-limited', { message: 'Action trop rapide.' });
+      return;
+    }
 
     console.log(`🎯 Action in room ${roomId}:`, action.type);
 
