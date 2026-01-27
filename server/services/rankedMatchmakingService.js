@@ -186,7 +186,7 @@ export class RankedMatchmakingService {
       const values = [];
       const placeholders = participantsValues
         .map(([userId, elo], index) => {
-          const baseIndex = index * 11;
+          const baseIndex = index * 14;
           values.push(
             randomUUID(),
             matchId,
@@ -198,15 +198,18 @@ export class RankedMatchmakingService {
             null,
             false,
             elo,
+            null,
+            null,
+            null,
             null
           );
-          return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9}, $${baseIndex + 10}, $${baseIndex + 11})`;
+          return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9}, $${baseIndex + 10}, $${baseIndex + 11}, $${baseIndex + 12}, $${baseIndex + 13}, $${baseIndex + 14})`;
         })
         .join(', ');
 
       await client.query(
         `INSERT INTO match_participants
-         (id, match_id, user_id, rank, final_hp, shots_fired, shots_taken, items_used, is_bot, elo_before, k_factor)
+         (id, match_id, user_id, rank, final_hp, shots_fired, shots_taken, items_used, is_bot, elo_before, elo_after, elo_delta, expected_score, k_factor)
          VALUES ${placeholders}`,
         values
       );
