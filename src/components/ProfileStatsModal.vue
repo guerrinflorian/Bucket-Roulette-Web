@@ -275,7 +275,10 @@ const duelStats = computed(() => modeStats.value?.['1v1'] ?? {});
 const trioStats = computed(() => modeStats.value?.['1v1v1'] ?? {});
 const confrontationPayload = computed(() => props.confrontation || {});
 const showConfrontationTab = computed(() => Boolean(props.profile && !props.profile.isSelf));
-const rankedFocusId = computed(() => props.viewerId || props.profile?.userId || null);
+const rankedFocusId = computed(() => {
+  if (props.profile?.isSelf) return props.viewerId || props.profile?.userId || null;
+  return props.profile?.userId || props.viewerId || null;
+});
 const matchHistoryRanked = computed(() => props.matchHistoryRanked || []);
 const confrontationRankedHistory = computed(() =>
   (props.confrontationHistory || []).filter((match) => match?.isRanked)

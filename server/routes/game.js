@@ -705,8 +705,8 @@ export default async function gameRoutes(fastify) {
   });
 
   fastify.get('/matches/history', { preValidation: [fastify.authenticate] }, async (request, reply) => {
-    const { mode, limit } = request.query || {};
-    const userId = request.user.userId;
+    const { mode, limit, userId: targetUserId } = request.query || {};
+    const userId = targetUserId || request.user.userId;
     const resolvedLimit = Math.min(
       Math.max(toOptionalInt(limit, DEFAULT_HISTORY_LIMIT), 1),
       MAX_HISTORY_LIMIT
