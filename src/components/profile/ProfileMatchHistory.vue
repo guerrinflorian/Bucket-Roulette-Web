@@ -25,7 +25,7 @@
 
     <div v-else class="history-list">
       <div v-for="match in sortedMatches" :key="match.id" class="history-card">
-        <div class="history-player">
+        <div class="history-player" :class="outcomeSideClass(match, 'player')">
           <q-avatar size="48px" class="player-avatar">
             <Avatar
               :name="focusAvatarSeed"
@@ -69,7 +69,7 @@
           </div>
         </div>
 
-        <div class="history-opponents">
+        <div class="history-opponents" :class="outcomeSideClass(match, 'opponents')">
           <div
             v-for="(opponent, index) in resolveOpponents(match)"
             :key="`${match.id}-${index}`"
@@ -220,6 +220,16 @@ const outcomeLabel = (match) => {
   return 'Nul';
 };
 
+const outcomeSideClass = (match, side) => {
+  if (match?.mode !== '1v1') return '';
+  const outcome = resolveOutcome(match);
+  if (outcome === 'draw') return '';
+
+  if (side === 'player') return outcome === 'win' ? 'side-win' : 'side-loss';
+  if (side === 'opponents') return outcome === 'win' ? 'side-loss' : 'side-win';
+  return '';
+};
+
 const outcomeColor = (match) => {
   const outcome = resolveOutcome(match);
   if (outcome === 'win') return 'positive';
@@ -356,6 +366,22 @@ const resolveOpponents = (match) => {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 10px 14px;
+}
+
+.side-win,
+.side-loss {
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+.side-win {
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.side-loss {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .player-avatar,
