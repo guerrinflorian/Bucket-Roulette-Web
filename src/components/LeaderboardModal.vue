@@ -27,9 +27,6 @@
         >
           <q-tab name="ranked" icon="emoji_events">
             <span>Ranked</span>
-            <q-tooltip class="ranked-tooltip">
-              Score = Elo (Δ = round(32 × (résultat - attendu))). Anti-farm : delta borné ±5 si écart Elo &gt; 300.
-            </q-tooltip>
           </q-tab>
           <q-tab name="1v1" label="1v1" icon="sports_kabaddi" />
           <q-tab name="1v1v1" label="1v1v1" icon="groups" />
@@ -56,7 +53,9 @@
                 <div class="leaderboard-panel-header ranked">
                   <div>
                     <div class="panel-title">Matchs classés 1v1</div>
-                    <div class="panel-subtitle">Score = Elo</div>
+                    <div class="panel-subtitle">
+                      Score = Elo (Δ = round(32 × (résultat - attendu))). Anti-farm : delta borné ±5 si écart Elo &gt; 300.
+                    </div>
                   </div>
                   <q-badge color="amber-8" class="panel-badge">Ranked</q-badge>
                 </div>
@@ -228,12 +227,6 @@ const trioSelfEntry = computed(() => props.leaderboards?.['1v1v1']?.selfEntry ??
 
 .leaderboard-panel-header.trio {
   border-color: rgba(168, 85, 247, 0.3);
-}
-
-.ranked-tooltip {
-  font-size: 12px;
-  max-width: 280px;
-  line-height: 1.4;
 }
 
 .panel-title {

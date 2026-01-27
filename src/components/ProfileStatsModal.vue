@@ -26,6 +26,7 @@
           narrow-indicator
         >
           <q-tab name="global" label="Global" icon="leaderboard" />
+          <q-tab name="ranked" label="Ranked" icon="emoji_events" />
           <q-tab name="solo" label="Solo" icon="smart_toy" />
           <q-tab name="1v1" label="1v1" icon="sports_kabaddi" />
           <q-tab name="1v1v1" label="1v1v1" icon="groups" />
@@ -105,6 +106,32 @@
                 </div>
               </ProfileStatsModePanel>
             </q-tab-panel>
+            <q-tab-panel name="ranked">
+              <ProfileStatsModePanel
+                title="Ranked"
+                subtitle="Duels classés 1v1"
+                badge-label="Ranked"
+                badge-color="amber-8"
+                :mode-stats="rankedStats"
+                :show-elo="true"
+                :elo-value="rankedElo"
+                highlight="duel"
+              >
+                <div class="profile-panel-history">
+                  <ProfileMatchHistory
+                    title="Historique ranked"
+                    subtitle="Derniers matchs classés"
+                    :matches="matchHistoryRanked"
+                    :loading="matchHistoryLoading"
+                    :error="matchHistoryError"
+                    :focus-user-id="viewerId || profile?.userId"
+                    :focus-name="profile?.name"
+                    :viewer-id="viewerId"
+                    empty-label="Aucun match ranked enregistré."
+                  />
+                </div>
+              </ProfileStatsModePanel>
+            </q-tab-panel>
             <q-tab-panel name="1v1">
               <ProfileStatsModePanel
                 title="Multijoueur 1v1"
@@ -117,7 +144,7 @@
                 <div class="profile-panel-history">
                   <ProfileMatchHistory
                     title="Historique 1v1"
-                    subtitle="Vos derniers duels"
+                    subtitle="Vos derniers duels (hors ranked)"
                     :matches="matchHistory1v1"
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
@@ -142,7 +169,7 @@
                 <div class="profile-panel-history">
                   <ProfileMatchHistory
                     title="Historique 1v1v1"
-                    subtitle="Combats à trois"
+                    subtitle="Combats à trois (hors ranked)"
                     :matches="matchHistory1v1v1"
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
@@ -172,17 +199,30 @@
                     />
                   </div>
                   <div class="profile-panel-history">
-                    <ProfileMatchHistory
-                      title="Historique confrontation"
-                      subtitle="Face à ce joueur"
-                      :matches="confrontationHistory"
-                      :loading="confrontationLoading"
-                      :error="confrontationError"
-                      :focus-user-id="viewerId"
-                      :focus-name="profile?.name"
-                      :viewer-id="viewerId"
-                      empty-label="Aucune confrontation enregistrée."
-                    />
+                    <div class="profile-history-stack">
+                      <ProfileMatchHistory
+                        title="Confrontation ranked"
+                        subtitle="Face à ce joueur (classé)"
+                        :matches="confrontationRankedHistory"
+                        :loading="confrontationLoading"
+                        :error="confrontationError"
+                        :focus-user-id="viewerId"
+                        :focus-name="profile?.name"
+                        :viewer-id="viewerId"
+                        empty-label="Aucune confrontation ranked."
+                      />
+                      <ProfileMatchHistory
+                        title="Confrontation non-ranked"
+                        subtitle="Face à ce joueur (hors classé)"
+                        :matches="confrontationUnrankedHistory"
+                        :loading="confrontationLoading"
+                        :error="confrontationError"
+                        :focus-user-id="viewerId"
+                        :focus-name="profile?.name"
+                        :viewer-id="viewerId"
+                        empty-label="Aucune confrontation non-ranked."
+                      />
+                    </div>
                   </div>
                 </template>
               </div>
@@ -215,6 +255,7 @@ const props = defineProps({
   botLevels: { type: Array, default: () => [] },
   matchHistoryAll: { type: Array, default: () => [] },
   matchHistorySolo: { type: Array, default: () => [] },
+  matchHistoryRanked: { type: Array, default: () => [] },
   matchHistory1v1: { type: Array, default: () => [] },
   matchHistory1v1v1: { type: Array, default: () => [] },
   matchHistoryLoading: { type: Boolean, default: false },
@@ -234,6 +275,79 @@ const duelStats = computed(() => modeStats.value?.['1v1'] ?? {});
 const trioStats = computed(() => modeStats.value?.['1v1v1'] ?? {});
 const confrontationPayload = computed(() => props.confrontation || {});
 const showConfrontationTab = computed(() => Boolean(props.profile && !props.profile.isSelf));
+const rankedFocusId = computed(() => props.viewerId || props.profile?.userId || null);
+const matchHistoryRanked = computed(() => props.matchHistoryRanked || []);
+const confrontationRankedHistory = computed(() =>
+  (props.confrontationHistory || []).filter((match) => match?.isRanked)
+);
+const confrontationUnrankedHistory = computed(() =>
+  (props.confrontationHistory || []).filter((match) => !match?.isRanked)
+);
+
+const isSameUser = (left, right) => {
+  if (left === null || left === undefined || right === null || right === undefined) return false;
+  return String(left) === String(right);
+};
+
+const resolveFocusParticipant = (match) => {
+  const focusId = rankedFocusId.value;
+  if (!focusId) return null;
+  const participants = match?.participants || [];
+  return participants.find((participant) => isSameUser(participant.userId, focusId)) || null;
+};
+
+const resolveRankedOutcome = (match) => {
+  const participant = resolveFocusParticipant(match);
+  if (!participant) return 'draw';
+  const focusId = rankedFocusId.value;
+  if (match?.winnerId) {
+    if (focusId && isSameUser(match.winnerId, focusId)) return 'win';
+    return 'loss';
+  }
+  if (participant.rank === 1) return 'win';
+  if (participant.rank) return 'loss';
+  return 'draw';
+};
+
+const rankedStats = computed(() => {
+  const stats = {
+    wins: 0,
+    losses: 0,
+    shots_fired: 0,
+    items_used: 0
+  };
+
+  matchHistoryRanked.value.forEach((match) => {
+    const participant = resolveFocusParticipant(match);
+    if (!participant) return;
+    const outcome = resolveRankedOutcome(match);
+    if (outcome === 'win') stats.wins += 1;
+    else if (outcome === 'loss') stats.losses += 1;
+    stats.shots_fired += participant.shotsFired ?? 0;
+    stats.items_used += participant.itemsUsed ?? 0;
+  });
+
+  return stats;
+});
+
+const rankedElo = computed(() => {
+  const focusId = rankedFocusId.value;
+  if (!focusId) return null;
+  const sorted = [...matchHistoryRanked.value].sort(
+    (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  );
+  for (const match of sorted) {
+    const participant = resolveFocusParticipant(match);
+    if (!participant) continue;
+    if (participant.eloAfter !== null && participant.eloAfter !== undefined) {
+      return Number(participant.eloAfter);
+    }
+    if (participant.eloBefore !== null && participant.eloBefore !== undefined) {
+      return Number(participant.eloBefore);
+    }
+  }
+  return null;
+});
 
 watch(
   () => props.profile?.userId,
@@ -337,5 +451,11 @@ watch(
   flex: 1;
   min-height: 0;
   overflow: visible;
+}
+
+.profile-history-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 </style>

@@ -185,6 +185,7 @@
       :bot-levels="botLevels"
       :match-history-all="matchHistoryAll"
       :match-history-solo="matchHistorySolo"
+      :match-history-ranked="matchHistoryRanked"
       :match-history-1v1="matchHistory1v1"
       :match-history-1v1v1="matchHistory1v1v1"
       :match-history-loading="matchHistoryLoading"
@@ -258,6 +259,7 @@ const confrontationError = ref('');
 const confrontationHistory = ref([]);
 const matchHistoryAll = ref([]);
 const matchHistorySolo = ref([]);
+const matchHistoryRanked = ref([]);
 const matchHistory1v1 = ref([]);
 const matchHistory1v1v1 = ref([]);
 const matchHistoryLoading = ref(false);
@@ -504,6 +506,7 @@ const loadMatchHistories = async () => {
   matchHistoryError.value = '';
   matchHistoryAll.value = [];
   matchHistorySolo.value = [];
+  matchHistoryRanked.value = [];
   matchHistory1v1.value = [];
   matchHistory1v1v1.value = [];
 
@@ -520,10 +523,15 @@ const loadMatchHistories = async () => {
       matchStore.fetchMatchHistory({ mode: '1v1', limit: 50 }),
       matchStore.fetchMatchHistory({ mode: '1v1v1', limit: 50 })
     ]);
-    matchHistoryAll.value = all?.matches || [];
-    matchHistorySolo.value = solo?.matches || [];
-    matchHistory1v1.value = duel?.matches || [];
-    matchHistory1v1v1.value = trio?.matches || [];
+    const allMatches = all?.matches || [];
+    const soloMatches = solo?.matches || [];
+    const duelMatches = duel?.matches || [];
+    const trioMatches = trio?.matches || [];
+    matchHistoryAll.value = allMatches;
+    matchHistorySolo.value = soloMatches;
+    matchHistoryRanked.value = allMatches.filter((match) => match?.isRanked);
+    matchHistory1v1.value = duelMatches.filter((match) => !match?.isRanked);
+    matchHistory1v1v1.value = trioMatches.filter((match) => !match?.isRanked);
   } catch (error) {
     matchHistoryError.value = error?.message || 'Impossible de charger l’historique des matchs.';
   } finally {
