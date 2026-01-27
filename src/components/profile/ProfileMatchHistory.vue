@@ -27,7 +27,12 @@
       <div v-for="match in sortedMatches" :key="match.id" class="history-card">
         <div class="history-player">
           <q-avatar size="48px" class="player-avatar">
-            <span>{{ focusInitial }}</span>
+            <Avatar
+              :name="focusAvatarSeed"
+              variant="beam"
+              :size="44"
+              :colors="avatarColors"
+            />
           </q-avatar>
           <div class="player-info">
             <div class="player-name">{{ focusDisplayName }}</div>
@@ -71,8 +76,12 @@
             class="opponent-row"
           >
             <q-avatar size="40px" class="opponent-avatar" :class="{ 'bot-avatar': opponent.isBot }">
-              <q-icon v-if="opponent.isBot" name="smart_toy" size="20px" />
-              <span v-else>{{ opponent.initial }}</span>
+              <Avatar
+                :name="opponent.avatarSeed"
+                variant="beam"
+                :size="36"
+                :colors="avatarColors"
+              />
             </q-avatar>
             <div class="opponent-info">
               <div class="opponent-name">{{ opponent.name }}</div>
@@ -87,6 +96,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import Avatar from 'vue-boring-avatars';
 
 const props = defineProps({
   matches: { type: Array, default: () => [] },
@@ -116,7 +126,14 @@ const focusDisplayName = computed(() => {
   return props.focusName || 'Joueur';
 });
 
-const focusInitial = computed(() => focusDisplayName.value.charAt(0).toUpperCase());
+const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
+
+const getAvatarSeed = (name) => {
+  const safeName = String(name || 'Joueur');
+  return safeName.split(' ')[0] || safeName;
+};
+
+const focusAvatarSeed = computed(() => getAvatarSeed(props.focusName || focusDisplayName.value));
 
 const formatDate = (value) => {
   if (!value) return 'Date inconnue';
@@ -221,8 +238,7 @@ const resolveOpponents = (match) => {
       {
         name: 'Bot',
         label: formatBotLevel(match.botLevel),
-        isBot: true,
-        initial: 'B'
+        isBot: true
       }
     ];
   }
@@ -232,8 +248,7 @@ const resolveOpponents = (match) => {
       {
         name: 'Joueur supprimé',
         label: 'Compte supprimé',
-        isBot: false,
-        initial: 'J'
+        isBot: false
       }
     ];
   }
@@ -251,7 +266,7 @@ const resolveOpponents = (match) => {
       name,
       label: participant.isBot ? 'IA' : isDeleted ? 'Compte supprimé' : 'Opposant',
       isBot: participant.isBot,
-      initial: name.charAt(0).toUpperCase()
+      avatarSeed: getAvatarSeed(participant.username || participant.name || name)
     };
   });
 };

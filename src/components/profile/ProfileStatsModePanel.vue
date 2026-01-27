@@ -93,6 +93,9 @@
                 <div class="league-name">
                   <span class="league-icon">{{ currentLeague.icon }}</span>
                   <span>{{ currentLeague.label }}</span>
+                  <q-tooltip class="league-tooltip-wrapper" anchor="top middle" self="bottom middle">
+                    <LeagueProgressTooltip :leagues="leagues" :elo="clampedElo" />
+                  </q-tooltip>
                 </div>
               </div>
               <q-badge :color="currentLeague.badgeColor" class="league-badge">
@@ -135,6 +138,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import LeagueProgressTooltip from './LeagueProgressTooltip.vue';
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -445,6 +449,12 @@ const sectionHeaderClass = computed(() => ({
   color: #fcd34d;
   font-weight: 700;
   text-align: right;
+}
+
+:deep(.league-tooltip-wrapper) {
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 0;
 }
 
 .win-rate-circle {
