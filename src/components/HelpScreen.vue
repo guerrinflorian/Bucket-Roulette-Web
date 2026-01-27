@@ -20,15 +20,42 @@
 
     <!-- Content -->
     <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-      
-      <!-- Back Button with Style -->
-      <q-btn
-        flat
-        icon="arrow_back"
-        label="Retour au menu"
-        class="mb-8 px-6 py-3 rounded-full border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 hover:border-amber-400 hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] transition-all duration-300 font-semibold"
-        @click="goBack"
-      />
+      <!-- Sticky Header -->
+      <div class="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 mb-10">
+        <div class="px-4 sm:px-6 lg:px-8 pt-6 pb-4 backdrop-blur-xl bg-slate-950/80 border-b border-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.45)]">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-4">
+              <q-btn
+                flat
+                icon="arrow_back"
+                label="Retour au menu"
+                class="px-6 py-3 rounded-full border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-300 hover:border-amber-300 hover:shadow-[0_0_20px_rgba(251,191,36,0.35)] transition-all duration-300 font-semibold"
+                @click="goBack"
+              />
+              <div class="hidden md:flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/40">
+                  <q-icon name="help_outline" size="22px" class="text-white" />
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-[0.2em] text-amber-200/80 font-semibold">Centre d'aide</p>
+                  <p class="text-lg font-bold text-white">Règles & astuces</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <q-chip dense class="bg-amber-500/20 text-amber-200 border border-amber-500/40 font-bold px-3">
+                Règles
+              </q-chip>
+              <q-chip dense class="bg-cyan-500/20 text-cyan-100 border border-cyan-500/40 font-bold px-3">
+                Stratégies
+              </q-chip>
+              <q-chip dense class="bg-purple-500/20 text-purple-100 border border-purple-500/40 font-bold px-3">
+                Cartes
+              </q-chip>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Hero Section -->
       <div class="mb-16 lg:mb-20">
