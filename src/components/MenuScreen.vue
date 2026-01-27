@@ -870,6 +870,8 @@ const startMultiplayer = async () => {
 // Listen for game start from host (for guests)
 onMounted(() => {
   console.log('👂 MenuScreen mounted');
+  netStore.clearError();
+  netStore.clearOpponentLeft();
   
   // Setup listener immediately
   setupGameStateListener();
