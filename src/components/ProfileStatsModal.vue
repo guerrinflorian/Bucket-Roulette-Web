@@ -70,7 +70,7 @@
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
                     :focus-user-id="viewerId || profile?.userId"
-                    :focus-name="profile?.name"
+                    :focus-name="profile?.username || profile?.pseudo || profile?.name"
                     :viewer-id="viewerId"
                     empty-label="Aucun match global enregistré."
                   />
@@ -99,7 +99,7 @@
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
                     :focus-user-id="viewerId || profile?.userId"
-                    :focus-name="profile?.name"
+                    :focus-name="profile?.username || profile?.pseudo || profile?.name"
                     :viewer-id="viewerId"
                     empty-label="Aucun match solo enregistré."
                   />
@@ -125,7 +125,7 @@
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
                     :focus-user-id="viewerId || profile?.userId"
-                    :focus-name="profile?.name"
+                    :focus-name="profile?.username || profile?.pseudo || profile?.name"
                     :viewer-id="viewerId"
                     empty-label="Aucun match ranked enregistré."
                   />
@@ -149,7 +149,7 @@
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
                     :focus-user-id="viewerId || profile?.userId"
-                    :focus-name="profile?.name"
+                    :focus-name="profile?.username || profile?.pseudo || profile?.name"
                     :viewer-id="viewerId"
                     empty-label="Aucun duel enregistré."
                   />
@@ -174,7 +174,7 @@
                     :loading="matchHistoryLoading"
                     :error="matchHistoryError"
                     :focus-user-id="viewerId || profile?.userId"
-                    :focus-name="profile?.name"
+                    :focus-name="profile?.username || profile?.pseudo || profile?.name"
                     :viewer-id="viewerId"
                     empty-label="Aucun match 1v1v1 enregistré."
                   />
@@ -207,7 +207,7 @@
                         :loading="confrontationLoading"
                         :error="confrontationError"
                         :focus-user-id="viewerId"
-                        :focus-name="profile?.name"
+                        :focus-name="profile?.username || profile?.pseudo || profile?.name"
                         :viewer-id="viewerId"
                         empty-label="Aucune confrontation ranked."
                       />
@@ -218,7 +218,7 @@
                         :loading="confrontationLoading"
                         :error="confrontationError"
                         :focus-user-id="viewerId"
-                        :focus-name="profile?.name"
+                        :focus-name="profile?.username || profile?.pseudo || profile?.name"
                         :viewer-id="viewerId"
                         empty-label="Aucune confrontation non-ranked."
                       />

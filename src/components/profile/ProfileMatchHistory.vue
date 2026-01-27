@@ -119,11 +119,12 @@ const isSameUser = (left, right) => {
   return String(left) === String(right);
 };
 
+const focusBaseName = computed(() => props.focusName || 'Joueur');
 const focusDisplayName = computed(() => {
   if (isSameUser(props.focusUserId, props.viewerId)) {
-    return 'Vous';
+    return `${focusBaseName.value} (vous)`;
   }
-  return props.focusName || 'Joueur';
+  return focusBaseName.value;
 });
 
 const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
@@ -133,7 +134,7 @@ const getAvatarSeed = (name) => {
   return safeName.split(' ')[0] || safeName;
 };
 
-const focusAvatarSeed = computed(() => getAvatarSeed(props.focusName || focusDisplayName.value));
+const focusAvatarSeed = computed(() => getAvatarSeed(focusBaseName.value));
 
 const formatDate = (value) => {
   if (!value) return 'Date inconnue';
@@ -255,18 +256,19 @@ const resolveOpponents = (match) => {
 
   return opponents.map((participant) => {
     const isDeleted = Boolean(participant.accountDeleted);
+    const participantName = participant.username || participant.name || 'Joueur';
     const name = participant.isBot
       ? 'Bot'
       : isDeleted
         ? 'Joueur supprimé'
         : isSameUser(participant.userId, props.viewerId)
-          ? 'Vous'
-          : participant.username || 'Joueur';
+          ? `${participantName} (vous)`
+          : participantName;
     return {
       name,
       label: participant.isBot ? 'IA' : isDeleted ? 'Compte supprimé' : 'Opposant',
       isBot: participant.isBot,
-      avatarSeed: getAvatarSeed(participant.username || participant.name || name)
+      avatarSeed: getAvatarSeed(participantName)
     };
   });
 };

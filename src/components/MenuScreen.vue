@@ -609,6 +609,7 @@ const openProfileSelf = () => {
   const user = authStore.user;
   const payload = {
     name: displayName.value,
+    username: user?.username || displayName.value,
     userId: user?.id || null,
     isSelf: true
   };
@@ -625,6 +626,7 @@ const openProfileFromSlot = (slot) => {
   if (!slot || slot.isEmpty) return;
   const payload = {
     name: slot.name,
+    username: slot.username || slot.name,
     userId: slot.userId || null,
     isSelf: slot.isSelf
   };
@@ -637,6 +639,7 @@ const openProfileFromLeaderboard = (entry) => {
   if (!entry?.userId) return;
   const payload = {
     name: entry.username || 'Joueur',
+    username: entry.username || 'Joueur',
     userId: entry.userId,
     isSelf: entry.userId === authStore.user?.id
   };
