@@ -45,6 +45,7 @@
         :ranked-opponent="rankedOpponent"
         :ranked-countdown="rankedCountdown"
         :ranked-queue-status="rankedQueueStatus"
+        :hide-room-lobby="hideRoomLobby"
         @back="goBack"
         @create-room="createRoom"
         @join-room="joinRoom"
@@ -62,6 +63,47 @@
 
       <MenuFooter />
     </div>
+
+    <q-dialog v-model="showRankedMatchModal" persistent>
+      <q-card class="ranked-match-modal">
+        <q-card-section class="ranked-match-header">
+          <div class="ranked-match-icon">🏆</div>
+          <div class="ranked-match-title">Match classé trouvé</div>
+          <div class="ranked-match-countdown">
+            Début dans <strong>{{ rankedCountdown }}</strong>
+          </div>
+        </q-card-section>
+
+        <q-separator dark class="q-my-sm" />
+
+        <q-card-section class="ranked-match-body">
+          <div class="ranked-match-players">
+            <div
+              v-for="entry in rankedMatchEntries"
+              :key="entry.id"
+              class="ranked-player-card"
+              :class="{ 'is-self': entry.isSelf }"
+            >
+              <div class="ranked-player-avatar">
+                <Avatar
+                  :name="entry.avatarSeed"
+                  variant="beam"
+                  :size="52"
+                  :colors="avatarColors"
+                />
+              </div>
+              <div class="ranked-player-info">
+                <div class="ranked-player-name">{{ entry.name }}</div>
+                <div class="ranked-player-elo">Elo {{ entry.elo }}</div>
+                <div class="ranked-player-record">
+                  Victoires: {{ entry.wins }} · Défaites: {{ entry.losses }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-model="showDifficultyModal" persistent>
       <q-card class="difficulty-modal-card">
@@ -227,6 +269,7 @@ import MenuMultiplayerPanel from './menu/MenuMultiplayerPanel.vue';
 import MenuUserBar from './menu/MenuUserBar.vue';
 import MenuUtilityButtons from './menu/MenuUtilityButtons.vue';
 import WeaponSkinModal from './WeaponSkinModal.vue';
+import Avatar from 'vue-boring-avatars';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
@@ -244,6 +287,8 @@ const quickplayOpponent = ref('');
 const rankedCountdown = ref(0);
 const rankedOpponent = ref('');
 const rankedQueueStatus = ref(null);
+const showRankedMatchModal = ref(false);
+const rankedMatchStats = ref({});
 const showDifficultyModal = ref(false);
 const showProfileModal = ref(false);
 const showProfileSettingsModal = ref(false);
@@ -333,9 +378,29 @@ const lobbySlots = computed(() => {
 
 const missingPlayerCount = computed(() => Math.max(0, MIN_PLAYERS - netStore.roomPlayers.length));
 const canStartMatch = computed(() => netStore.roomPlayers.length >= MIN_PLAYERS && !netStore.gameEnded);
+const hideRoomLobby = computed(() => showRankedMatchModal.value || rankedCountdown.value > 0);
 const soloProgressMap = computed(
   () => new Map(soloProgress.value.map((entry) => [entry.difficulty, entry]))
 );
+
+const rankedMatchEntries = computed(() => {
+  const match = netStore.rankedMatch;
+  if (!match) return [];
+  const resolveEntry = (payload, isSelf) => {
+    if (!payload) return null;
+    const stats = rankedMatchStats.value?.[payload.id]?.modes?.ranked || {};
+    return {
+      id: payload.id,
+      name: payload.username || 'Joueur',
+      elo: payload.elo ?? '—',
+      wins: stats.wins ?? 0,
+      losses: stats.losses ?? 0,
+      avatarSeed: payload.username?.split(' ')[0] || payload.username || 'Joueur',
+      isSelf
+    };
+  };
+  return [resolveEntry(match.self, true), resolveEntry(match.opponent, false)].filter(Boolean);
+});
 
 const hasSoloVictory = (entry) => {
   if (!entry) return false;
@@ -699,6 +764,8 @@ const resetRankedCountdown = () => {
     rankedInterval = null;
   }
   rankedCountdown.value = 0;
+  showRankedMatchModal.value = false;
+  rankedMatchStats.value = {};
 };
 
 const startQuickplay = async () => {
@@ -739,6 +806,39 @@ const cancelRanked = async () => {
   rankedOpponent.value = '';
   rankedQueueStatus.value = null;
   await netStore.cancelRanked();
+};
+
+const loadRankedMatchStats = async (match) => {
+  if (!match) return;
+  const requests = [];
+  if (match.self?.id) {
+    requests.push(
+      matchStore.fetchUserStats(match.self.id).then((response) => ({
+        id: match.self.id,
+        stats: response?.stats
+      }))
+    );
+  }
+  if (match.opponent?.id) {
+    requests.push(
+      matchStore.fetchUserStats(match.opponent.id).then((response) => ({
+        id: match.opponent.id,
+        stats: response?.stats
+      }))
+    );
+  }
+  try {
+    const results = await Promise.all(requests);
+    const statsMap = {};
+    results.forEach((result) => {
+      if (result?.id) {
+        statsMap[result.id] = result.stats || {};
+      }
+    });
+    rankedMatchStats.value = statsMap;
+  } catch (error) {
+    console.warn('Failed to load ranked match stats:', error);
+  }
 };
 
 const joinRoom = async () => {
@@ -970,25 +1070,27 @@ watch(
   (match) => {
     if (!match) return;
     rankedOpponent.value = match.opponent?.username || 'Joueur';
-    Notify.create({
-      type: 'positive',
-      message: `Adversaire classé trouvé : ${rankedOpponent.value}`,
-      position: 'top',
-      timeout: 3000,
-      icon: 'emoji_events'
-    });
+    showRankedMatchModal.value = true;
+    rankedMatchStats.value = {};
+    loadRankedMatchStats(match);
     resetRankedCountdown();
     rankedCountdown.value = 5;
     rankedInterval = setInterval(() => {
-      if (rankedCountdown.value <= 1) {
-        resetRankedCountdown();
+      rankedCountdown.value -= 1;
+      if (rankedCountdown.value <= 0) {
+        if (rankedInterval) {
+          clearInterval(rankedInterval);
+          rankedInterval = null;
+        }
+        rankedCountdown.value = 0;
         if (netStore.isHost) {
           startMultiplayer();
         }
         netStore.clearRankedMatch();
-        return;
+        setTimeout(() => {
+          resetRankedCountdown();
+        }, 500);
       }
-      rankedCountdown.value -= 1;
     }, 1000);
   }
 );
@@ -1671,9 +1773,75 @@ const cleanupMenuModel = () => {
     width: 100%;
   }
 
-  .auth-hint-banner {
-    font-size: 11px;
-  }
+.auth-hint-banner {
+  font-size: 11px;
+}
+}
+
+.ranked-match-modal {
+  width: min(520px, 92vw);
+  background: rgba(10, 10, 15, 0.98);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #f8fafc;
+  border-radius: 18px;
+}
+
+.ranked-match-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ranked-match-icon {
+  font-size: 32px;
+}
+
+.ranked-match-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ranked-match-countdown {
+  font-size: 14px;
+  color: #fcd34d;
+  font-weight: 600;
+}
+
+.ranked-match-players {
+  display: grid;
+  gap: 12px;
+}
+
+.ranked-player-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.ranked-player-card.is-self {
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.15);
+}
+
+.ranked-player-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ranked-player-elo {
+  font-size: 13px;
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.ranked-player-record {
+  font-size: 12px;
+  color: #cbd5f5;
 }
 
 /* Very small screens */

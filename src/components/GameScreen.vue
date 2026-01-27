@@ -300,12 +300,11 @@ const actionNotifySignature = ref(null);
 
 const formatActorName = (actorKey) => {
   if (!actorKey) return 'Un joueur';
-  return actorKey === localPlayerKey.value ? 'Vous' : uiNameForStoreKey(actorKey);
+  return uiNameForStoreKey(actorKey);
 };
 
 const formatTargetName = (targetKey) => {
   if (!targetKey) return 'un joueur';
-  if (targetKey === localPlayerKey.value) return 'vous';
   return uiNameForStoreKey(targetKey);
 };
 

@@ -85,7 +85,9 @@ export const ITEM_DEFS = [
       }
 
       state.players[target].skipNextTurn = true;
-      return { message: `⛓️ ${state.players[target].name} sera menotté au prochain tour.` };
+      return {
+        message: `⛓️ ${state.players[actorKey].name} a menotté ${state.players[target].name} au prochain tour.`
+      };
     }
   },
   {
@@ -136,7 +138,7 @@ export const ITEM_DEFS = [
       state.players[actorKey].scannerHint = position;
 
       return {
-        message: `📡 Scanner : la ${position}${suffix} balle est réelle.`
+        message: `📡 ${state.players[actorKey].name} a scanné : la ${position}${suffix} balle est réelle.`
       };
     }
   }

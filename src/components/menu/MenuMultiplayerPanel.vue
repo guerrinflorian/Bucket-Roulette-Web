@@ -21,7 +21,7 @@
       <button class="error-close" @click="netStore.clearError">✕</button>
     </div>
 
-    <div v-if="!netStore.roomId" class="room-actions">
+    <div v-if="!netStore.roomId && !hideRoomLobby" class="room-actions">
       <div class="action-card quickplay-card">
         <div class="action-card-icon">⚡</div>
         <div class="action-card-content">
@@ -152,6 +152,12 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <div v-else-if="hideRoomLobby" class="ranked-found-panel">
+      <div class="ranked-found-icon">🏆</div>
+      <div class="ranked-found-title">Match classé trouvé</div>
+      <div class="ranked-found-subtitle">Lancement imminent...</div>
     </div>
 
     <div v-else class="room-lobby">
@@ -314,6 +320,10 @@ defineProps({
   rankedQueueStatus: {
     type: Object,
     default: null
+  },
+  hideRoomLobby: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -593,6 +603,33 @@ const onRoomInput = (event) => {
 
 .status-divider {
   color: #64748b;
+}
+
+.ranked-found-panel {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 18px;
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #f8fafc;
+}
+
+.ranked-found-icon {
+  font-size: 32px;
+}
+
+.ranked-found-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ranked-found-subtitle {
+  font-size: 13px;
+  color: #fcd34d;
+  font-weight: 600;
 }
 
 .create-btn {

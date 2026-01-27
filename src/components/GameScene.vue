@@ -230,10 +230,10 @@ const showBarrelInfo = computed(() => !props.isFlipVisible && !props.barrel.firs
 const notifyScannerHint = (scannerHint) => {
   const hintValue = Number(scannerHint);
   if (!Number.isFinite(hintValue) || hintValue <= 0) return;
-  const baseIndex = props.barrel?.index ?? 0;
-  const chamberNumber = Math.min(baseIndex + hintValue, totalSlots.value);
+  const suffix = hintValue === 1 ? 'ère' : 'ème';
+  const actorName = props.player?.name || 'Vous';
   Notify.create({
-    message: `📡 Scanner : chambre n°${chamberNumber} réelle.`,
+    message: `📡 ${actorName} a scanné : la ${hintValue}${suffix} balle est réelle.`,
     timeout: 4000,
     color: 'blue-6',
     textColor: 'white',
