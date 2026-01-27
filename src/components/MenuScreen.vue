@@ -555,7 +555,7 @@ const loadProfileStats = async (target) => {
     profileLoading.value = false;
   }
 
-  await loadMatchHistories();
+  await loadMatchHistories(target);
 
   if (target.isSelf) {
     confrontationStats.value = null;
@@ -566,7 +566,7 @@ const loadProfileStats = async (target) => {
   }
 };
 
-const loadMatchHistories = async () => {
+const loadMatchHistories = async (target) => {
   matchHistoryLoading.value = true;
   matchHistoryError.value = '';
   matchHistoryAll.value = [];
@@ -582,11 +582,12 @@ const loadMatchHistories = async () => {
   }
 
   try {
+    const historyUserId = target && !target.isSelf ? target.userId : null;
     const [all, solo, duel, trio] = await Promise.all([
-      matchStore.fetchMatchHistory({ limit: 50 }),
-      matchStore.fetchMatchHistory({ mode: 'solo', limit: 50 }),
-      matchStore.fetchMatchHistory({ mode: '1v1', limit: 50 }),
-      matchStore.fetchMatchHistory({ mode: '1v1v1', limit: 50 })
+      matchStore.fetchMatchHistory({ limit: 50, userId: historyUserId }),
+      matchStore.fetchMatchHistory({ mode: 'solo', limit: 50, userId: historyUserId }),
+      matchStore.fetchMatchHistory({ mode: '1v1', limit: 50, userId: historyUserId }),
+      matchStore.fetchMatchHistory({ mode: '1v1v1', limit: 50, userId: historyUserId })
     ]);
     const allMatches = all?.matches || [];
     const soloMatches = solo?.matches || [];

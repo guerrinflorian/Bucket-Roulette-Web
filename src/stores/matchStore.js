@@ -66,6 +66,7 @@ export const useMatchStore = defineStore('match', () => {
     const searchParams = new URLSearchParams();
     if (params.mode) searchParams.set('mode', params.mode);
     if (params.limit) searchParams.set('limit', params.limit);
+    if (params.userId) searchParams.set('userId', params.userId);
     const query = searchParams.toString();
     return request(`/api/matches/history${query ? `?${query}` : ''}`);
   };
