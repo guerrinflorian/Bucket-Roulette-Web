@@ -106,12 +106,14 @@ const props = defineProps({
 });
 
 const statsPayload = computed(() => props.stats || {});
-const displayName = computed(() => props.profile?.name || 'Joueur');
-const avatarSeed = computed(() => displayName.value.split(' ')[0] || displayName.value);
-const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 const pseudo = computed(() =>
   props.profile?.username || props.profile?.pseudo || props.profile?.name || 'Inconnu'
 );
+const displayName = computed(() =>
+  props.profile?.isSelf ? `${pseudo.value} (vous)` : pseudo.value
+);
+const avatarSeed = computed(() => pseudo.value.split(' ')[0] || pseudo.value);
+const avatarColors = ['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90'];
 
 const totalShots = computed(() => statsPayload.value?.total_shots_fired ?? 0);
 const totalShotsTaken = computed(() => statsPayload.value?.total_shots_taken ?? 0);
