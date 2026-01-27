@@ -77,6 +77,14 @@
           </q-card-section>
         </q-card>
 
+        <q-card v-if="showElo" class="profile-stat-card ranked-elo-card">
+          <q-card-section class="column items-center">
+            <div class="stat-title self-start q-mb-sm">Elo</div>
+            <div class="stat-value text-amber-2">{{ eloDisplay }}</div>
+            <div class="stat-sub q-mt-sm">Classement actuel</div>
+          </q-card-section>
+        </q-card>
+
         <q-card class="profile-stat-card">
           <q-card-section>
             <div class="row justify-between items-center q-mb-xs">
@@ -107,7 +115,9 @@ const props = defineProps({
   badgeColor: { type: String, default: 'grey-8' },
   modeStats: { type: Object, default: null },
   highlight: { type: String, default: 'default' },
-  showTop2: { type: Boolean, default: false }
+  showTop2: { type: Boolean, default: false },
+  showElo: { type: Boolean, default: false },
+  eloValue: { type: [Number, String], default: null }
 });
 
 const stats = computed(() => props.modeStats || {});
@@ -125,6 +135,13 @@ const top2Rate = computed(() =>
   matches.value > 0 ? top2Finishes.value / matches.value : 0
 );
 const shotsProgress = computed(() => Math.min(1, Math.max(0, shotsFired.value / 200)));
+const eloDisplay = computed(() => {
+  if (props.eloValue === null || props.eloValue === undefined || props.eloValue === '') {
+    return '—';
+  }
+  const parsed = Number(props.eloValue);
+  return Number.isNaN(parsed) ? '—' : parsed;
+});
 
 const sectionHeaderClass = computed(() => ({
   'header-solo': props.highlight === 'solo',
@@ -208,6 +225,10 @@ const sectionHeaderClass = computed(() => ({
 .special-top2 {
   background: linear-gradient(135deg, #ea580c 0%, #9a3412 100%);
   border: none;
+}
+
+.ranked-elo-card {
+  border-color: rgba(251, 191, 36, 0.35);
 }
 
 .win-rate-circle {

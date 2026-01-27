@@ -409,6 +409,14 @@ export const useNetStore = defineStore('net', {
         this.error = 'Nom de joueur requis';
         return;
       }
+      if (this.roomId) {
+        this.error = 'Vous êtes déjà dans une room.';
+        return;
+      }
+      if (this.quickplaySearching || this.rankedSearching) {
+        this.error = 'Veuillez quitter la recherche en cours avant de créer une room.';
+        return;
+      }
 
       try {
         if (this.quickplaySearching) {
@@ -435,6 +443,14 @@ export const useNetStore = defineStore('net', {
 
       if (!this.playerName) {
         this.error = 'Nom de joueur requis';
+        return;
+      }
+      if (this.roomId) {
+        this.error = 'Vous êtes déjà dans une room.';
+        return;
+      }
+      if (this.quickplaySearching || this.rankedSearching) {
+        this.error = 'Veuillez quitter la recherche en cours avant de rejoindre une room.';
         return;
       }
 
@@ -626,6 +642,10 @@ export const useNetStore = defineStore('net', {
         this.error = 'Vous êtes déjà dans une room.';
         return;
       }
+      if (this.rankedSearching) {
+        this.error = 'Une seule recherche à la fois. Quittez le classé pour lancer la recherche rapide.';
+        return;
+      }
       try {
         await this.connect();
         this.quickplaySearching = true;
@@ -659,6 +679,10 @@ export const useNetStore = defineStore('net', {
       }
       if (this.roomId) {
         this.error = 'Vous êtes déjà dans une room.';
+        return;
+      }
+      if (this.quickplaySearching) {
+        this.error = 'Une seule recherche à la fois. Quittez la recherche rapide pour lancer le classé.';
         return;
       }
       try {
