@@ -43,7 +43,7 @@
         
         <p class="text-xl sm:text-2xl text-slate-300/90 max-w-4xl leading-relaxed font-light">
           Pas besoin d'être un expert : voici les règles expliquées simplement, étape par étape,
-          avec les cartes disponibles et des astuces pour survivre. 💀
+          avec les cartes disponibles, les modes de jeu, et des astuces pour survivre. 💀
         </p>
       </div>
 
@@ -101,6 +101,51 @@
         </div>
       </section>
 
+      <!-- Modes de jeu -->
+      <section class="mb-16 lg:mb-20">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/50">
+            <q-icon name="sports_esports" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Modes de jeu</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div
+            v-for="mode in modes"
+            :key="mode.title"
+            class="group relative"
+          >
+            <div :class="`absolute inset-0 ${mode.glow} rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500`"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-2 border-white/10 group-hover:border-white/30 rounded-2xl transition-all duration-300 h-full">
+              <q-card-section class="p-6 flex flex-col gap-4">
+                <div :class="`w-12 h-12 rounded-xl ${mode.iconBg} flex items-center justify-center shadow-lg ${mode.iconShadow}`">
+                  <q-icon :name="mode.icon" size="26px" class="text-white" />
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-white mb-2">{{ mode.title }}</h3>
+                  <p class="text-slate-300 leading-relaxed text-base">{{ mode.description }}</p>
+                </div>
+                <div class="mt-auto flex flex-wrap gap-2">
+                  <q-chip
+                    dense
+                    :class="`${mode.tagBg} ${mode.tagText} border ${mode.tagBorder} font-bold px-3`"
+                  >
+                    {{ mode.tag }}
+                  </q-chip>
+                  <q-chip
+                    dense
+                    :class="`${mode.secondaryBg} ${mode.secondaryText} border ${mode.secondaryBorder} font-bold px-3`"
+                  >
+                    {{ mode.secondary }}
+                  </q-chip>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+      </section>
+
       <!-- Pourquoi tirer sur soi -->
       <section class="mb-16 lg:mb-20">
         <div class="flex items-center gap-4 mb-8">
@@ -130,6 +175,60 @@
               </div>
             </q-card-section>
           </q-card>
+        </div>
+      </section>
+
+      <!-- Progression & classement -->
+      <section class="mb-16 lg:mb-20">
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/50">
+            <q-icon name="emoji_events" size="28px" class="text-white" />
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">Progression & classement</h2>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-yellow-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-2 border-amber-500/30 group-hover:border-amber-400 rounded-2xl transition-all duration-300 h-full">
+              <q-card-section class="p-6">
+                <div class="text-4xl mb-4">🏆</div>
+                <h3 class="text-2xl font-bold text-amber-400 mb-4">Matchs classés</h3>
+                <p class="text-slate-300 leading-relaxed text-lg">
+                  En classé 1v1, votre <span class="text-amber-400 font-bold">Elo</span> évolue à chaque duel.
+                  Plus l'adversaire est fort, plus la victoire rapporte. Les ligues vont de
+                  <span class="text-amber-300 font-bold">Condamné</span> à
+                  <span class="text-amber-300 font-bold">Tsar de Sang</span>.
+                </p>
+                <div class="mt-5 flex items-start gap-3 p-4 bg-amber-500/10 rounded-xl border border-amber-500/30">
+                  <q-icon name="timeline" class="text-amber-400 text-2xl mt-1" />
+                  <p class="text-amber-100 text-base">
+                    Consultez votre ligue dans l'onglet Ranked de vos statistiques pour suivre votre progression.
+                  </p>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+            <q-card class="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-2 border-blue-500/30 group-hover:border-blue-400 rounded-2xl transition-all duration-300 h-full">
+              <q-card-section class="p-6">
+                <div class="text-4xl mb-4">📊</div>
+                <h3 class="text-2xl font-bold text-blue-400 mb-4">Historique & profils</h3>
+                <p class="text-slate-300 leading-relaxed text-lg">
+                  Vos statistiques détaillent chaque mode : solo, duel, trio et ranked.
+                  Consultez vos victoires, séries et confrontations directes pour affiner votre stratégie.
+                </p>
+                <div class="mt-5 flex items-start gap-3 p-4 bg-blue-500/10 rounded-xl border border-blue-500/30">
+                  <q-icon name="leaderboard" class="text-blue-300 text-2xl mt-1" />
+                  <p class="text-blue-100 text-base">
+                    Le classement global affiche les meilleurs joueurs en 1v1, 1v1v1 et classé.
+                  </p>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
         </div>
       </section>
 
@@ -308,6 +407,73 @@ const steps = [
     index: '05',
     title: 'Partie terminée',
     text: "Quand un joueur tombe à 0 PV, la manche s'arrête. Vous pouvez relancer une nouvelle partie."
+  }
+];
+
+const modes = [
+  {
+    title: 'Solo vs IA',
+    description: 'Affrontez des bots avec plusieurs niveaux de difficulté pour progresser à votre rythme.',
+    tag: 'Entraînement',
+    secondary: 'Progression',
+    icon: 'smart_toy',
+    glow: 'bg-gradient-to-br from-emerald-500/20 to-green-500/20',
+    iconBg: 'bg-gradient-to-br from-emerald-500 to-green-600',
+    iconShadow: 'shadow-emerald-500/40',
+    tagBg: 'bg-emerald-500/20',
+    tagText: 'text-emerald-300',
+    tagBorder: 'border-emerald-500/40',
+    secondaryBg: 'bg-slate-500/20',
+    secondaryText: 'text-slate-200',
+    secondaryBorder: 'border-slate-500/40'
+  },
+  {
+    title: 'Duel rapide 1v1',
+    description: 'Matchmaking instantané hors classé : un duel rapide pour vous échauffer.',
+    tag: 'Quickplay',
+    secondary: 'Non classé',
+    icon: 'sports_kabaddi',
+    glow: 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20',
+    iconBg: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+    iconShadow: 'shadow-blue-500/40',
+    tagBg: 'bg-blue-500/20',
+    tagText: 'text-blue-300',
+    tagBorder: 'border-blue-500/40',
+    secondaryBg: 'bg-slate-500/20',
+    secondaryText: 'text-slate-200',
+    secondaryBorder: 'border-slate-500/40'
+  },
+  {
+    title: 'Combat à trois',
+    description: 'Un mode 1v1v1 plus chaotique : surveillez deux adversaires et survivez.',
+    tag: '1v1v1',
+    secondary: 'Non classé',
+    icon: 'groups',
+    glow: 'bg-gradient-to-br from-purple-500/20 to-fuchsia-500/20',
+    iconBg: 'bg-gradient-to-br from-purple-500 to-fuchsia-600',
+    iconShadow: 'shadow-purple-500/40',
+    tagBg: 'bg-purple-500/20',
+    tagText: 'text-purple-300',
+    tagBorder: 'border-purple-500/40',
+    secondaryBg: 'bg-slate-500/20',
+    secondaryText: 'text-slate-200',
+    secondaryBorder: 'border-slate-500/40'
+  },
+  {
+    title: 'Ranked 1v1',
+    description: 'Affrontez des joueurs de votre niveau pour faire grimper votre Elo et vos ligues.',
+    tag: 'Classé',
+    secondary: 'Elo & ligues',
+    icon: 'emoji_events',
+    glow: 'bg-gradient-to-br from-amber-500/20 to-orange-500/20',
+    iconBg: 'bg-gradient-to-br from-amber-500 to-orange-600',
+    iconShadow: 'shadow-amber-500/40',
+    tagBg: 'bg-amber-500/20',
+    tagText: 'text-amber-300',
+    tagBorder: 'border-amber-500/40',
+    secondaryBg: 'bg-orange-500/20',
+    secondaryText: 'text-orange-200',
+    secondaryBorder: 'border-orange-500/40'
   }
 ];
 
