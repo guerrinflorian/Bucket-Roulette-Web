@@ -64,7 +64,7 @@
                 <div class="text-4xl mb-4">🎯</div>
                 <h3 class="text-2xl font-bold text-amber-400 mb-4">Dernier survivant</h3>
                 <p class="text-slate-300 leading-relaxed text-lg">
-                  Vous commencez avec <span class="text-amber-400 font-bold text-xl">5 PV</span>. Chaque balle réelle retire des PV. 
+                  Vous commencez avec <span class="text-amber-400 font-bold text-xl">un certain nombre de PV</span>. Chaque balle réelle retire des PV. 
                   Le dernier joueur debout remporte la manche.
                 </p>
               </q-card-section>
