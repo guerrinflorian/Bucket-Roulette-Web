@@ -518,18 +518,32 @@ io.on('connection', (socket) => {
     const normalizedUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null;
     socket.playerName = playerName;
     socket.userId = normalizedUserId;
+    console.info('Ranked join received', {
+      socketId: socket.id,
+      playerName,
+      userId: normalizedUserId
+    });
     try {
       await rankedMatchmaking.enqueue(socket, {
         playerName,
         userId: normalizedUserId
       });
     } catch (error) {
-      console.error('Ranked enqueue failed:', error);
+      console.error('Ranked enqueue failed:', {
+        socketId: socket.id,
+        userId: normalizedUserId,
+        message: error?.message,
+        code: error?.code
+      });
       socket.emit('ranked:error', { message: 'Impossible de rejoindre la file classée.' });
     }
   });
 
   socket.on('ranked:leave', () => {
+    console.info('Ranked leave received', {
+      socketId: socket.id,
+      userId: socket.userId ?? null
+    });
     rankedMatchmaking.leave(socket.id);
   });
 
