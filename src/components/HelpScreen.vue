@@ -1,5 +1,5 @@
 <template>
-  <q-page class="min-h-screen bg-black relative overflow-hidden">
+  <q-page class="min-h-screen bg-black relative overflow-x-hidden">
     <!-- Animated Background -->
     <div class="absolute inset-0">
       <!-- Gradient Background -->
@@ -43,14 +43,16 @@
               </div>
             </div>
             <div class="flex flex-wrap gap-2">
-              <q-chip dense class="bg-amber-500/20 text-amber-200 border border-amber-500/40 font-bold px-3">
-                Règles
-              </q-chip>
-              <q-chip dense class="bg-cyan-500/20 text-cyan-100 border border-cyan-500/40 font-bold px-3">
-                Stratégies
-              </q-chip>
-              <q-chip dense class="bg-purple-500/20 text-purple-100 border border-purple-500/40 font-bold px-3">
-                Cartes
+              <q-chip
+                v-for="shortcut in sectionShortcuts"
+                :key="shortcut.label"
+                dense
+                clickable
+                class="border font-bold px-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                :class="shortcut.chipClass"
+                @click="scrollToSection(shortcut.ref)"
+              >
+                {{ shortcut.label }}
               </q-chip>
             </div>
           </div>
@@ -75,7 +77,7 @@
       </div>
 
       <!-- Objectif & Principes -->
-      <section class="mb-16 lg:mb-20">
+      <section ref="rulesRef" class="mb-16 lg:mb-20 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/50">
             <q-icon name="sports_martial_arts" size="28px" class="text-white" />
@@ -129,7 +131,7 @@
       </section>
 
       <!-- Modes de jeu -->
-      <section class="mb-16 lg:mb-20">
+      <section ref="modesRef" class="mb-16 lg:mb-20 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/50">
             <q-icon name="sports_esports" size="28px" class="text-white" />
@@ -174,7 +176,7 @@
       </section>
 
       <!-- Pourquoi tirer sur soi -->
-      <section class="mb-16 lg:mb-20">
+      <section ref="strategyRef" class="mb-16 lg:mb-20 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/50">
             <q-icon name="insights" size="28px" class="text-white" />
@@ -206,7 +208,7 @@
       </section>
 
       <!-- Progression & classement -->
-      <section class="mb-16 lg:mb-20">
+      <section ref="progressRef" class="mb-16 lg:mb-20 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/50">
             <q-icon name="emoji_events" size="28px" class="text-white" />
@@ -260,7 +262,7 @@
       </section>
 
       <!-- Déroulé d'une manche -->
-      <section class="mb-16 lg:mb-20">
+      <section ref="stepsRef" class="mb-16 lg:mb-20 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/50">
             <q-icon name="route" size="28px" class="text-white" />
@@ -293,7 +295,7 @@
       </section>
 
       <!-- Cartes disponibles -->
-      <section class="mb-16 lg:mb-20">
+      <section ref="cardsRef" class="mb-16 lg:mb-20 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg shadow-pink-500/50">
             <q-icon name="style" size="28px" class="text-white" />
@@ -347,7 +349,7 @@
       </section>
 
       <!-- Astuces -->
-      <section class="mb-12">
+      <section ref="tipsRef" class="mb-12 scroll-mt-32">
         <div class="flex items-center gap-4 mb-8">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-600 flex items-center justify-center shadow-lg shadow-yellow-500/50 animate-pulse">
             <q-icon name="lightbulb" size="28px" class="text-white" />
@@ -398,6 +400,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import heartImg from '../assets/items/heart.png';
 import doubleImg from '../assets/items/double.png';
@@ -408,6 +411,55 @@ import inverterImg from '../assets/items/inverter.png';
 import scannerImg from '../assets/items/scanner.png';
 
 const router = useRouter();
+const rulesRef = ref(null);
+const modesRef = ref(null);
+const strategyRef = ref(null);
+const progressRef = ref(null);
+const stepsRef = ref(null);
+const cardsRef = ref(null);
+const tipsRef = ref(null);
+
+const sectionShortcuts = [
+  {
+    label: 'Règles',
+    ref: rulesRef,
+    chipClass: 'bg-amber-500/20 text-amber-200 border-amber-500/40'
+  },
+  {
+    label: 'Modes',
+    ref: modesRef,
+    chipClass: 'bg-indigo-500/20 text-indigo-100 border-indigo-500/40'
+  },
+  {
+    label: 'Stratégies',
+    ref: strategyRef,
+    chipClass: 'bg-cyan-500/20 text-cyan-100 border-cyan-500/40'
+  },
+  {
+    label: 'Progression',
+    ref: progressRef,
+    chipClass: 'bg-yellow-500/20 text-yellow-100 border-yellow-500/40'
+  },
+  {
+    label: 'Déroulé',
+    ref: stepsRef,
+    chipClass: 'bg-emerald-500/20 text-emerald-100 border-emerald-500/40'
+  },
+  {
+    label: 'Cartes',
+    ref: cardsRef,
+    chipClass: 'bg-purple-500/20 text-purple-100 border-purple-500/40'
+  },
+  {
+    label: 'Astuces',
+    ref: tipsRef,
+    chipClass: 'bg-amber-500/20 text-amber-100 border-amber-500/40'
+  }
+];
+
+const scrollToSection = (sectionRef) => {
+  sectionRef?.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 
 const steps = [
   {
