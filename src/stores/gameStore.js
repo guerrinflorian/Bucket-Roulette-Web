@@ -444,7 +444,6 @@ export const useGameStore = defineStore('game', {
       }
       if (itemId === 'eject' && currentBullet) {
         this.updateBotMemoryAfterEject(currentBullet);
-        this.updateScannerHintsAfterAdvance();
       }
       if (itemId === 'inverter' && currentBullet) {
         const flipped = currentBullet === 'real' ? 'blank' : 'real';
@@ -462,6 +461,9 @@ export const useGameStore = defineStore('game', {
         itemId,
         target: targetKey
       };
+      if (itemId === 'eject' && currentBullet) {
+        this.updateScannerHintsAfterAdvance();
+      }
       // Clear pending state if successful
       if (this.pendingHandcuff && this.pendingHandcuff.actorKey === actorKey) {
         this.pendingHandcuff = null;
@@ -517,7 +519,6 @@ export const useGameStore = defineStore('game', {
           }
         });
         this.updateBotMemoryAfterShot(shot);
-        this.updateScannerHintsAfterAdvance();
 
         const isReal = shot === 'real';
         const hadDouble = actor.doubleDamageNextShot;
@@ -544,6 +545,7 @@ export const useGameStore = defineStore('game', {
           shot,
           damage
         };
+        this.updateScannerHintsAfterAdvance();
         if (damage > 0) {
           actor.shotsFired += 1;
         }
