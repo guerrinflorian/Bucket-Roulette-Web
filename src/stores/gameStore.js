@@ -31,6 +31,7 @@ export const useGameStore = defineStore('game', {
         id: 'player',
         socketId: null,
         userId: null,
+        elo: null,
         isActive: true,
         name: 'Vous',
         hp: MAX_HP,
@@ -48,6 +49,7 @@ export const useGameStore = defineStore('game', {
         id: 'enemy',
         socketId: null,
         userId: null,
+        elo: null,
         isActive: true,
         name: 'Adversaire',
         hp: MAX_HP,
@@ -65,6 +67,7 @@ export const useGameStore = defineStore('game', {
         id: 'enemy2',
         socketId: null,
         userId: null,
+        elo: null,
         isActive: false,
         name: 'Adversaire 2',
         hp: MAX_HP,
@@ -84,6 +87,8 @@ export const useGameStore = defineStore('game', {
     lastAction: null,
     winner: null,
     roomId: null,
+    isRanked: false,
+    rankedMatchId: null,
     isAnimating: false,
     reloadCount: 0,
     lastReloadInfo: null,
@@ -152,6 +157,7 @@ export const useGameStore = defineStore('game', {
         player.isActive = isActive;
         player.socketId = null;
         player.userId = null;
+        player.elo = null;
         player.name = key === 'player' ? 'Vous' : key === 'enemy2' ? 'Adversaire 2' : 'Adversaire';
 
         // Set HP based on role (player vs enemy)
@@ -184,6 +190,8 @@ export const useGameStore = defineStore('game', {
       this.lastResult = null;
       this.lastAction = null;
       this.winner = null;
+      this.isRanked = Boolean(options?.isRanked);
+      this.rankedMatchId = options?.rankedMatchId ?? null;
       this.reloadCount = 1;
       this.lastResult = { text: `🔄 ${this.lastReloadInfo}` };
       this.timeoutStreak.player = 0;
@@ -242,6 +250,8 @@ export const useGameStore = defineStore('game', {
         if (state.players.enemy) Object.assign(this.players.enemy, state.players.enemy);
         if (state.players.enemy2) Object.assign(this.players.enemy2, state.players.enemy2);
       }
+      if (state.isRanked !== undefined) this.isRanked = state.isRanked;
+      if (state.rankedMatchId !== undefined) this.rankedMatchId = state.rankedMatchId;
       if (state.lastResult !== undefined) this.lastResult = state.lastResult;
       if (state.lastAction !== undefined) this.lastAction = state.lastAction;
       if (state.winner !== undefined) this.winner = state.winner;
@@ -290,7 +300,9 @@ export const useGameStore = defineStore('game', {
         lastReloadInfo: this.lastReloadInfo,
         turnTimer: this.turnTimer,
         timeoutStreak: this.timeoutStreak,
-        onlineFlipResult: this.currentTurn
+        onlineFlipResult: this.currentTurn,
+        isRanked: this.isRanked,
+        rankedMatchId: this.rankedMatchId
       };
     },
     reloadBarrel({ notify = true } = {}) {

@@ -126,7 +126,7 @@ const normalizeParticipants = ({
 const insertParticipants = async (client, matchId, participants) => {
   const values = [];
   const placeholders = participants.map((participant, index) => {
-    const baseIndex = index * 9;
+    const baseIndex = index * 14;
     values.push(
       randomUUID(),
       matchId,
@@ -136,9 +136,14 @@ const insertParticipants = async (client, matchId, participants) => {
       participant.shotsFired,
       participant.shotsTaken,
       participant.itemsUsed,
-      participant.isBot
+      participant.isBot,
+      participant.eloBefore ?? null,
+      participant.eloAfter ?? null,
+      participant.eloDelta ?? null,
+      participant.expectedScore ?? null,
+      participant.kFactor ?? null
     );
-    return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9})`;
+    return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9}, $${baseIndex + 10}, $${baseIndex + 11}, $${baseIndex + 12}, $${baseIndex + 13}, $${baseIndex + 14})`;
   });
 
   if (placeholders.length === 0) {
@@ -146,11 +151,40 @@ const insertParticipants = async (client, matchId, participants) => {
   }
 
   await client.query(
-    `INSERT INTO match_participants (id, match_id, user_id, rank, final_hp, shots_fired, shots_taken, items_used, is_bot)
+    `INSERT INTO match_participants (
+       id,
+       match_id,
+       user_id,
+       rank,
+       final_hp,
+       shots_fired,
+       shots_taken,
+       items_used,
+       is_bot,
+       elo_before,
+       elo_after,
+       elo_delta,
+       expected_score,
+       k_factor
+     )
      VALUES ${placeholders.join(', ')}`,
     values
   );
 };
+
+const ensureUserElo = async (client, userId, mode) => {
+  const result = await client.query(
+    `INSERT INTO user_elo (user_id, mode, elo, games_played, wins, losses, updated_at)
+     VALUES ($1, $2, 1000, 0, 0, 0, NOW())
+     ON CONFLICT (user_id, mode) DO UPDATE SET updated_at = user_elo.updated_at
+     RETURNING elo, games_played, wins, losses`,
+    [userId, mode]
+  );
+  return result.rows[0];
+};
+
+const calculateExpectedScore = (eloPlayer, eloOpponent) =>
+  1 / (1 + 10 ** ((eloOpponent - eloPlayer) / 400));
 
 const updateWinStreak = async (client, userId, isWin) => {
   if (!isWin) return;
@@ -378,8 +412,9 @@ export default async function gameRoutes(fastify) {
   });
 
   fastify.post('/matches/multiplayer', { preValidation: [fastify.authenticate] }, async (request, reply) => {
-    const { mode, victoryType, roundsPlayed, participants, winnerId } = request.body || {};
+    const { mode, victoryType, roundsPlayed, participants, winnerId, isRanked, matchId } = request.body || {};
     const userId = request.user.userId;
+    const resolvedIsRanked = Boolean(isRanked || matchId);
 
     if (!mode || !MULTIPLAYER_MODES.has(mode)) {
       return reply.code(400).send({ error: 'Mode multijoueur invalide.' });
@@ -407,6 +442,9 @@ export default async function gameRoutes(fastify) {
     if (normalizedParticipants.some((participant) => !participant.rank)) {
       return reply.code(400).send({ error: 'Participants invalides.' });
     }
+    if (resolvedIsRanked && normalizedParticipants.length !== 2) {
+      return reply.code(400).send({ error: 'Le match classé doit être un duel 1v1.' });
+    }
     if (!normalizedParticipants.some((participant) => participant.userId === userId)) {
       return reply.code(400).send({ error: 'Participant utilisateur manquant.' });
     }
@@ -426,10 +464,29 @@ export default async function gameRoutes(fastify) {
       normalizedParticipants.find((participant) => participant.rank === 1)?.userId ||
       null;
 
-    const matchId = randomUUID();
+    const resolvedMatchId = resolvedIsRanked ? matchId : randomUUID();
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      if (resolvedIsRanked) {
+        if (mode !== '1v1') {
+          await client.query('ROLLBACK');
+          return reply.code(400).send({ error: 'Le classé est disponible uniquement en 1v1.' });
+        }
+        if (!resolvedMatchId || !UUID_REGEX.test(resolvedMatchId)) {
+          await client.query('ROLLBACK');
+          return reply.code(400).send({ error: 'Identifiant de match classé invalide.' });
+        }
+        const matchResult = await client.query(
+          'SELECT id FROM match_history WHERE id = $1 AND is_ranked = true LIMIT 1',
+          [resolvedMatchId]
+        );
+        if (!matchResult.rows[0]) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'Match classé introuvable.' });
+        }
+      }
 
       if (userIds.length > 0) {
         const existingUsers = await client.query(
@@ -442,20 +499,144 @@ export default async function gameRoutes(fastify) {
         }
       }
 
-      await client.query(
-        `INSERT INTO match_history (id, mode, victory_type, bot_level, rounds_played, winner_id)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          matchId,
-          mode,
-          victoryType,
-          null,
-          toOptionalInt(roundsPlayed),
-          derivedWinnerId
-        ]
-      );
+      if (resolvedIsRanked) {
+        await client.query(
+          `UPDATE match_history
+           SET victory_type = $1,
+               rounds_played = $2,
+               winner_id = $3
+           WHERE id = $4`,
+          [victoryType, toOptionalInt(roundsPlayed), derivedWinnerId, resolvedMatchId]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO match_history (id, mode, victory_type, bot_level, rounds_played, winner_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            resolvedMatchId,
+            mode,
+            victoryType,
+            null,
+            toOptionalInt(roundsPlayed),
+            derivedWinnerId
+          ]
+        );
 
-      await insertParticipants(client, matchId, normalizedParticipants);
+        await insertParticipants(client, resolvedMatchId, normalizedParticipants);
+      }
+
+      const eloChanges = [];
+
+      if (resolvedIsRanked) {
+        const participantIds = normalizedParticipants.map((participant) => participant.userId);
+        for (const participantId of participantIds) {
+          await ensureUserElo(client, participantId, mode);
+        }
+        const eloRowsResult = await client.query(
+          `SELECT user_id, elo
+           FROM user_elo
+           WHERE user_id = ANY($1::uuid[]) AND mode = $2
+           FOR UPDATE`,
+          [participantIds, mode]
+        );
+        const eloByUser = new Map(
+          eloRowsResult.rows.map((row) => [row.user_id, Number.parseInt(row.elo, 10)])
+        );
+        if (eloByUser.size !== normalizedParticipants.length) {
+          await client.query('ROLLBACK');
+          return reply.code(500).send({ error: 'Elo introuvable pour un participant.' });
+        }
+
+        const [first, second] = normalizedParticipants;
+        const firstElo = eloByUser.get(first.userId);
+        const secondElo = eloByUser.get(second.userId);
+        const expectedFirst = calculateExpectedScore(firstElo, secondElo);
+        const expectedSecond = calculateExpectedScore(secondElo, firstElo);
+        const diff = Math.abs(firstElo - secondElo);
+        const kFactor = 32;
+
+        const computeDelta = (result, expected) => Math.round(kFactor * (result - expected));
+        const clampDelta = (delta) => Math.max(-5, Math.min(5, delta));
+
+        const firstResult = first.rank === 1 ? 1 : 0;
+        const secondResult = second.rank === 1 ? 1 : 0;
+        let firstDelta = computeDelta(firstResult, expectedFirst);
+        let secondDelta = computeDelta(secondResult, expectedSecond);
+        if (diff > 300) {
+          firstDelta = clampDelta(firstDelta);
+          secondDelta = clampDelta(secondDelta);
+        }
+        const firstAfter = firstElo + firstDelta;
+        const secondAfter = secondElo + secondDelta;
+
+        const updates = [
+          {
+            participant: first,
+            eloBefore: firstElo,
+            eloAfter: firstAfter,
+            eloDelta: firstDelta,
+            expectedScore: expectedFirst
+          },
+          {
+            participant: second,
+            eloBefore: secondElo,
+            eloAfter: secondAfter,
+            eloDelta: secondDelta,
+            expectedScore: expectedSecond
+          }
+        ];
+
+        for (const update of updates) {
+          const winIncrement = update.participant.rank === 1 ? 1 : 0;
+          const lossIncrement = update.participant.rank === 1 ? 0 : 1;
+          await client.query(
+            `UPDATE match_participants
+             SET rank = $1,
+                 final_hp = $2,
+                 shots_fired = $3,
+                 shots_taken = $4,
+                 items_used = $5,
+                 elo_before = $6,
+                 elo_after = $7,
+                 elo_delta = $8,
+                 expected_score = $9,
+                 k_factor = $10
+             WHERE match_id = $11 AND user_id = $12`,
+            [
+              update.participant.rank,
+              update.participant.finalHp,
+              update.participant.shotsFired,
+              update.participant.shotsTaken,
+              update.participant.itemsUsed,
+              update.eloBefore,
+              update.eloAfter,
+              update.eloDelta,
+              update.expectedScore,
+              kFactor,
+              resolvedMatchId,
+              update.participant.userId
+            ]
+          );
+          await client.query(
+            `UPDATE user_elo
+             SET elo = $1,
+                 games_played = games_played + 1,
+                 wins = wins + $2,
+                 losses = losses + $3,
+                 updated_at = NOW()
+             WHERE user_id = $4 AND mode = $5`,
+            [update.eloAfter, winIncrement, lossIncrement, update.participant.userId, mode]
+          );
+          eloChanges.push({
+            userId: update.participant.userId,
+            eloBefore: update.eloBefore,
+            eloAfter: update.eloAfter,
+            eloDelta: update.eloDelta,
+            expectedScore: update.expectedScore,
+            kFactor
+          });
+        }
+      }
 
       for (const participant of normalizedParticipants) {
         if (!participant.userId) {
@@ -513,7 +694,7 @@ export default async function gameRoutes(fastify) {
       }
 
       await client.query('COMMIT');
-      return reply.code(201).send({ matchId });
+      return reply.code(201).send({ matchId: resolvedMatchId, eloChanges: resolvedIsRanked ? eloChanges : null });
     } catch (error) {
       await client.query('ROLLBACK');
       fastify.log.error(error);
@@ -582,7 +763,13 @@ export default async function gameRoutes(fastify) {
           rank: participant.rank,
           finalHp: participant.final_hp,
           shotsFired: participant.shots_fired,
+          shotsTaken: participant.shots_taken,
           itemsUsed: participant.items_used,
+          eloBefore: participant.elo_before,
+          eloAfter: participant.elo_after,
+          eloDelta: participant.elo_delta,
+          expectedScore: participant.expected_score,
+          kFactor: participant.k_factor,
           isBot: participant.is_bot,
           accountDeleted: !participant.is_bot && hasUserId && !hasUserRecord
         });
@@ -597,6 +784,7 @@ export default async function gameRoutes(fastify) {
         roundsPlayed: match.rounds_played,
         createdAt: match.created_at,
         winnerId: match.winner_id,
+        isRanked: match.is_ranked,
         participants: participantsByMatch.get(match.id) || []
       }));
 
@@ -733,6 +921,51 @@ export default async function gameRoutes(fastify) {
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Erreur serveur lors du chargement du classement.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  fastify.get('/leaderboard/ranked', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+    const userId = request.user.userId;
+    const client = await pool.connect();
+    try {
+      await ensureUserElo(client, userId, '1v1');
+
+      const baseQuery = `
+        WITH base AS (
+          SELECT
+            ue.user_id,
+            u.username,
+            ue.elo,
+            ue.wins,
+            ue.losses,
+            RANK() OVER (ORDER BY ue.elo DESC, ue.wins DESC, ue.losses ASC, u.username ASC) AS rank
+          FROM user_elo ue
+          JOIN users u ON u.id = ue.user_id
+          WHERE ue.mode = '1v1'
+        )
+        SELECT *
+        FROM base
+      `;
+
+      const entriesResult = await client.query(
+        `${baseQuery} ORDER BY rank ASC LIMIT $1`,
+        [LEADERBOARD_LIMIT]
+      );
+      const selfResult = await client.query(
+        `${baseQuery} WHERE user_id = $1 LIMIT 1`,
+        [userId]
+      );
+
+      return reply.send({
+        mode: 'ranked',
+        entries: entriesResult.rows,
+        selfEntry: selfResult.rows[0] || null
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Erreur serveur lors du chargement du classement classé.' });
     } finally {
       client.release();
     }
