@@ -93,9 +93,15 @@
                 <div class="league-name">
                   <span class="league-icon">{{ currentLeague.icon }}</span>
                   <span>{{ currentLeague.label }}</span>
-                  <q-tooltip class="league-tooltip-wrapper" anchor="top middle" self="bottom middle">
-                    <LeagueProgressTooltip :leagues="leagues" :elo="clampedElo" />
-                  </q-tooltip>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="info"
+                    class="league-info-btn"
+                    aria-label="Voir le détail des ligues"
+                    @click="leagueModalOpen = true"
+                  />
                 </div>
               </div>
               <q-badge :color="currentLeague.badgeColor" class="league-badge">
@@ -130,6 +136,48 @@
       </div>
     </div>
 
+    <q-dialog v-model="leagueModalOpen" transition-show="jump-down" transition-hide="jump-up">
+      <q-card class="league-modal-card">
+        <q-card-section class="league-modal-header">
+          <div>
+            <div class="league-modal-title">Détail des ligues</div>
+            <div class="league-modal-subtitle">Votre Elo actuel : {{ clampedElo }}</div>
+          </div>
+          <q-btn flat round dense icon="close" class="league-modal-close" @click="leagueModalOpen = false" />
+        </q-card-section>
+        <q-card-section class="league-modal-body">
+          <div class="league-modal-summary">
+            <div class="league-modal-summary-title">Ligue actuelle</div>
+            <div class="league-modal-summary-row">
+              <div class="league-modal-summary-icon">{{ currentLeague.icon }}</div>
+              <div>
+                <div class="league-modal-summary-name">{{ currentLeague.label }}</div>
+                <div class="league-modal-summary-range">Elo {{ currentLeague.range }}</div>
+              </div>
+              <q-badge :color="currentLeague.badgeColor" class="league-modal-badge">
+                {{ currentLeague.tier }}
+              </q-badge>
+            </div>
+            <q-linear-progress
+              :value="eloProgress"
+              rounded
+              color="amber-5"
+              track-color="grey-9"
+              height="10px"
+              class="q-mt-md"
+            />
+            <div class="league-modal-progress-label">{{ clampedElo }} / 2500</div>
+          </div>
+          <div class="league-modal-tooltip">
+            <LeagueProgressTooltip :leagues="leagues" :elo="clampedElo" />
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="league-modal-actions">
+          <q-btn flat label="Compris" color="amber-4" @click="leagueModalOpen = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <div v-if="$slots.default" class="mode-extras">
       <slot />
     </div>
@@ -137,7 +185,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import LeagueProgressTooltip from './LeagueProgressTooltip.vue';
 
 const props = defineProps({
@@ -316,6 +364,8 @@ const leagues = [
   }
 ];
 
+const leagueModalOpen = ref(false);
+
 const currentLeague = computed(() => {
   const elo = clampedElo.value;
   return leagues.find((league) => elo >= league.min && elo <= league.max) || leagues[0];
@@ -427,6 +477,18 @@ const sectionHeaderClass = computed(() => ({
   font-size: 22px;
 }
 
+.league-info-btn {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.league-info-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(251, 191, 36, 0.2);
+}
+
 .league-badge {
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -451,10 +513,104 @@ const sectionHeaderClass = computed(() => ({
   text-align: right;
 }
 
-:deep(.league-tooltip-wrapper) {
-  background: rgba(15, 23, 42, 0.96);
+/* League modal */
+.league-modal-card {
+  width: min(92vw, 560px);
+  background: radial-gradient(circle at top, rgba(251, 191, 36, 0.12), rgba(15, 23, 42, 0.95));
   border: 1px solid rgba(251, 191, 36, 0.35);
-  padding: 0;
+  border-radius: 18px;
+  color: #fff;
+}
+
+.league-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 12px;
+}
+
+.league-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.league-modal-subtitle {
+  font-size: 12px;
+  color: #fcd34d;
+  font-weight: 600;
+}
+
+.league-modal-close {
+  color: #fcd34d;
+}
+
+.league-modal-body {
+  padding: 0 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.league-modal-summary {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.league-modal-summary-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #fcd34d;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.league-modal-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.league-modal-summary-icon {
+  font-size: 26px;
+}
+
+.league-modal-summary-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.league-modal-summary-range {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.league-modal-badge {
+  margin-left: auto;
+  font-weight: 800;
+}
+
+.league-modal-progress-label {
+  text-align: right;
+  font-size: 11px;
+  color: #fcd34d;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.league-modal-tooltip {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.league-modal-actions {
+  padding: 4px 16px 16px;
 }
 
 .win-rate-circle {
