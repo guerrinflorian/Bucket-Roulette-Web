@@ -85,6 +85,34 @@
           </q-card-section>
         </q-card>
 
+        <q-card v-if="showElo" class="profile-stat-card ranked-league-card">
+          <q-card-section>
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="column">
+                <div class="stat-title text-amber-2">Ligue actuelle</div>
+                <div class="league-name">
+                  <span class="league-icon">{{ currentLeague.icon }}</span>
+                  <span>{{ currentLeague.label }}</span>
+                </div>
+              </div>
+              <q-badge :color="currentLeague.badgeColor" class="league-badge">
+                {{ currentLeague.tier }}
+              </q-badge>
+            </div>
+            <div class="league-range">Elo {{ currentLeague.range }}</div>
+            <div class="league-progress">
+              <q-linear-progress
+                :value="eloProgress"
+                rounded
+                color="amber-5"
+                track-color="grey-9"
+                height="10px"
+              />
+              <div class="league-progress-label">{{ clampedElo }} / 2500</div>
+            </div>
+          </q-card-section>
+        </q-card>
+
         <q-card class="profile-stat-card">
           <q-card-section>
             <div class="row justify-between items-center q-mb-xs">
@@ -135,12 +163,158 @@ const top2Rate = computed(() =>
   matches.value > 0 ? top2Finishes.value / matches.value : 0
 );
 const shotsProgress = computed(() => Math.min(1, Math.max(0, shotsFired.value / 200)));
-const eloDisplay = computed(() => {
+const baseElo = computed(() => {
   if (props.eloValue === null || props.eloValue === undefined || props.eloValue === '') {
-    return '—';
+    return 1000;
   }
   const parsed = Number(props.eloValue);
-  return Number.isNaN(parsed) ? '—' : parsed;
+  return Number.isNaN(parsed) ? 1000 : parsed;
+});
+const clampedElo = computed(() => Math.min(2500, Math.max(0, baseElo.value)));
+const eloDisplay = computed(() => clampedElo.value);
+const eloProgress = computed(() => clampedElo.value / 2500);
+
+const leagues = [
+  {
+    label: 'Condamné I',
+    tier: '🩸 Condamné',
+    min: 0,
+    max: 1049,
+    range: '800 – 1049',
+    icon: '🩸',
+    badgeColor: 'deep-orange-6'
+  },
+  {
+    label: 'Condamné II',
+    tier: '🩸 Condamné',
+    min: 1050,
+    max: 1149,
+    range: '1050 – 1149',
+    icon: '🩸',
+    badgeColor: 'deep-orange-6'
+  },
+  {
+    label: 'Condamné III',
+    tier: '🩸 Condamné',
+    min: 1150,
+    max: 1249,
+    range: '1150 – 1249',
+    icon: '🩸',
+    badgeColor: 'deep-orange-6'
+  },
+  {
+    label: 'Duelliste I',
+    tier: '🔫 Duelliste',
+    min: 1250,
+    max: 1349,
+    range: '1250 – 1349',
+    icon: '🔫',
+    badgeColor: 'amber-7'
+  },
+  {
+    label: 'Duelliste II',
+    tier: '🔫 Duelliste',
+    min: 1350,
+    max: 1449,
+    range: '1350 – 1449',
+    icon: '🔫',
+    badgeColor: 'amber-7'
+  },
+  {
+    label: 'Duelliste III',
+    tier: '🔫 Duelliste',
+    min: 1450,
+    max: 1549,
+    range: '1450 – 1549',
+    icon: '🔫',
+    badgeColor: 'amber-7'
+  },
+  {
+    label: 'Exécuteur I',
+    tier: '⚔️ Exécuteur',
+    min: 1550,
+    max: 1649,
+    range: '1550 – 1649',
+    icon: '⚔️',
+    badgeColor: 'red-6'
+  },
+  {
+    label: 'Exécuteur II',
+    tier: '⚔️ Exécuteur',
+    min: 1650,
+    max: 1749,
+    range: '1650 – 1749',
+    icon: '⚔️',
+    badgeColor: 'red-6'
+  },
+  {
+    label: 'Exécuteur III',
+    tier: '⚔️ Exécuteur',
+    min: 1750,
+    max: 1849,
+    range: '1750 – 1849',
+    icon: '⚔️',
+    badgeColor: 'red-6'
+  },
+  {
+    label: 'Bourreau I',
+    tier: '☠️ Bourreau',
+    min: 1850,
+    max: 1949,
+    range: '1850 – 1949',
+    icon: '☠️',
+    badgeColor: 'deep-purple-5'
+  },
+  {
+    label: 'Bourreau II',
+    tier: '☠️ Bourreau',
+    min: 1950,
+    max: 2049,
+    range: '1950 – 2049',
+    icon: '☠️',
+    badgeColor: 'deep-purple-5'
+  },
+  {
+    label: 'Bourreau III',
+    tier: '☠️ Bourreau',
+    min: 2050,
+    max: 2149,
+    range: '2050 – 2149',
+    icon: '☠️',
+    badgeColor: 'deep-purple-5'
+  },
+  {
+    label: 'Tsar de Sang I',
+    tier: '👑 Tsar de Sang',
+    min: 2150,
+    max: 2249,
+    range: '2150 – 2249',
+    icon: '👑',
+    badgeColor: 'yellow-8'
+  },
+  {
+    label: 'Tsar de Sang II',
+    tier: '👑 Tsar de Sang',
+    min: 2250,
+    max: 2349,
+    range: '2250 – 2349',
+    icon: '👑',
+    badgeColor: 'yellow-8'
+  },
+  {
+    label: 'Tsar de Sang III',
+    tier: '👑 Tsar de Sang',
+    min: 2350,
+    max: 2500,
+    range: '2350+',
+    icon: '👑',
+    badgeColor: 'yellow-8'
+  }
+];
+
+const currentLeague = computed(() => {
+  const elo = clampedElo.value;
+  return leagues.find((league) => elo >= league.min && elo <= league.max) || leagues[0];
 });
 
 const sectionHeaderClass = computed(() => ({
@@ -229,6 +403,48 @@ const sectionHeaderClass = computed(() => ({
 
 .ranked-elo-card {
   border-color: rgba(251, 191, 36, 0.35);
+}
+
+.ranked-league-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.league-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.league-icon {
+  font-size: 22px;
+}
+
+.league-badge {
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.league-range {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.league-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.league-progress-label {
+  font-size: 11px;
+  color: #fcd34d;
+  font-weight: 700;
+  text-align: right;
 }
 
 .win-rate-circle {
