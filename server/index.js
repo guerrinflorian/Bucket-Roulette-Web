@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { Server } from 'socket.io';
 import buildApp from './app.js';
 import { getCorsOriginValidator } from './cors.js';
+import { pool } from './db.js';
+import { RankedMatchmakingService } from './services/rankedMatchmakingService.js';
 
 const fastify = await buildApp();
 await fastify.ready();
@@ -88,7 +90,9 @@ function getRoomInfo(room) {
     hostName: room.hostName,
     players: serializePlayers(room),
     gameStarted: room.gameStarted,
-    gameEnded: room.gameEnded
+    gameEnded: room.gameEnded,
+    isRanked: room.isRanked || false,
+    matchId: room.matchId || null
   };
 }
 
@@ -119,7 +123,9 @@ function createQuickplayRoom(hostSocket, guestSocket) {
       { id: guestSocket.id, name: guestName, userId: guestUserId }
     ],
     gameStarted: false,
-    gameEnded: false
+    gameEnded: false,
+    isRanked: false,
+    matchId: null
   });
 
   hostSocket.join(roomId);
@@ -156,6 +162,62 @@ function createQuickplayRoom(hostSocket, guestSocket) {
     isHost: false
   });
 }
+
+function createRankedRoom(hostSocket, guestSocket, { matchId }) {
+  let roomId = generateRoomCode();
+  while (rooms.has(roomId)) {
+    roomId = generateRoomCode();
+  }
+
+  const hostName = hostSocket.playerName;
+  const guestName = guestSocket.playerName;
+  const hostUserId = hostSocket.userId || null;
+  const guestUserId = guestSocket.userId || null;
+
+  rooms.set(roomId, {
+    host: hostSocket.id,
+    hostName,
+    gameState: null,
+    players: [
+      { id: hostSocket.id, name: hostName, userId: hostUserId },
+      { id: guestSocket.id, name: guestName, userId: guestUserId }
+    ],
+    gameStarted: false,
+    gameEnded: false,
+    isRanked: true,
+    matchId
+  });
+
+  hostSocket.join(roomId);
+  guestSocket.join(roomId);
+  hostSocket.roomId = roomId;
+  guestSocket.roomId = roomId;
+  hostSocket.isHost = true;
+  guestSocket.isHost = false;
+
+  hostSocket.emit('room:created', {
+    roomId,
+    isHost: true,
+    hostName,
+    ...getRoomInfo(rooms.get(roomId))
+  });
+
+  guestSocket.emit('room:joined', {
+    roomId,
+    isHost: false,
+    hostName,
+    ...getRoomInfo(rooms.get(roomId))
+  });
+
+  io.to(roomId).emit('room:ready', getRoomInfo(rooms.get(roomId)));
+}
+
+const rankedMatchmaking = new RankedMatchmakingService({
+  io,
+  pool,
+  createRoom: createRankedRoom
+});
+rankedMatchmaking.start();
 
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
@@ -452,10 +514,30 @@ io.on('connection', (socket) => {
     socket.emit('quickplay:left');
   });
 
+  socket.on('ranked:join', async ({ playerName, userId }) => {
+    const normalizedUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null;
+    socket.playerName = playerName;
+    socket.userId = normalizedUserId;
+    try {
+      await rankedMatchmaking.enqueue(socket, {
+        playerName,
+        userId: normalizedUserId
+      });
+    } catch (error) {
+      console.error('Ranked enqueue failed:', error);
+      socket.emit('ranked:error', { message: 'Impossible de rejoindre la file classée.' });
+    }
+  });
+
+  socket.on('ranked:leave', () => {
+    rankedMatchmaking.leave(socket.id);
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`❌ Client disconnected: ${socket.id}`);
     removeFromQuickplayQueue(socket.id);
+    rankedMatchmaking.leave(socket.id);
 
     if (socket.roomId) {
       const room = rooms.get(socket.roomId);

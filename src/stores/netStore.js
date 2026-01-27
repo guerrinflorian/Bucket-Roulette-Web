@@ -40,7 +40,12 @@ export const useNetStore = defineStore('net', {
     pendingRejoin: false,
     restoredRoomSession: false,
     quickplaySearching: false,
-    quickplayMatch: null
+    quickplayMatch: null,
+    rankedSearching: false,
+    rankedMatch: null,
+    rankedQueueStatus: null,
+    isRankedRoom: false,
+    rankedMatchId: null
   }),
 
   getters: {
@@ -126,6 +131,11 @@ export const useNetStore = defineStore('net', {
           this.pendingRejoin = false;
           this.quickplaySearching = false;
           this.quickplayMatch = null;
+          this.rankedSearching = false;
+          this.rankedMatch = null;
+          this.rankedQueueStatus = null;
+          this.isRankedRoom = false;
+          this.rankedMatchId = null;
         });
 
         this.socket.on('reconnect_attempt', () => {
@@ -143,7 +153,7 @@ export const useNetStore = defineStore('net', {
         });
 
         // Room events
-        this.socket.on('room:created', ({ roomId, isHost, hostName, players }) => {
+        this.socket.on('room:created', ({ roomId, isHost, hostName, players, isRanked, matchId }) => {
           console.log('🏠 Room created:', roomId);
           this.roomId = roomId;
           this.isHost = isHost;
@@ -155,6 +165,10 @@ export const useNetStore = defineStore('net', {
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
           this.quickplaySearching = false;
+          this.rankedSearching = false;
+          this.isRankedRoom = Boolean(isRanked);
+          this.rankedMatchId = matchId || null;
+          this.rankedQueueStatus = null;
           if (this.playerName) {
             this.addLobbyMessage({
               type: 'system',
@@ -164,7 +178,7 @@ export const useNetStore = defineStore('net', {
           }
         });
 
-        this.socket.on('room:joined', ({ roomId, isHost, hostName, players }) => {
+        this.socket.on('room:joined', ({ roomId, isHost, hostName, players, isRanked, matchId }) => {
           console.log('👥 Joined room:', roomId);
           this.roomId = roomId;
           this.isHost = isHost;
@@ -177,6 +191,10 @@ export const useNetStore = defineStore('net', {
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
           this.quickplaySearching = false;
+          this.rankedSearching = false;
+          this.isRankedRoom = Boolean(isRanked);
+          this.rankedMatchId = matchId || null;
+          this.rankedQueueStatus = null;
           if (this.playerName) {
             this.addLobbyMessage({
               type: 'system',
@@ -213,11 +231,15 @@ export const useNetStore = defineStore('net', {
           }
         });
 
-        this.socket.on('room:ready', ({ hostName, players }) => {
+        this.socket.on('room:ready', ({ hostName, players, isRanked, matchId }) => {
           console.log('🎮 Room ready! Host:', hostName);
           this.roomReady = true;
           this.hostName = hostName;
           this.roomPlayers = players || this.roomPlayers;
+          if (isRanked !== undefined) {
+            this.isRankedRoom = Boolean(isRanked);
+            this.rankedMatchId = matchId || null;
+          }
         });
 
         this.socket.on('room:player-left', ({ playerId, playerName, wasHost, players }) => {
@@ -301,6 +323,8 @@ export const useNetStore = defineStore('net', {
           this.roomReady = false;
           this.lobbyChatMessages = [];
           this.lastLobbyChatSentAt = 0;
+          this.isRankedRoom = false;
+          this.rankedMatchId = null;
           this.clearRoomSession();
         });
 
@@ -341,6 +365,34 @@ export const useNetStore = defineStore('net', {
           this.quickplayMatch = null;
         });
 
+        this.socket.on('ranked:matchFound', ({ matchId, opponent, self }) => {
+          this.rankedSearching = false;
+          this.rankedMatch = {
+            matchId,
+            opponent,
+            self
+          };
+          this.rankedQueueStatus = null;
+          this.rankedMatchId = matchId || this.rankedMatchId;
+        });
+
+        this.socket.on('ranked:error', ({ message }) => {
+          this.rankedSearching = false;
+          this.rankedMatch = null;
+          this.rankedQueueStatus = null;
+          this.error = message || 'Recherche classée impossible.';
+        });
+
+        this.socket.on('ranked:cancelled', () => {
+          this.rankedSearching = false;
+          this.rankedMatch = null;
+          this.rankedQueueStatus = null;
+        });
+
+        this.socket.on('ranked:queueStatus', (status) => {
+          this.rankedQueueStatus = status || null;
+        });
+
         // Timeout
         setTimeout(() => {
           if (this.connecting) {
@@ -361,6 +413,9 @@ export const useNetStore = defineStore('net', {
       try {
         if (this.quickplaySearching) {
           await this.cancelQuickplay();
+        }
+        if (this.rankedSearching) {
+          await this.cancelRanked();
         }
         await this.connect();
         this.socket.emit('room:create', { playerName: this.playerName, userId: this.userId });
@@ -386,6 +441,9 @@ export const useNetStore = defineStore('net', {
       try {
         if (this.quickplaySearching) {
           await this.cancelQuickplay();
+        }
+        if (this.rankedSearching) {
+          await this.cancelRanked();
         }
         await this.connect();
         this.socket.emit('room:join', {
@@ -520,6 +578,9 @@ export const useNetStore = defineStore('net', {
         if (this.quickplaySearching) {
           this.socket.emit('quickplay:leave');
         }
+        if (this.rankedSearching) {
+          this.socket.emit('ranked:leave');
+        }
         this.socket.disconnect();
       }
       this.socket = null;
@@ -539,6 +600,11 @@ export const useNetStore = defineStore('net', {
       this.lastLobbyChatSentAt = 0;
       this.quickplaySearching = false;
       this.quickplayMatch = null;
+      this.rankedSearching = false;
+      this.rankedMatch = null;
+      this.rankedQueueStatus = null;
+      this.isRankedRoom = false;
+      this.rankedMatchId = null;
       this.clearRoomSession();
     },
 
@@ -582,8 +648,49 @@ export const useNetStore = defineStore('net', {
       this.quickplayMatch = null;
     },
 
+    async joinRanked() {
+      if (!this.playerName) {
+        this.error = 'Nom de joueur requis';
+        return;
+      }
+      if (!this.userId) {
+        this.error = 'Connectez-vous pour jouer en classé.';
+        return;
+      }
+      if (this.roomId) {
+        this.error = 'Vous êtes déjà dans une room.';
+        return;
+      }
+      try {
+        await this.connect();
+        this.rankedSearching = true;
+        this.rankedMatch = null;
+        this.rankedQueueStatus = null;
+        this.socket.emit('ranked:join', {
+          playerName: this.playerName,
+          userId: this.userId
+        });
+      } catch (err) {
+        this.rankedSearching = false;
+        this.error = err.message;
+      }
+    },
+
+    async cancelRanked() {
+      if (this.socket) {
+        this.socket.emit('ranked:leave');
+      }
+      this.rankedSearching = false;
+      this.rankedMatch = null;
+      this.rankedQueueStatus = null;
+    },
+
     clearQuickplayMatch() {
       this.quickplayMatch = null;
+    },
+
+    clearRankedMatch() {
+      this.rankedMatch = null;
     },
 
     addLobbyMessage(payload) {

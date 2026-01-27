@@ -83,6 +83,8 @@ export const useMatchStore = defineStore('match', () => {
     return request(`/api/leaderboard${query ? `?${query}` : ''}`);
   };
 
+  const fetchRankedLeaderboard = async () => request('/api/leaderboard/ranked');
+
   return {
     submitting,
     error,
@@ -92,6 +94,7 @@ export const useMatchStore = defineStore('match', () => {
     fetchMyStats,
     fetchUserStats,
     fetchSoloProgress,
-    fetchLeaderboard
+    fetchLeaderboard,
+    fetchRankedLeaderboard
   };
 });

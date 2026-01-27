@@ -45,6 +45,9 @@
             {{ player.hp }}/{{ player.maxHp }}
           </span>
         </div>
+        <div v-if="player.elo !== null && player.elo !== undefined" class="player-elo">
+          Elo {{ player.elo }}
+        </div>
         <div class="h-2 rounded-full bg-white/10 shadow-inner sm:h-3">
           <div
             class="h-2 rounded-full transition-all sm:h-3"
@@ -225,6 +228,15 @@ function getItemImage(id) {
   border: 1px dashed rgba(199, 210, 254, 0.35);
   opacity: 0.7;
   filter: blur(0.2px);
+}
+
+.player-elo {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
 }
 
 @keyframes handcuff-shimmer {

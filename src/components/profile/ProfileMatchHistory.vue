@@ -40,6 +40,9 @@
             <q-badge :color="modeBadgeColor(match.mode)" class="mode-pill">
               {{ modeLabel(match.mode) }}
             </q-badge>
+            <q-badge v-if="match.isRanked" color="amber-8" class="ranked-pill">
+              RANKED
+            </q-badge>
             <span class="match-date">{{ formatDate(match.createdAt) }}</span>
           </div>
           <div class="history-info">
@@ -52,6 +55,13 @@
           <q-badge :color="outcomeColor(match)" class="outcome-pill">
             {{ outcomeLabel(match) }}
           </q-badge>
+          <div
+            v-if="match.isRanked && getEloDelta(match) !== null"
+            class="history-elo"
+            :class="getEloDelta(match) >= 0 ? 'elo-positive' : 'elo-negative'"
+          >
+            Elo {{ formatEloDelta(getEloDelta(match)) }}
+          </div>
         </div>
 
         <div class="history-opponents">
@@ -169,6 +179,21 @@ const resolveOutcome = (match) => {
 
   return 'draw';
 };
+
+const resolveFocusParticipant = (match) => {
+  const focusId = props.focusUserId || props.viewerId;
+  if (!focusId) return null;
+  const participants = match?.participants || [];
+  return participants.find((participant) => isSameUser(participant.userId, focusId)) || null;
+};
+
+const getEloDelta = (match) => {
+  const participant = resolveFocusParticipant(match);
+  if (participant?.eloDelta === null || participant?.eloDelta === undefined) return null;
+  return Number(participant.eloDelta);
+};
+
+const formatEloDelta = (value) => (value > 0 ? `+${value}` : `${value}`);
 
 const outcomeLabel = (match) => {
   const outcome = resolveOutcome(match);
@@ -370,6 +395,13 @@ const resolveOpponents = (match) => {
   border-radius: 10px;
 }
 
+.ranked-pill {
+  font-weight: 800;
+  border-radius: 10px;
+  letter-spacing: 0.12em;
+  font-size: 9px;
+}
+
 .match-date {
   font-size: 11px;
   color: #94a3b8;
@@ -393,6 +425,21 @@ const resolveOpponents = (match) => {
   font-weight: 800;
   letter-spacing: 0.4px;
   border-radius: 10px;
+}
+
+.history-elo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.elo-positive {
+  color: #86efac;
+}
+
+.elo-negative {
+  color: #fca5a5;
 }
 
 .opponent-row {

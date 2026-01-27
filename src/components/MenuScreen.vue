@@ -41,6 +41,10 @@
         :quickplay-searching="netStore.quickplaySearching"
         :quickplay-opponent="quickplayOpponent"
         :quickplay-countdown="quickplayCountdown"
+        :ranked-searching="netStore.rankedSearching"
+        :ranked-opponent="rankedOpponent"
+        :ranked-countdown="rankedCountdown"
+        :ranked-queue-status="rankedQueueStatus"
         @back="goBack"
         @create-room="createRoom"
         @join-room="joinRoom"
@@ -49,6 +53,8 @@
         @kick-player="kickPlayer"
         @quickplay="startQuickplay"
         @quickplay-cancel="cancelQuickplay"
+        @ranked="startRanked"
+        @ranked-cancel="cancelRanked"
         @open-profile="openProfileFromSlot"
         @start-game="startMultiplayer"
         @leave-room="leaveRoom"
@@ -234,6 +240,9 @@ const showMultiplayer = ref(false);
 const roomInput = ref('');
 const quickplayCountdown = ref(0);
 const quickplayOpponent = ref('');
+const rankedCountdown = ref(0);
+const rankedOpponent = ref('');
+const rankedQueueStatus = ref(null);
 const showDifficultyModal = ref(false);
 const showProfileModal = ref(false);
 const showProfileSettingsModal = ref(false);
@@ -258,6 +267,7 @@ const showWeaponSkinsModal = ref(false);
 const leaderboardLoading = ref(false);
 const leaderboardError = ref('');
 const leaderboards = ref({
+  ranked: { entries: [], selfEntry: null },
   '1v1': { entries: [], selfEntry: null },
   '1v1v1': { entries: [], selfEntry: null }
 });
@@ -271,6 +281,7 @@ let resizeObserver;
 let floatingClock;
 let resizeHandler;
 let quickplayInterval;
+let rankedInterval;
 const botLevels = [
   { id: 1, key: 'peasant', name: 'Bot Paysan', stars: '⭐', tag: 'Facile' },
   { id: 2, key: 'prince', name: 'Bot Prince', stars: '⭐⭐', tag: 'Moyen' },
@@ -402,11 +413,13 @@ const loadLeaderboards = async () => {
   }
   leaderboardLoading.value = true;
   try {
-    const [duel, trio] = await Promise.all([
+    const [ranked, duel, trio] = await Promise.all([
+      matchStore.fetchRankedLeaderboard(),
       matchStore.fetchLeaderboard('1v1'),
       matchStore.fetchLeaderboard('1v1v1')
     ]);
     leaderboards.value = {
+      ranked,
       '1v1': duel,
       '1v1v1': trio
     };
@@ -672,6 +685,14 @@ const resetQuickplayCountdown = () => {
   quickplayCountdown.value = 0;
 };
 
+const resetRankedCountdown = () => {
+  if (rankedInterval) {
+    clearInterval(rankedInterval);
+    rankedInterval = null;
+  }
+  rankedCountdown.value = 0;
+};
+
 const startQuickplay = async () => {
   quickplayOpponent.value = '';
   resetQuickplayCountdown();
@@ -691,6 +712,27 @@ const cancelQuickplay = async () => {
   await netStore.cancelQuickplay();
 };
 
+const startRanked = async () => {
+  rankedOpponent.value = '';
+  rankedQueueStatus.value = null;
+  resetRankedCountdown();
+  await netStore.joinRanked();
+  if (netStore.rankedSearching) {
+    showMultiplayer.value = true;
+  }
+};
+
+const cancelRanked = async () => {
+  if (netStore.roomId && rankedCountdown.value > 0) {
+    leaveRoom();
+    return;
+  }
+  resetRankedCountdown();
+  rankedOpponent.value = '';
+  rankedQueueStatus.value = null;
+  await netStore.cancelRanked();
+};
+
 const joinRoom = async () => {
   if (!roomInput.value || roomInput.value.length < 4 || !netStore.playerName) return;
   await netStore.joinRoom(roomInput.value.trim());
@@ -705,6 +747,9 @@ const leaveRoom = () => {
   roomInput.value = '';
   resetQuickplayCountdown();
   quickplayOpponent.value = '';
+  resetRankedCountdown();
+  rankedOpponent.value = '';
+  rankedQueueStatus.value = null;
 };
 
 const kickPlayer = (playerId) => {
@@ -753,7 +798,21 @@ const startMultiplayer = async () => {
   const playerKeys = roster.length >= MAX_PLAYERS
     ? ['player', 'enemy', 'enemy2']
     : ['player', 'enemy'];
-  gameStore.initGame('online', { playerKeys });
+  gameStore.initGame('online', {
+    playerKeys,
+    isRanked: netStore.isRankedRoom,
+    rankedMatchId: netStore.rankedMatchId
+  });
+
+  const rankedEloMap = new Map();
+  if (netStore.isRankedRoom && netStore.rankedMatch) {
+    if (netStore.rankedMatch.self?.id) {
+      rankedEloMap.set(netStore.rankedMatch.self.id, netStore.rankedMatch.self.elo ?? null);
+    }
+    if (netStore.rankedMatch.opponent?.id) {
+      rankedEloMap.set(netStore.rankedMatch.opponent.id, netStore.rankedMatch.opponent.elo ?? null);
+    }
+  }
 
   playerKeys.forEach((key, index) => {
     const playerInfo = roster[index];
@@ -762,6 +821,9 @@ const startMultiplayer = async () => {
     gameStore.players[key].socketId = playerInfo.id;
     gameStore.players[key].userId = playerInfo.userId || null;
     gameStore.players[key].isActive = true;
+    if (playerInfo.userId && rankedEloMap.has(playerInfo.userId)) {
+      gameStore.players[key].elo = rankedEloMap.get(playerInfo.userId);
+    }
   });
 
   const shuffled = [...playerKeys].sort(() => Math.random() - 0.5);
@@ -784,7 +846,9 @@ const startMultiplayer = async () => {
     reloadCount: gameStore.reloadCount,
     lastReloadInfo: gameStore.lastReloadInfo,
     hostName: netStore.playerName,
-    onlineFlipResult: gameStore.currentTurn
+    onlineFlipResult: gameStore.currentTurn,
+    isRanked: gameStore.isRanked,
+    rankedMatchId: gameStore.rankedMatchId
   };
   
   console.log('📤 Sending game state to all players:', state);
@@ -891,6 +955,41 @@ watch(
   }
 );
 
+watch(
+  () => netStore.rankedMatch,
+  (match) => {
+    if (!match) return;
+    rankedOpponent.value = match.opponent?.username || 'Joueur';
+    Notify.create({
+      type: 'positive',
+      message: `Adversaire classé trouvé : ${rankedOpponent.value}`,
+      position: 'top',
+      timeout: 3000,
+      icon: 'emoji_events'
+    });
+    resetRankedCountdown();
+    rankedCountdown.value = 5;
+    rankedInterval = setInterval(() => {
+      if (rankedCountdown.value <= 1) {
+        resetRankedCountdown();
+        if (netStore.isHost) {
+          startMultiplayer();
+        }
+        netStore.clearRankedMatch();
+        return;
+      }
+      rankedCountdown.value -= 1;
+    }, 1000);
+  }
+);
+
+watch(
+  () => netStore.rankedQueueStatus,
+  (status) => {
+    rankedQueueStatus.value = status || null;
+  }
+);
+
 watch(showMultiplayer, async (value) => {
   if (value) {
     cleanupMenuModel();
@@ -905,6 +1004,7 @@ onUnmounted(() => {
   netStore.offGameState();
   cleanupMenuModel();
   resetQuickplayCountdown();
+  resetRankedCountdown();
 });
 
 const initMenuModel = async () => {

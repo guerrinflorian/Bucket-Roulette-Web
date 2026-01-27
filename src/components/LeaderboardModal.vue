@@ -25,6 +25,12 @@
           align="left"
           narrow-indicator
         >
+          <q-tab name="ranked" icon="emoji_events">
+            <span>Ranked</span>
+            <q-tooltip class="ranked-tooltip">
+              Score = Elo (Δ = round(32 × (résultat - attendu))). Anti-farm : delta borné ±5 si écart Elo &gt; 300.
+            </q-tooltip>
+          </q-tab>
           <q-tab name="1v1" label="1v1" icon="sports_kabaddi" />
           <q-tab name="1v1v1" label="1v1v1" icon="groups" />
         </q-tabs>
@@ -45,6 +51,24 @@
 
         <div v-else class="leaderboard-content">
           <q-tab-panels v-model="activeTab" animated class="leaderboard-panels">
+            <q-tab-panel name="ranked">
+              <div class="leaderboard-panel">
+                <div class="leaderboard-panel-header ranked">
+                  <div>
+                    <div class="panel-title">Matchs classés 1v1</div>
+                    <div class="panel-subtitle">Score = Elo</div>
+                  </div>
+                  <q-badge color="amber-8" class="panel-badge">Ranked</q-badge>
+                </div>
+                <LeaderboardTable
+                  :entries="rankedEntries"
+                  :self-entry="rankedSelfEntry"
+                  mode="ranked"
+                  :highlight-id="highlightId"
+                  @select="emit('select-profile', $event)"
+                />
+              </div>
+            </q-tab-panel>
             <q-tab-panel name="1v1">
               <div class="leaderboard-panel">
                 <div class="leaderboard-panel-header">
@@ -104,8 +128,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'select-profile']);
 
-const activeTab = ref('1v1');
+const activeTab = ref('ranked');
 
+const rankedEntries = computed(() => props.leaderboards?.ranked?.entries ?? []);
+const rankedSelfEntry = computed(() => props.leaderboards?.ranked?.selfEntry ?? null);
 const duelEntries = computed(() => props.leaderboards?.['1v1']?.entries ?? []);
 const duelSelfEntry = computed(() => props.leaderboards?.['1v1']?.selfEntry ?? null);
 const trioEntries = computed(() => props.leaderboards?.['1v1v1']?.entries ?? []);
@@ -196,8 +222,18 @@ const trioSelfEntry = computed(() => props.leaderboards?.['1v1v1']?.selfEntry ??
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
+.leaderboard-panel-header.ranked {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
 .leaderboard-panel-header.trio {
   border-color: rgba(168, 85, 247, 0.3);
+}
+
+.ranked-tooltip {
+  font-size: 12px;
+  max-width: 280px;
+  line-height: 1.4;
 }
 
 .panel-title {

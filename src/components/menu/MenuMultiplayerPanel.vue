@@ -66,6 +66,55 @@
         </div>
       </div>
 
+      <div class="action-card quickplay-card ranked-card">
+        <div class="action-card-icon">🏆</div>
+        <div class="action-card-content">
+          <h3 class="action-card-title">Match Ranked 1v1</h3>
+          <p class="action-card-desc">
+            {{
+              rankedCountdown > 0
+                ? 'Match classé trouvé, lancement imminent...'
+                : rankedSearching
+                  ? 'Recherche d’un adversaire classé...'
+                  : 'Affrontez un adversaire de votre niveau'
+            }}
+          </p>
+        </div>
+        <button
+          v-if="!rankedSearching && rankedCountdown === 0"
+          class="action-card-btn quickplay-btn"
+          @click="emit('ranked')"
+          :disabled="netStore.connecting"
+        >
+          {{ netStore.connecting ? '...' : 'Lancer' }}
+        </button>
+        <button
+          v-else
+          class="action-card-btn quickplay-cancel-btn"
+          @click="emit('ranked-cancel')"
+        >
+          Annuler
+        </button>
+      </div>
+
+      <div v-if="rankedSearching || rankedCountdown > 0" class="quickplay-status ranked-status">
+        <div class="status-row">
+          <span class="status-dot"></span>
+          {{ rankedCountdown > 0 ? 'Match classé trouvé' : "Recherche d'un adversaire classé..." }}
+        </div>
+        <div v-if="rankedOpponent" class="status-match">
+          Adversaire classé : <strong>{{ rankedOpponent }}</strong>
+        </div>
+        <div v-if="rankedQueueStatus" class="status-queue">
+          <span>Position {{ rankedQueueStatus.position }}</span>
+          <span class="status-divider">•</span>
+          <span>Plage Elo ±{{ rankedQueueStatus.range }}</span>
+        </div>
+        <div v-if="rankedCountdown > 0" class="status-countdown">
+          Démarrage dans {{ rankedCountdown }}s...
+        </div>
+      </div>
+
       <div class="action-card create-card">
         <div class="action-card-icon">🎯</div>
         <div class="action-card-content">
@@ -249,6 +298,22 @@ defineProps({
   quickplayCountdown: {
     type: Number,
     default: 0
+  },
+  rankedSearching: {
+    type: Boolean,
+    default: false
+  },
+  rankedOpponent: {
+    type: String,
+    default: ''
+  },
+  rankedCountdown: {
+    type: Number,
+    default: 0
+  },
+  rankedQueueStatus: {
+    type: Object,
+    default: null
   }
 });
 
@@ -263,7 +328,9 @@ const emit = defineEmits([
   'start-game',
   'leave-room',
   'quickplay',
-  'quickplay-cancel'
+  'quickplay-cancel',
+  'ranked',
+  'ranked-cancel'
 ]);
 
 const onRoomInput = (event) => {
@@ -514,6 +581,18 @@ const onRoomInput = (event) => {
 .status-countdown {
   color: #93c5fd;
   font-weight: 700;
+}
+
+.status-queue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #cbd5f5;
+  font-weight: 600;
+}
+
+.status-divider {
+  color: #64748b;
 }
 
 .create-btn {

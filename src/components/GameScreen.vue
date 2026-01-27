@@ -25,6 +25,8 @@
       @use-item="handleUseItem"
       @send-emoji="handleSendEmoji"
     />
+
+    <div v-if="gameStore.isRanked" class="ranked-badge">RANKED</div>
     
     <!-- Fallback if store not ready -->
     <div v-else class="loading">Chargement...</div>
@@ -70,6 +72,22 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="showRankedIntro" persistent>
+      <q-card class="ranked-intro-card">
+        <q-card-section class="text-center">
+          <div class="ranked-intro-icon">🏆</div>
+          <div class="ranked-intro-title">Match Classé</div>
+          <div class="ranked-intro-subtitle">Élo des joueurs</div>
+          <div class="ranked-intro-list">
+            <div v-for="entry in rankedDisplayEntries" :key="entry.userId || entry.name" class="ranked-intro-row">
+              <span class="ranked-intro-name">{{ entry.name }}</span>
+              <span class="ranked-intro-elo">Elo {{ entry.elo }}</span>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <!-- Game Over Dialog -->
     <q-dialog v-model="showGameOver" persistent>
       <q-card class="game-over-card" :class="isLocalWinner ? 'card-victory' : 'card-defeat'">
@@ -83,6 +101,20 @@
           <p class="game-over-subtitle">
             {{ gameOverSubtitle }}
           </p>
+          <div v-if="rankedSummaryEntries.length" class="ranked-summary">
+            <div class="ranked-summary-title">Résultat Elo</div>
+            <div class="ranked-summary-list">
+              <div v-for="entry in rankedSummaryEntries" :key="entry.userId" class="ranked-summary-row">
+                <span class="ranked-summary-name">{{ entry.name }}</span>
+                <span class="ranked-summary-elo">
+                  {{ entry.eloBefore }} → {{ entry.eloAfter }}
+                </span>
+                <span class="ranked-summary-delta" :class="entry.eloDelta >= 0 ? 'delta-positive' : 'delta-negative'">
+                  {{ entry.eloDelta >= 0 ? `+${entry.eloDelta}` : entry.eloDelta }}
+                </span>
+              </div>
+            </div>
+          </div>
         </q-card-section>
         <q-card-actions align="center" class="pb-6">
           <q-btn 
@@ -121,6 +153,8 @@ const matchStore = useMatchStore();
 const weaponSkinsStore = useWeaponSkinsStore();
 const gameSceneRef = ref(null);
 const matchSubmitted = ref(false);
+const showRankedIntro = ref(false);
+const rankedEloChanges = ref([]);
 const cloneBarrel = (barrel) => {
   const source = toRaw(barrel) || barrel;
   return {
@@ -155,6 +189,30 @@ const orderRevealTimers = [];
 const initialFlipResolved = ref(false);
 const isHandlingShot = ref(false);
 const pendingNetworkState = ref(null);
+const rankedDisplayEntries = computed(() => {
+  if (!gameStore.isRanked) return [];
+  return Object.values(gameStore.players)
+    .filter((player) => player?.isActive)
+    .map((player) => ({
+      name: player.name || 'Joueur',
+      elo: player.elo ?? 1000,
+      userId: player.userId || player.id
+    }));
+});
+
+const rankedSummaryEntries = computed(() => {
+  if (!gameStore.isRanked || !rankedEloChanges.value?.length) return [];
+  return rankedEloChanges.value.map((change) => {
+    const player = Object.values(gameStore.players).find((entry) => entry.userId === change.userId);
+    return {
+      userId: change.userId,
+      name: player?.name || 'Joueur',
+      eloBefore: change.eloBefore,
+      eloAfter: change.eloAfter,
+      eloDelta: change.eloDelta
+    };
+  });
+});
 const isOnlineInitialFlipPending = computed(() => {
   if (!isOnlineMode.value) return false;
   if (onlineFlipShown.value) return false;
@@ -373,13 +431,16 @@ const submitMatchResult = async () => {
   try {
     if (isOnlineMode.value) {
       const mode = entries.length >= 3 ? '1v1v1' : '1v1';
-      await matchStore.recordMultiplayerMatch({
+      const response = await matchStore.recordMultiplayerMatch({
         mode,
         victoryType,
         roundsPlayed,
         winnerId,
-        participants: buildParticipantsPayload(entries)
+        participants: buildParticipantsPayload(entries),
+        isRanked: gameStore.isRanked,
+        matchId: gameStore.isRanked ? gameStore.rankedMatchId : null
       });
+      rankedEloChanges.value = response?.eloChanges || [];
     } else {
       const botLevel = getBotLevel(gameStore.botDifficulty);
       const soloParticipants = buildParticipantsPayload(entries).filter((participant) => !participant.isBot);
@@ -392,6 +453,7 @@ const submitMatchResult = async () => {
         difficulty: botLevel.key,
         isDefeated: gameStore.winner !== 'player'
       });
+      rankedEloChanges.value = [];
     }
   } catch (error) {
     console.warn('Failed to record match:', error);
@@ -1222,6 +1284,7 @@ const restart = () => {
     clearTimeout(gameOverRedirectTimer);
     gameOverRedirectTimer = null;
   }
+  rankedEloChanges.value = [];
   gameStore.sessionActive = false;
   router.push('/menu');
 };
@@ -1231,6 +1294,13 @@ onMounted(() => {
   matchSubmitted.value = false;
   if (!gameStore.players.player.items) {
     gameStore.initGame('bot');
+  }
+
+  if (gameStore.isRanked) {
+    showRankedIntro.value = true;
+    setTimeout(() => {
+      showRankedIntro.value = false;
+    }, 5000);
   }
 
   audioManager.startBackground();
@@ -1775,6 +1845,130 @@ watch(
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   font-weight: 500;
+}
+
+.ranked-badge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fde68a;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
+  z-index: 5;
+}
+
+.ranked-intro-card {
+  min-width: min(320px, 90vw);
+  border-radius: 24px;
+  padding: 24px 26px;
+  background: linear-gradient(150deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 2px solid rgba(250, 204, 21, 0.4);
+  box-shadow: 0 0 40px rgba(250, 204, 21, 0.25);
+}
+
+.ranked-intro-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.ranked-intro-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.ranked-intro-subtitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(226, 232, 240, 0.7);
+  margin-top: 4px;
+}
+
+.ranked-intro-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ranked-intro-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ranked-intro-name {
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.ranked-intro-elo {
+  font-weight: 700;
+  color: #fcd34d;
+}
+
+.ranked-summary {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ranked-summary-title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #fde68a;
+  margin-bottom: 10px;
+}
+
+.ranked-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranked-summary-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+
+.ranked-summary-name {
+  font-weight: 700;
+}
+
+.ranked-summary-elo {
+  font-weight: 600;
+  color: #cbd5f5;
+}
+
+.ranked-summary-delta {
+  font-weight: 800;
+}
+
+.delta-positive {
+  color: #86efac;
+}
+
+.delta-negative {
+  color: #fca5a5;
 }
 
 .order-modal-card {

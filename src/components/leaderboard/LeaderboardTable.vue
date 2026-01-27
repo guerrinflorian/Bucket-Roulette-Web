@@ -7,6 +7,7 @@
       <div class="leaderboard-row leaderboard-header">
         <div class="cell rank">Rang</div>
         <div class="cell name">Pseudo</div>
+        <div v-if="isRanked" class="cell elo">Elo</div>
         <div class="cell win">Victoires</div>
         <div v-if="isTrio" class="cell top2">Top 2</div>
         <div v-if="isTrio" class="cell top3">Top 3</div>
@@ -27,6 +28,7 @@
       >
         <div class="cell rank">{{ entry.rank }}</div>
         <div class="cell name">{{ entry.username || 'Joueur' }}</div>
+        <div v-if="isRanked" class="cell elo">{{ entry.elo ?? 1000 }}</div>
         <div class="cell win">{{ entry.wins }}</div>
         <div v-if="isTrio" class="cell top2">{{ top2Count(entry) }}</div>
         <div v-if="isTrio" class="cell top3">{{ top3Count(entry) }}</div>
@@ -45,6 +47,7 @@
       >
         <div class="cell rank">{{ extraRow.rank }}</div>
         <div class="cell name">{{ extraRow.username || 'Joueur' }}</div>
+        <div v-if="isRanked" class="cell elo">{{ extraRow.elo ?? 1000 }}</div>
         <div class="cell win">{{ extraRow.wins }}</div>
         <div v-if="isTrio" class="cell top2">{{ top2Count(extraRow) }}</div>
         <div v-if="isTrio" class="cell top3">{{ top3Count(extraRow) }}</div>
@@ -68,6 +71,7 @@ const props = defineProps({
 const emit = defineEmits(['select']);
 
 const isTrio = computed(() => props.mode === '1v1v1');
+const isRanked = computed(() => props.mode === 'ranked');
 
 const topRows = computed(() =>
   props.entries.map((entry) => ({
@@ -114,7 +118,8 @@ const top2Count = (entry) => Math.max(0, (entry.top2_finishes ?? 0) - (entry.win
 const top3Count = (entry) => Math.max(0, (entry.losses ?? 0) - top2Count(entry));
 
 const tableClass = computed(() => ({
-  'is-trio': isTrio.value
+  'is-trio': isTrio.value,
+  'is-ranked': isRanked.value
 }));
 </script>
 
@@ -152,6 +157,11 @@ const tableClass = computed(() => ({
   font-size: 13px;
   color: #e2e8f0;
   min-width: 540px;
+}
+
+.leaderboard-table-inner.is-ranked .leaderboard-row {
+  grid-template-columns: 64px 1.6fr repeat(4, minmax(80px, 1fr));
+  min-width: 600px;
 }
 
 .leaderboard-table-inner.is-trio .leaderboard-row {
@@ -222,6 +232,11 @@ const tableClass = computed(() => ({
   color: #f1f5f9;
 }
 
+.leaderboard-table-inner.is-ranked .cell.elo {
+  font-weight: 700;
+  color: #fcd34d;
+}
+
 .cell.ratio {
   font-weight: 700;
   color: #38bdf8;
@@ -239,6 +254,11 @@ const tableClass = computed(() => ({
     grid-template-columns: 50px 1.2fr repeat(3, minmax(70px, 0.9fr));
     min-width: 480px;
     gap: 6px;
+  }
+
+  .leaderboard-table-inner.is-ranked .leaderboard-row {
+    grid-template-columns: 50px 1.2fr repeat(4, minmax(70px, 0.9fr));
+    min-width: 540px;
   }
 
   .leaderboard-table-inner.is-trio .leaderboard-row {
