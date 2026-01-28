@@ -246,9 +246,8 @@ watch(
   () => props.player?.scannerHint,
   (next, prev) => {
     if (!next || next === prev) return;
-    if (prev && next < prev && props.lastAction?.itemId !== 'scanner') {
-      return;
-    }
+    if (props.lastAction?.itemId !== 'scanner') return;
+    if (prev && next < prev) return;
     notifyScannerHint(next);
   }
 );
